@@ -18,11 +18,17 @@ export default function Home() {
       {/* Content Container */}
       <div className="relative z-10 px-6 text-center">
         <div className="max-w-3xl mx-auto">
-          {/* Brand Name */}
-          <div className="mb-8 overflow-hidden">
-            <h1 className="text-white text-5xl md:text-8xl font-black tracking-tighter animate-in fade-in slide-in-from-bottom-8 duration-1000">
-              EL TRAVEL
-            </h1>
+          {/* Brand Identity */}
+          <div className="flex justify-center -mb-12 md:-mb-20">
+            <div className="relative w-full max-w-[20rem] h-40 md:max-w-[42rem] md:h-72 animate-in fade-in slide-in-from-bottom-8 duration-1000">
+              <Image
+                src="/images/logo eltravel.png"
+                alt="EL Travel Logo"
+                fill
+                className="object-contain drop-shadow-[0_20px_50px_rgba(0,0,0,0.5)]"
+                priority
+              />
+            </div>
           </div>
 
           {/* Status Message */}
@@ -31,7 +37,7 @@ export default function Home() {
               Sedang dalam Pengembangan
             </h2>
             <p className="text-white/80 text-lg md:text-xl leading-relaxed mb-8">
-              Kami sedang mempersiapkan sesuatu yang luar biasa untuk perjalanan Anda. 
+              Kami sedang mempersiapkan sesuatu yang luar biasa untuk perjalanan Anda.
               Nantikan pengalaman perjalanan premium yang tak terlupakan bersama kami.
             </p>
 
