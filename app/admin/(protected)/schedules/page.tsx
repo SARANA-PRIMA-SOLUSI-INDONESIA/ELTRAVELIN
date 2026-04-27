@@ -3,6 +3,8 @@ import Link from "next/link";
 import PriceEdit from "@/components/admin/PriceEdit";
 import ScheduleActions from "@/components/admin/ScheduleActions";
 
+export const dynamic = 'force-dynamic';
+
 export default async function AdminSchedules() {
   const routes = await prisma.route.findMany({
     include: {

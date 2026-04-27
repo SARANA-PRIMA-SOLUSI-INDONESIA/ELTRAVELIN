@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import RouteCard from "@/components/RouteCard";
 
+export const dynamic = 'force-dynamic';
+
 export default async function Routes() {
   const dbRoutes = await prisma.route.findMany({
     include: {

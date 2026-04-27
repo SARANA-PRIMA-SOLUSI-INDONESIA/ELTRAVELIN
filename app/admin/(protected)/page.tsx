@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
 
+export const dynamic = 'force-dynamic';
+
 export default async function AdminDashboard() {
   // Fetch some stats
   const routeCount = await prisma.route.count();
