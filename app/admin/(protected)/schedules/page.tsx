@@ -35,7 +35,7 @@ export default async function AdminSchedules() {
       </div>
 
       <div className="flex flex-col gap-12">
-        {routes.map((route) => (
+        {routes.map((route: any) => (
           <div key={route.id} className="flex flex-col gap-6">
             <div className="flex items-center gap-4">
                <h2 className="text-xl font-display font-bold text-navy-deep">{route.origin} → {route.destination}</h2>
@@ -48,7 +48,7 @@ export default async function AdminSchedules() {
                   <p className="text-sm text-foreground/40 font-medium">Belum ada jadwal untuk rute ini.</p>
                 </div>
               ) : (
-                route.schedules.map((s) => (
+                route.schedules.map((s: any) => (
                   <div key={s.id} className="bg-white p-8 rounded-[2rem] shadow-sm flex flex-col gap-6 border border-transparent hover:border-gold-soft transition-all">
                     <div className="flex justify-between items-start">
                       <div className="flex flex-col">

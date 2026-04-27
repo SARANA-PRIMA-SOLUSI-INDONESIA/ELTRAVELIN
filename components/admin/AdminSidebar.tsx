@@ -34,7 +34,7 @@ export default function AdminSidebar() {
       </div>
 
       <nav className="flex-1 p-6 flex flex-col gap-2">
-        {menuItems.map((item) => {
+        {menuItems.map((item: any) => {
           const isActive = pathname === item.href || (item.href !== "/admin" && pathname.startsWith(item.href));
           return (
             <Link

@@ -23,7 +23,7 @@ export default async function AdminDashboard() {
           { label: "Jadwal Aktif", value: scheduleCount, icon: "ri-calendar-event-line", color: "bg-green-50 text-green-600" },
           { label: "Total Pesanan", value: bookingCount, icon: "ri-ticket-2-line", color: "bg-purple-50 text-purple-600" },
           { label: "Pendapatan", value: `Rp ${(totalRevenue._sum.totalPrice || 0).toLocaleString('id-ID')}`, icon: "ri-money-dollar-circle-line", color: "bg-gold-soft text-navy-deep" },
-        ].map((stat, i) => (
+        ].map((stat: any, i: number) => (
           <div key={i} className="bg-white p-8 rounded-[2rem] shadow-sm flex items-center gap-6">
             <div className={`w-14 h-14 rounded-2xl ${stat.color} flex items-center justify-center text-2xl`}>
               <i className={stat.icon}></i>

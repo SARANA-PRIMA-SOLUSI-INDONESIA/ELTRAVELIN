@@ -18,7 +18,7 @@ export default async function Routes() {
   });
 
   // Map database routes to the format expected by RouteCard
-  const routes = dbRoutes.map(r => ({
+  const routes = dbRoutes.map((r: any) => ({
     from: r.origin,
     to: r.destination,
     price: r.schedules[0]?.price.toLocaleString('id-ID') || "65.000",
@@ -42,7 +42,7 @@ export default async function Routes() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {routes.map((route, i) => (
+            {routes.map((route: any, i: number) => (
               <RouteCard key={i} {...route} />
             ))}
           </div>
