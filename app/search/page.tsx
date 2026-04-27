@@ -35,7 +35,7 @@ export default async function SearchResults({ searchParams }: SearchProps) {
             </Link>
           </div>
         ) : (
-          departures.map((d) => (
+          departures.map((d: any) => (
             <Link 
               key={d.id} 
               href={`/seat-selection?scheduleId=${d.id}`} 

@@ -70,7 +70,7 @@ export async function syncSchedulesFromTemplates(prismaInstance: PrismaClient, d
           // 2. Generate Seats
           const seatNumbers = ['1A', '1B', '1C', '2A', '2B', '2C', '3A', '3B', '3C', '4A', '4B'];
           await tx.seat.createMany({
-            data: seatNumbers.map((num) => ({
+            data: seatNumbers.map((num: string) => ({
               scheduleId: schedule.id,
               seatNumber: num,
               status: 'AVAILABLE',

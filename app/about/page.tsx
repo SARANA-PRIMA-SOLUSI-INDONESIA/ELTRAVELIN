@@ -57,7 +57,7 @@ export default function About() {
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-12 w-full">
-            {[1, 2, 3].map((_, i) => (
+            {[1, 2, 3].map((_: any, i: number) => (
               <div key={i} className="flex flex-col items-center text-center gap-6">
                 <div className="w-full aspect-[3/4] rounded-[2.5rem] bg-navy-deep/5 overflow-hidden filter grayscale hover:grayscale-0 transition-all duration-500">
                   <div className="w-full h-full bg-navy-deep/10 flex items-center justify-center font-bold text-foreground/10 text-4xl">Tim EL</div>

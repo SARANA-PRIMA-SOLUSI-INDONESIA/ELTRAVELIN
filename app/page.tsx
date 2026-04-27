@@ -44,7 +44,7 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {routes.map((route, i) => (
+            {routes.map((route: any, i: number) => (
               <RouteCard key={i} {...route} />
             ))}
           </div>
@@ -61,7 +61,7 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-5 gap-12 w-full">
-            {features.map((f, i) => (
+            {features.map((f: any, i: number) => (
               <div key={i} className="flex flex-col items-center gap-4 transition-transform hover:-translate-y-1">
                 <div className="w-16 h-16 rounded-2xl bg-white flex items-center justify-center shadow-ambient">
                   <i className={`${f.icon} text-3xl text-navy-deep`}></i>
@@ -89,7 +89,7 @@ export default function Home() {
               { name: "Hiace Premio Executive", capacity: "11 Seats", img: "/hiace-premio.png", color: "tonal-section" },
               { name: "Sprinter Business Class", capacity: "9 Seats", img: "/sprinter.png", color: "bg-background", reverse: true },
               { name: "Isuzu Elf Giga Luxury", capacity: "14 Seats", img: "/isuzu-elf.png", color: "tonal-section" }
-            ].map((fleet, i) => (
+            ].map((fleet: any, i: number) => (
               <div key={i} className={`flex flex-col ${fleet.reverse ? 'lg:flex-row-reverse' : 'lg:flex-row'} items-center gap-12 lg:gap-24`}>
                 <div className="w-full lg:w-3/5 relative aspect-video overflow-hidden rounded-[3rem] shadow-ambient">
                   <Image src={fleet.img} alt={fleet.name} fill className="object-cover" />
@@ -103,7 +103,7 @@ export default function Home() {
                     Dilengkapi dengan kursi ergonomis yang dapat direbahkan, sistem hiburan modern, dan interior yang kedap suara untuk memastikan istirahat Anda tidak terganggu.
                   </p>
                   <ul className="flex flex-col gap-4 mt-4">
-                    {['Individual Reading Light', 'USB Charging Port', 'Leather Captain Seats'].map((feature, idx) => (
+                    {['Individual Reading Light', 'USB Charging Port', 'Leather Captain Seats'].map((feature: string, idx: number) => (
                       <li key={idx} className="flex items-center gap-3 text-sm font-medium text-navy-deep">
                         <div className="w-5 h-5 rounded-full bg-gold-soft flex items-center justify-center">
                           <i className="ri-check-line text-xs text-navy-deep"></i>
@@ -134,10 +134,10 @@ export default function Home() {
               { name: "Budi Santoso", role: "Pengusaha", text: "Pelayanan luar biasa. Sopirnya ramah dan armada Hiace-nya sangat bersih. Perjalanan Jakarta-Bandung terasa sangat singkat karena nyaman." },
               { name: "Sari Wijaya", role: "Digital Nomad", text: "Paling suka dengan layanan door-to-doornya. Sangat memudahkan buat saya yang sering bepergian dengan banyak koper. Highly recommended!" },
               { name: "Andra Pratama", role: "UI Designer", text: "WiFi-nya kencang, bisa tetap meeting di jalan. Kursinya juga bisa direbahkan maksimal jadi bisa istirahat dengan tenang." }
-            ].map((t, i) => (
+            ].map((t: any, i: number) => (
               <div key={i} className="bg-white p-10 rounded-[2rem] shadow-ambient flex flex-col gap-8">
                 <div className="flex text-gold-warm gap-1">
-                  {[...Array(5)].map((_, i) => <i key={i} className="ri-star-fill"></i>)}
+                  {[...Array(5)].map((_, starIdx: number) => <i key={starIdx} className="ri-star-fill"></i>)}
                 </div>
                 <p className="text-foreground/80 leading-relaxed font-body">"{t.text}"</p>
                 <div className="flex items-center gap-4 mt-auto">

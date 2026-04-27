@@ -60,7 +60,7 @@ export default function Booking() {
             { title: "Metode Fleksibel", text: "Ubah jadwal perjalanan Anda hingga 24 jam sebelum keberangkatan tanpa biaya tambahan." },
             { title: "Layanan 24/7", text: "Tim concierge kami siap membantu Anda kapan saja melalui hotline atau WhatsApp." },
             { title: "Jaminan Aman", text: "Seluruh transaksi dienkripsi dengan standar keamanan perbankan internasional." }
-          ].map((item, i) => (
+          ].map((item: any, i: number) => (
             <div key={i} className="flex flex-col gap-4 p-8 tonal-section rounded-[2rem]">
               <div className="w-12 h-12 rounded-xl bg-gold-soft flex items-center justify-center text-navy-deep">
                 <i className="ri-shield-check-line text-2xl"></i>

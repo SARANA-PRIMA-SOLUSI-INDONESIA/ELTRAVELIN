@@ -20,7 +20,7 @@ export default function Fleet() {
           </div>
 
           <div className="grid grid-cols-1 gap-32">
-            {fleets.map((fleet, i) => (
+            {fleets.map((fleet: any, i: number) => (
               <div key={i} className={`flex flex-col ${i % 2 !== 0 ? 'lg:flex-row-reverse' : 'lg:flex-row'} items-center gap-12 lg:gap-24`}>
                 <div className="w-full lg:w-3/5 relative aspect-video overflow-hidden rounded-[3rem] shadow-ambient group">
                   <Image src={fleet.img} alt={fleet.name} fill className="object-cover transition-transform duration-700 group-hover:scale-105" />
@@ -32,10 +32,10 @@ export default function Fleet() {
                     <h3 className="text-3xl font-display font-bold text-navy-deep">{fleet.name}</h3>
                   </div>
                   <p className="text-foreground/60 leading-relaxed font-body">
-                    Didesain khusus untuk memberikan pengalaman perjalanan bisnis maupun liburan yang tak terlupakan dengan kabin yang luas dan senyap.
+                    Didesain khusus untuk memberikan pengalaman perjalanan bisnis maupun liburan yang tak terlupakan dengan kabin yang luas and senyap.
                   </p>
                   <ul className="flex flex-col gap-4 mt-4">
-                    {fleet.features.map((feature, idx) => (
+                    {fleet.features.map((feature: string, idx: number) => (
                       <li key={idx} className="flex items-center gap-3 text-sm font-medium text-navy-deep">
                         <div className="w-5 h-5 rounded-full bg-gold-soft flex items-center justify-center">
                           <i className="ri-check-line text-xs text-navy-deep"></i>
@@ -58,7 +58,7 @@ export default function Fleet() {
             <p className="text-foreground/60 max-w-lg font-body">Setiap armada melalui proses sanitasi dan pembersihan total sebelum memulai perjalanan untuk menjamin kesehatan dan kenyamanan Anda.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full mt-8">
-            {['Daily Sanitization', 'Routine Engine Check', 'Certified Professional Drivers'].map((item, idx) => (
+            {['Daily Sanitization', 'Routine Engine Check', 'Certified Professional Drivers'].map((item: string, idx: number) => (
               <div key={idx} className="bg-white p-8 rounded-3xl shadow-ambient flex flex-col items-center gap-4">
                 <i className="ri-shield-user-line text-3xl text-gold-warm"></i>
                 <span className="text-sm font-bold text-navy-deep uppercase tracking-widest">{item}</span>

@@ -46,7 +46,7 @@ export default function SearchHero() {
                   onChange={(e) => setOrigin(e.target.value)}
                   className="bg-surface-low rounded-xl px-4 py-3 text-sm text-foreground/80 cursor-pointer hover:bg-surface-medium transition-colors border-none focus:ring-2 focus:ring-gold-warm"
                 >
-                  {cities.map(c => <option key={c} value={c}>{c}</option>)}
+                  {cities.map((c: string) => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
               <div className="flex flex-col gap-2">
@@ -57,7 +57,7 @@ export default function SearchHero() {
                   className="bg-surface-low rounded-xl px-4 py-3 text-sm text-foreground/80 cursor-pointer hover:bg-surface-medium transition-colors border-none focus:ring-2 focus:ring-gold-warm"
                 >
                   <option value="" disabled>Pilih Kota Tujuan</option>
-                  {cities.filter(c => c !== origin).map(c => <option key={c} value={c}>{c}</option>)}
+                  {cities.filter((c: string) => c !== origin).map((c: string) => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
               <div className="flex flex-col gap-2">

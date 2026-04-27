@@ -33,7 +33,7 @@ export default function SeatGrid({ initialSeats, scheduleId, price }: SeatGridPr
         </div>
         
         <div className="grid grid-cols-3 gap-6">
-          {initialSeats.map((s) => (
+          {initialSeats.map((s: any) => (
             <div 
               key={s.id} 
               onClick={() => handleSeatClick(s)}
