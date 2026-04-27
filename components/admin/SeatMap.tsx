@@ -1,12 +1,9 @@
 "use client";
 
-import { Seat, Booking } from "@prisma/client";
+// Removing explicit imports of Seat/Booking to prevent build errors if Prisma client is stale on Vercel
+// We can use 'any' or define local interfaces if needed.
 
-interface SeatWithBooking extends Seat {
-  booking?: Booking | null;
-}
-
-export default function SeatMap({ seats }: { seats: SeatWithBooking[] }) {
+export default function SeatMap({ seats }: { seats: any[] }) {
   // Sort seats by number to ensure correct layout mapping
   // We assume 11 seats for Hiace Premio (1A to 4B pattern)
   
