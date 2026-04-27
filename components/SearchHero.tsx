@@ -1,6 +1,25 @@
+"use client";
+
 import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 export default function SearchHero() {
+  const router = useRouter();
+  const [origin, setOrigin] = useState("Pematangsiantar");
+  const [destination, setDestination] = useState("");
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]); // Default to today's date
+
+  const handleSearch = () => {
+    if (!destination) {
+      alert("Pilih kota tujuan terlebih dahulu");
+      return;
+    }
+    router.push(`/search?from=${origin}&to=${destination}&date=${date}`);
+  };
+
+  const cities = ["Pematangsiantar", "Medan", "Kualanamu"];
+
   return (
     <section className="relative min-h-[800px] flex items-center overflow-hidden bg-background pt-20">
       {/* Hero Content Wrapper */}
@@ -22,24 +41,39 @@ export default function SearchHero() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="flex flex-col gap-2">
                 <label className="text-xs font-bold text-navy-deep uppercase tracking-wider">Asal</label>
-                <div className="bg-surface-low rounded-xl px-4 py-3 text-sm text-foreground/80 cursor-pointer hover:bg-surface-medium transition-colors">
-                  Jakarta (Pusat)
-                </div>
+                <select 
+                  value={origin}
+                  onChange={(e) => setOrigin(e.target.value)}
+                  className="bg-surface-low rounded-xl px-4 py-3 text-sm text-foreground/80 cursor-pointer hover:bg-surface-medium transition-colors border-none focus:ring-2 focus:ring-gold-warm"
+                >
+                  {cities.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
               </div>
               <div className="flex flex-col gap-2">
                 <label className="text-xs font-bold text-navy-deep uppercase tracking-wider">Tujuan</label>
-                <div className="bg-surface-low rounded-xl px-4 py-3 text-sm text-foreground/40 cursor-pointer hover:bg-surface-medium transition-colors">
-                  Pilih Kota Tujuan
-                </div>
+                <select 
+                  value={destination}
+                  onChange={(e) => setDestination(e.target.value)}
+                  className="bg-surface-low rounded-xl px-4 py-3 text-sm text-foreground/80 cursor-pointer hover:bg-surface-medium transition-colors border-none focus:ring-2 focus:ring-gold-warm"
+                >
+                  <option value="" disabled>Pilih Kota Tujuan</option>
+                  {cities.filter(c => c !== origin).map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
               </div>
               <div className="flex flex-col gap-2">
                 <label className="text-xs font-bold text-navy-deep uppercase tracking-wider">Tanggal</label>
-                <div className="bg-surface-low rounded-xl px-4 py-3 text-sm text-foreground/80 cursor-pointer hover:bg-surface-medium transition-colors">
-                  18 Apr 2024
-                </div>
+                <input 
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="bg-surface-low rounded-xl px-4 py-3 text-sm text-foreground/80 cursor-pointer hover:bg-surface-medium transition-colors border-none focus:ring-2 focus:ring-gold-warm"
+                />
               </div>
               <div className="flex flex-col gap-2 justify-end">
-                <button className="btn-primary w-full py-3.5 rounded-xl font-bold text-sm shadow-md">
+                <button 
+                  onClick={handleSearch}
+                  className="btn-primary w-full py-3.5 rounded-xl font-bold text-sm shadow-md"
+                >
                   Cek Ketersediaan
                 </button>
               </div>
@@ -48,7 +82,7 @@ export default function SearchHero() {
         </div>
       </div>
 
-      {/* Asymmetrical Hero Image (Bleeding off right) */}
+      {/* Asymmetrical Hero Image */}
       <div className="absolute top-0 right-0 w-3/4 h-full lg:w-3/5 pointer-events-none opacity-40 lg:opacity-100 transition-opacity">
         <div className="relative w-full h-full">
           <Image 
@@ -58,7 +92,7 @@ export default function SearchHero() {
             className="object-cover object-left rounded-l-[100px] lg:rounded-l-[200px]"
             priority
           />
-          {/* Gradient overlay for text legibility */}
+          {/* Gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-r from-background via-background/40 to-transparent"></div>
         </div>
       </div>

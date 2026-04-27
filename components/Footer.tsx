@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 
 export default function Footer() {
   return (
@@ -6,12 +7,14 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between gap-12">
         <div className="max-w-sm">
           <Link href="/" className="flex items-center gap-2 mb-6">
-            <div className="w-8 h-8 rounded-lg bg-navy-deep flex items-center justify-center text-white font-display font-bold text-xl">
-              E
+            <div className="relative w-56 h-10 overflow-hidden">
+              <Image 
+                src="/images/logo eltravel.png" 
+                alt="EL Travel Logo" 
+                fill 
+                className="object-contain object-left scale-[1.8]"
+              />
             </div>
-            <span className="font-display font-bold text-navy-deep text-lg">
-              EL Travel
-            </span>
           </Link>
           <p className="text-sm leading-relaxed text-foreground/60 mb-6 font-body">
             Penyedia layanan transportasi executive terpercaya dengan jaringan rute terluas di Indonesia. Nikmati pengalaman berkendara kelas concierge dengan armada modern kami.

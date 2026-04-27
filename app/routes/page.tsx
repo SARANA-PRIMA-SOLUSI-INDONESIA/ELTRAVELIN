@@ -1,13 +1,33 @@
+import { prisma } from "@/lib/prisma";
 import RouteCard from "@/components/RouteCard";
 
-export default function Routes() {
-  const routes = [
-    { from: "Jakarta", to: "Bandung", price: "150.000", image: "/jakarta-bandung.png" },
-    { from: "Semarang", to: "Solo", price: "85.000", image: "/semarang-solo.png" },
-    { from: "Jogja", to: "Surabaya", price: "210.000", image: "/jogja-surabaya.png" },
-    { from: "Jakarta", to: "Semarang", price: "280.000", image: "/jakarta-bandung.png" }, // Reusing image for placeholder
-    { from: "Bandung", to: "Jogja", price: "320.000", image: "/semarang-solo.png" }, // Reusing image for placeholder
-  ];
+export default async function Routes() {
+  const dbRoutes = await prisma.route.findMany({
+    include: {
+      schedules: {
+        where: {
+          isActive: true,
+          isDeleted: false
+        },
+        orderBy: {
+          price: 'asc'
+        },
+        take: 1
+      }
+    }
+  });
+
+  // Map database routes to the format expected by RouteCard
+  const routes = dbRoutes.map(r => ({
+    from: r.origin,
+    to: r.destination,
+    price: r.schedules[0]?.price.toLocaleString('id-ID') || "65.000",
+    image: r.destination.toLowerCase().includes('kualanamu') 
+      ? "/kualanamu.png" 
+      : r.origin.toLowerCase().includes('siantar') 
+        ? "/siantar.png" 
+        : "/medan.png"
+  }));
 
   return (
     <div className="flex flex-col gap-24 pb-32">
@@ -17,7 +37,7 @@ export default function Routes() {
             <span className="text-xs font-bold text-gold-warm uppercase tracking-widest leading-none">Catalog Perjalanan</span>
             <h1 className="text-4xl md:text-5xl font-display font-bold text-navy-deep">Jelajahi <span className="italic font-light">Eksklusivitas</span> Rute Kami</h1>
             <p className="text-lg text-foreground/60 font-body">
-              Kami menghubungkan kota-kota besar di Indonesia dengan standar kenyamanan tertinggi di setiap detiknya.
+              Kami menghubungkan kota-kota utama di Sumatera Utara dengan standar kenyamanan tertinggi.
             </p>
           </div>
 

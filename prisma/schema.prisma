@@ -1,0 +1,114 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Route {
+  id                String             @id @default(cuid())
+  origin            String
+  destination       String
+  schedules         Schedule[]
+  scheduleTemplates ScheduleTemplate[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  @@unique([origin, destination])
+}
+
+
+model Schedule {
+  id            String            @id @default(cuid())
+  routeId       String
+  route         Route             @relation(fields: [routeId], references: [id])
+  departureTime DateTime
+  arrivalTime   DateTime
+  price         Int // In Rupiah
+  vehicleType   String // e.g. "Hiace Premio Executive"
+  capacity      Int               @default(11)
+  isActive      Boolean           @default(true)
+  isDeleted     Boolean           @default(false)
+  bookings      Booking[]
+  seats         Seat[]
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  
+  // Optional: tracking which template created this
+  templateId    String?
+  template      ScheduleTemplate? @relation(fields: [templateId], references: [id])
+}
+
+model ScheduleTemplate {
+  id            String     @id @default(cuid())
+  routeId       String
+  route         Route      @relation(fields: [routeId], references: [id])
+  departureTime String     // e.g. "08:00"
+  price         Int
+  vehicleType   String     @default("Hiace Premio Executive")
+  capacity      Int        @default(11)
+  isActive      Boolean    @default(true)
+  schedules     Schedule[]
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+}
+
+
+model Booking {
+  id              String        @id @default(cuid())
+  bookingCode     String        @unique // e.g. EL-882410-BC
+  scheduleId      String
+  schedule        Schedule      @relation(fields: [scheduleId], references: [id])
+  passengerName   String
+  passengerEmail  String?
+  passengerPhone  String
+  totalPrice      Int
+  status          BookingStatus @default(PENDING)
+  seats           Seat[]
+  paymentMethod   String?
+  paymentProofUrl String?
+  snapToken       String?
+  paymentType     String?
+  settlementTime  DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+
+model Seat {
+  id         String     @id @default(cuid())
+  scheduleId String
+  schedule   Schedule   @relation(fields: [scheduleId], references: [id])
+  seatNumber String     // e.g. "1A", "2C"
+  status     SeatStatus @default(AVAILABLE)
+  bookingId  String?
+  booking    Booking?   @relation(fields: [bookingId], references: [id])
+
+  @@unique([scheduleId, seatNumber])
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+enum SeatStatus {
+  AVAILABLE
+  BOOKED
+  BLOCKED
+}
+
+model Admin {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}

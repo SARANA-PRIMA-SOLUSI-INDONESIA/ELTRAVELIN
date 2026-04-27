@@ -4,9 +4,10 @@ import RouteCard from "@/components/RouteCard";
 
 export default function Home() {
   const routes = [
-    { from: "Jakarta", to: "Bandung", price: "150.000", image: "/jakarta-bandung.png" },
-    { from: "Semarang", to: "Solo", price: "85.000", image: "/semarang-solo.png" },
-    { from: "Jogja", to: "Surabaya", price: "210.000", image: "/jogja-surabaya.png" },
+    { from: "Pematangsiantar", to: "Kualanamu (Airport)", price: "65.000", image: "/jakarta-bandung.png" },
+    { from: "Pematangsiantar", to: "Medan", price: "65.000", image: "/semarang-solo.png" },
+    { from: "Kualanamu", to: "Pematangsiantar", price: "65.000", image: "/jogja-surabaya.png" },
+    { from: "Medan", to: "Pematangsiantar", price: "65.000", image: "/jakarta-bandung.png" },
   ];
 
   const features = [
@@ -14,7 +15,7 @@ export default function Home() {
     { title: "Free WiFi", desc: "Selalu Terhubung", icon: "ri-wifi-line" },
     { title: "Wide Seats", desc: "Ekstra Lega", icon: "ri-layout-grid-line" },
     { title: "Punctuality", desc: "Tepat Waktu", icon: "ri-time-line" },
-    { title: "Door to Door", desc: "Antar Jemput", icon: "ri-home-4-line" },
+    { title: "Direct Pool", desc: "Pool to Pool", icon: "ri-map-pin-user-line" },
   ];
 
   return (
@@ -22,29 +23,6 @@ export default function Home() {
       {/* Hero Section */}
       <SearchHero />
 
-      {/* Features Section - Tonal Sectioning */}
-      <section className="tonal-section py-24 px-6 md:px-12 lg:px-24 rounded-[3rem] mx-6 md:mx-12">
-        <div className="max-w-7xl mx-auto flex flex-col items-center text-center gap-16">
-          <div className="flex flex-col gap-4">
-            <span className="text-xs font-bold text-gold-warm uppercase tracking-widest">Layanan Prioritas</span>
-            <h2 className="text-4xl md:text-5xl font-display font-bold text-navy-deep">Fasilitas Kelas Eksekutif</h2>
-          </div>
-          
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-12 w-full">
-            {features.map((f, i) => (
-              <div key={i} className="flex flex-col items-center gap-4 transition-transform hover:-translate-y-1">
-                <div className="w-16 h-16 rounded-2xl bg-white flex items-center justify-center shadow-ambient">
-                  <i className={`${f.icon} text-3xl text-navy-deep`}></i>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <h3 className="font-display font-bold text-navy-deep text-lg">{f.title}</h3>
-                  <p className="text-xs text-foreground/40 uppercase tracking-wider font-bold">{f.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* Popular Routes Section */}
       <section className="px-6 md:px-12 lg:px-24">
@@ -57,14 +35,42 @@ export default function Home() {
                 Jelajahi berbagai pilihan rute terbaik dengan jadwal fleksibel yang dirancang untuk kenyamanan perjalanan Anda.
               </p>
             </div>
-            <button className="text-sm font-bold text-navy-deep border-b-2 border-gold-warm pb-1 hover:text-gold-warm transition-colors uppercase tracking-widest">
+            <button
+              className="text-sm font-bold text-navy-deep border-b-2 border-gold-warm pb-1 hover:text-gold-warm transition-colors uppercase tracking-widest"
+              suppressHydrationWarning
+            >
               Lihat Semua Rute
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             {routes.map((route, i) => (
               <RouteCard key={i} {...route} />
+            ))}
+          </div>
+        </div>
+      </section>
+
+
+      {/* Features Section - Tonal Sectioning */}
+      <section className="tonal-section py-24 px-6 md:px-12 lg:px-24 rounded-[3rem] mx-6 md:mx-12">
+        <div className="max-w-7xl mx-auto flex flex-col items-center text-center gap-16">
+          <div className="flex flex-col gap-4">
+            <span className="text-xs font-bold text-gold-warm uppercase tracking-widest">Layanan Prioritas</span>
+            <h2 className="text-4xl md:text-5xl font-display font-bold text-navy-deep">Fasilitas Kelas Eksekutif</h2>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-12 w-full">
+            {features.map((f, i) => (
+              <div key={i} className="flex flex-col items-center gap-4 transition-transform hover:-translate-y-1">
+                <div className="w-16 h-16 rounded-2xl bg-white flex items-center justify-center shadow-ambient">
+                  <i className={`${f.icon} text-3xl text-navy-deep`}></i>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <h3 className="font-display font-bold text-navy-deep text-lg">{f.title}</h3>
+                  <p className="text-xs text-foreground/40 uppercase tracking-wider font-bold">{f.desc}</p>
+                </div>
+              </div>
             ))}
           </div>
         </div>
