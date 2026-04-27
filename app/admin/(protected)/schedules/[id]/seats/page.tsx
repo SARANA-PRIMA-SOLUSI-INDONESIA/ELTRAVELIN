@@ -45,7 +45,7 @@ export default async function AdminScheduleSeats({ params }: PageProps) {
               <span className="text-[10px] font-bold text-foreground/40 uppercase tracking-widest">Front Area / Driver</span>
            </div>
            
-           <SeatMap seats={schedule.seats} />
+           <SeatMap seats={schedule.seats as any} />
         </div>
 
         <div className="flex flex-col gap-6">
@@ -75,11 +75,15 @@ export default async function AdminScheduleSeats({ params }: PageProps) {
               <span className="text-xs font-bold text-gold-warm uppercase tracking-widest">Ringkasan</span>
               <div className="flex justify-between items-end">
                  <div className="flex flex-col">
-                    <span className="text-4xl font-display font-bold">{schedule.seats.filter(s => s.status === 'BOOKED').length}</span>
+                    <span className="text-4xl font-display font-bold">
+                      {schedule.seats.filter((s: any) => s.status === 'BOOKED').length}
+                    </span>
                     <span className="text-xs opacity-60">Kursi Terisi</span>
                  </div>
                  <div className="text-right flex flex-col">
-                    <span className="text-2xl font-display font-bold text-gold-warm">{Math.round((schedule.seats.filter(s => s.status === 'BOOKED').length / schedule.capacity) * 100)}%</span>
+                    <span className="text-2xl font-display font-bold text-gold-warm">
+                      {Math.round((schedule.seats.filter((s: any) => s.status === 'BOOKED').length / schedule.capacity) * 100)}%
+                    </span>
                     <span className="text-xs opacity-60">Okupansi</span>
                  </div>
               </div>
