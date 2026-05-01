@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getBookingByCode, updatePaymentMethod } from "@/app/actions/booking";
 import BookingWizard from "@/components/BookingWizard";
 import Link from "next/link";
 
-export default function PaymentPage() {
+function PaymentContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const code = searchParams.get("code");
@@ -43,8 +43,8 @@ export default function PaymentPage() {
     }
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center">Memuat...</div>;
-  if (!booking) return <div className="min-h-screen flex items-center justify-center">Booking tidak ditemukan</div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center font-display font-bold text-navy-deep animate-pulse">Memuat...</div>;
+  if (!booking) return <div className="min-h-screen flex items-center justify-center font-display font-bold text-navy-deep">Booking tidak ditemukan</div>;
 
   return (
     <div className="flex flex-col min-h-screen bg-[#F8F9FA]">
@@ -131,3 +131,12 @@ export default function PaymentPage() {
     </div>
   );
 }
+
+export default function PaymentPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center font-display font-bold text-navy-deep animate-pulse">Memuat Halaman...</div>}>
+      <PaymentContent />
+    </Suspense>
+  );
+}
+
