@@ -50,14 +50,10 @@ export default async function AdminDashboard() {
         <div className="bg-white p-10 rounded-[2.5rem] shadow-sm">
           <h3 className="text-xl font-display font-bold text-navy-deep mb-8">Status Armada</h3>
           <div className="flex flex-col gap-4">
-             <div className="flex items-center justify-between p-4 bg-surface-low rounded-2xl">
-               <span className="text-sm font-medium">Hiace Premio Executive</span>
-               <span className="bg-green-100 text-green-600 text-[10px] font-bold px-2 py-1 rounded-full uppercase">Ready</span>
-             </div>
-             <div className="flex items-center justify-between p-4 bg-surface-low rounded-2xl">
-               <span className="text-sm font-medium">Sprinter Business Class</span>
-               <span className="bg-green-100 text-green-600 text-[10px] font-bold px-2 py-1 rounded-full uppercase">Ready</span>
-             </div>
+              <div className="flex items-center justify-between p-4 bg-surface-low rounded-2xl">
+                <span className="text-sm font-medium">Farizon SV (Supervan)</span>
+                <span className="bg-green-100 text-green-600 text-[10px] font-bold px-2 py-1 rounded-full uppercase">Ready</span>
+              </div>
           </div>
         </div>
       </div>

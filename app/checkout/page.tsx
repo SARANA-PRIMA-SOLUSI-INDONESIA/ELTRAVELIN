@@ -1,6 +1,8 @@
 import { getScheduleById } from "@/app/actions/booking";
 import CheckoutForm from "@/components/CheckoutForm";
 import { notFound } from "next/navigation";
+import BookingWizard from "@/components/BookingWizard";
+import Link from "next/link";
 
 interface CheckoutProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -9,49 +11,50 @@ interface CheckoutProps {
 export default async function Checkout({ searchParams }: CheckoutProps) {
   const resolvedParams = await searchParams;
   const scheduleId = resolvedParams.scheduleId as string;
-  const seat = resolvedParams.seat as string;
+  const seatsParam = resolvedParams.seats as string;
 
-  if (!scheduleId || !seat) return notFound();
+  if (!scheduleId || !seatsParam) return notFound();
 
+  const seatNumbers = seatsParam.split(',');
   const schedule = await getScheduleById(scheduleId);
   if (!schedule) return notFound();
 
+  const totalPrice = schedule.price * seatNumbers.length;
+
   return (
-    <div className="flex flex-col gap-12 max-w-7xl mx-auto px-6 md:px-12 lg:px-24 py-16">
-      <div className="flex flex-col gap-4">
-        <h1 className="text-4xl font-display font-bold text-navy-deep">Data Penumpang</h1>
-        <p className="text-sm text-foreground/40 font-bold uppercase tracking-widest leading-none">
-          {schedule.route.origin} → {schedule.route.destination} • Kursi {seat}
-        </p>
+    <div className="flex flex-col min-h-screen bg-[#F8F9FA]">
+      <BookingWizard step={2} />
+
+      {/* Header */}
+      <div className="bg-[#1C1C1E] text-white py-6 px-6 md:px-12 lg:px-24">
+        <div className="max-w-7xl mx-auto flex items-center gap-6">
+          <Link href={`/seat-selection?scheduleId=${scheduleId}`} className="hover:opacity-80">
+            <i className="ri-arrow-left-line text-2xl"></i>
+          </Link>
+          <h1 className="text-xl font-display font-bold">Data Penumpang</h1>
+        </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-16">
-        <div className="flex-grow">
-          <CheckoutForm scheduleId={scheduleId} seatNumber={seat} />
-        </div>
-
-        <div className="w-full lg:w-96 flex flex-col gap-8 bg-white p-10 rounded-[2.5rem] shadow-ambient h-fit border border-outline-ghost">
-          <h2 className="text-xl font-display font-bold text-navy-deep">Ringkasan Perjalanan</h2>
-
-          <div className="flex flex-col gap-6">
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-foreground/40 font-medium">Jadwal</span>
-              <span className="text-navy-deep font-bold italic">
-                {schedule.departureTime.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
-              </span>
-            </div>
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-foreground/40 font-medium">Armada</span>
-              <span className="text-navy-deep font-bold">{schedule.vehicleType}</span>
-            </div>
-            <div className="flex justify-between items-center text-sm pt-6 border-t border-navy-deep/5">
-              <span className="text-foreground/40 font-medium">Total Harga</span>
-              <span className="text-2xl font-display font-bold text-navy-deep">
-                Rp {schedule.price.toLocaleString('id-ID')}
-              </span>
-            </div>
+      {/* Route Summary Banner */}
+      <div className="bg-gold-warm py-4 px-6 md:px-12 lg:px-24">
+        <div className="max-w-7xl mx-auto flex justify-between items-center">
+          <div className="flex flex-col">
+            <span className="font-display font-bold text-navy-deep">{schedule.route.origin} - {schedule.route.destination}</span>
+            <span className="text-xs text-navy-deep/70">
+              {new Date(schedule.departureTime).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} • Kursi {seatNumbers.join(', ')}
+            </span>
           </div>
         </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto w-full px-6 md:px-12 lg:px-24 py-12">
+        <CheckoutForm 
+          scheduleId={scheduleId} 
+          seatNumbers={seatNumbers} 
+          basePrice={schedule.price} 
+          vehicleType={schedule.vehicleType}
+          departureTime={schedule.departureTime}
+        />
       </div>
     </div>
   );

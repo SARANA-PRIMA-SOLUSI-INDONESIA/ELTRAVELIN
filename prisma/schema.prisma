@@ -63,10 +63,26 @@ model Booking {
   bookingCode     String        @unique // e.g. EL-882410-BC
   scheduleId      String
   schedule        Schedule      @relation(fields: [scheduleId], references: [id])
-  passengerName   String
+  
+  // Contact Person (Yang Memesan)
+  contactName     String
+  contactPhone    String
+  contactEmail    String?
+  
+  // Passengers
+  passengers      Passenger[]
+  
+  // Legacy fields (optional to keep for compat or remove)
+  passengerName   String?
+  passengerPhone  String?
   passengerEmail  String?
-  passengerPhone  String
+
   totalPrice      Int
+  discountAmount  Int           @default(0)
+  
+  promoCodeId     String?
+  promoCode       PromoCode?    @relation(fields: [promoCodeId], references: [id])
+
   status          BookingStatus @default(PENDING)
   seats           Seat[]
   paymentMethod   String?
@@ -78,6 +94,25 @@ model Booking {
   updatedAt       DateTime      @updatedAt
 }
 
+model Passenger {
+  id        String  @id @default(cuid())
+  name      String
+  bookingId String
+  booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+}
+
+model PromoCode {
+  id            String    @id @default(cuid())
+  code          String    @unique
+  discountType  String    // "FIXED" or "PERCENTAGE"
+  discountValue Int
+  minOrder      Int       @default(0)
+  maxDiscount   Int?
+  isActive      Boolean   @default(true)
+  bookings      Booking[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
 
 model Seat {
   id         String     @id @default(cuid())

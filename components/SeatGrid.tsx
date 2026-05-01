@@ -16,39 +16,79 @@ interface SeatGridProps {
 }
 
 export default function SeatGrid({ initialSeats, scheduleId, price }: SeatGridProps) {
-  const [selectedSeat, setSelectedSeat] = useState<string | null>(null);
+  const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
 
   const handleSeatClick = (seat: Seat) => {
     if (seat.status !== 'AVAILABLE') return;
-    setSelectedSeat(seat.seatNumber === selectedSeat ? null : seat.seatNumber);
+    
+    setSelectedSeats(prev => 
+      prev.includes(seat.seatNumber) 
+        ? prev.filter(s => s !== seat.seatNumber)
+        : [...prev, seat.seatNumber]
+    );
   };
+
+  // Layout definition based on sketch
+  const rows = [
+    { type: 'front', seats: ['2', '1', 'SUPIR'] },
+    { type: 'row', seats: ['5', '4', '3'] },
+    { type: 'row', seats: ['8', '7', '6'] },
+    { type: 'row', seats: ['11', '10', '9'] },
+    { type: 'back', seats: ['15', '14', '13', '12'] },
+  ];
+
+  const getSeatByNumber = (num: string) => initialSeats.find(s => s.seatNumber === num);
 
   return (
     <div className="flex flex-col lg:flex-row gap-16">
-      {/* Seat Layout - Asymmetrical Layout */}
-      <div className="flex-grow flex flex-col gap-8 tonal-section p-12 rounded-[3rem] items-center">
-        <div className="w-full flex justify-between items-center px-8 border-b border-navy-deep/5 pb-8 mb-4">
-          <span className="text-[10px] font-bold text-foreground/40 uppercase tracking-widest">Dashboard</span>
-          <span className="text-[10px] font-bold text-foreground/40 uppercase tracking-widest">Supir</span>
+      {/* Seat Layout - Sketch-based Layout */}
+      <div className="flex-grow flex flex-col gap-10 tonal-section p-6 md:p-12 rounded-3xl md:rounded-[3rem] items-center">
+        <div className="w-full max-w-[320px] bg-navy-deep/5 rounded-xl py-3 px-6 text-center mb-4">
+          <span className="text-[10px] font-bold text-navy-deep/40 uppercase tracking-[0.2em]">Dashboard</span>
         </div>
         
-        <div className="grid grid-cols-3 gap-6">
-          {initialSeats.map((s: any) => (
-            <div 
-              key={s.id} 
-              onClick={() => handleSeatClick(s)}
-              className={`w-14 h-16 rounded-xl flex items-center justify-center font-bold text-xs transition-all cursor-pointer
-                ${s.status !== 'AVAILABLE' ? 'bg-surface-high text-foreground/20 cursor-not-allowed' : ''}
-                ${s.status === 'AVAILABLE' && selectedSeat !== s.seatNumber ? 'bg-white text-navy-deep shadow-ambient border border-outline-ghost hover:border-gold-warm' : ''}
-                ${selectedSeat === s.seatNumber ? 'btn-primary shadow-lg border-2 border-gold-warm' : ''}
-              `}
-            >
-              {s.seatNumber}
+        <div className="flex flex-col gap-8 w-full items-center">
+          {rows.map((row, rowIdx) => (
+            <div key={rowIdx} className={`grid ${row.seats.length === 4 ? 'grid-cols-4' : 'grid-cols-3'} gap-4 md:gap-6 w-full max-w-[320px]`}>
+              {row.seats.map((seatNum) => {
+                if (seatNum === 'SUPIR') {
+                  return (
+                    <div key="supir" className="w-12 h-14 md:w-14 md:h-16 rounded-xl flex items-center justify-center bg-gray-100 text-[10px] font-bold text-gray-400 uppercase">
+                      Supir
+                    </div>
+                  );
+                }
+
+                const seat = getSeatByNumber(seatNum);
+                if (!seat) return <div key={seatNum} className="w-12 h-14 md:w-14 md:h-16"></div>;
+
+                const isSelected = selectedSeats.includes(seat.seatNumber);
+                const isAvailable = seat.status === 'AVAILABLE';
+
+                return (
+                  <div 
+                    key={seat.id} 
+                    onClick={() => handleSeatClick(seat)}
+                    className={`w-12 h-14 md:w-14 md:h-16 rounded-xl flex items-center justify-center font-bold text-xs transition-all cursor-pointer relative group
+                      ${!isAvailable ? 'bg-surface-high text-foreground/20 cursor-not-allowed' : ''}
+                      ${isAvailable && !isSelected ? 'bg-white text-navy-deep shadow-ambient border border-outline-ghost hover:border-gold-warm' : ''}
+                      ${isSelected ? 'btn-primary shadow-lg border-2 border-gold-warm scale-105' : ''}
+                    `}
+                  >
+                    {seat.seatNumber}
+                    {isSelected && (
+                      <div className="absolute -top-1 -right-1 w-4 h-4 bg-gold-warm rounded-full flex items-center justify-center">
+                        <i className="ri-check-line text-[10px] text-white"></i>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           ))}
         </div>
         
-        <div className="flex gap-8 mt-12 text-[10px] font-bold uppercase tracking-widest text-foreground/60">
+        <div className="flex flex-wrap justify-center gap-4 md:gap-8 mt-8 md:mt-12 text-[10px] font-bold uppercase tracking-widest text-foreground/60">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-sm bg-white border border-outline-ghost"></div> Tersedia
           </div>
@@ -62,7 +102,7 @@ export default function SeatGrid({ initialSeats, scheduleId, price }: SeatGridPr
       </div>
 
       {/* Booking Summary - Ambient Shadow */}
-      <div className="w-full lg:w-96 flex flex-col gap-8 bg-white p-10 rounded-[2.5rem] shadow-ambient h-fit border border-outline-ghost">
+      <div className="w-full lg:w-96 flex flex-col gap-8 bg-white p-6 md:p-10 rounded-3xl md:rounded-[2.5rem] shadow-ambient h-fit border border-outline-ghost">
         <h2 className="text-xl font-display font-bold text-navy-deep">Detail Pesanan</h2>
         
         <div className="flex flex-col gap-6">
@@ -70,21 +110,34 @@ export default function SeatGrid({ initialSeats, scheduleId, price }: SeatGridPr
             <span className="text-foreground/40 font-medium">Layanan</span>
             <span className="text-navy-deep font-bold italic">Executive</span>
           </div>
-          <div className="flex justify-between items-center text-sm">
+          <div className="flex justify-between items-start text-sm">
             <span className="text-foreground/40 font-medium">Kursi Dipilih</span>
-            <span className="text-navy-deep font-bold">{selectedSeat || "-"}</span>
+            <div className="flex flex-wrap justify-end gap-2 max-w-[150px]">
+              {selectedSeats.length > 0 ? selectedSeats.sort((a,b) => parseInt(a) - parseInt(b)).map(s => (
+                <span key={s} className="px-2 py-0.5 bg-gold-soft text-navy-deep rounded text-[10px] font-bold">
+                  {s}
+                </span>
+              )) : <span className="text-navy-deep font-bold">-</span>}
+            </div>
           </div>
           <div className="flex justify-between items-center text-sm pt-6 border-t border-navy-deep/5">
             <span className="text-foreground/40 font-medium">Total Harga</span>
-            <span className="text-2xl font-display font-bold text-navy-deep">
-              Rp {selectedSeat ? price.toLocaleString('id-ID') : "0"}
-            </span>
+            <div className="flex flex-col items-end">
+              <span className="text-2xl font-display font-bold text-navy-deep">
+                Rp {(selectedSeats.length * price).toLocaleString('id-ID')}
+              </span>
+              {selectedSeats.length > 0 && (
+                <span className="text-[10px] text-foreground/40 font-bold uppercase">
+                  {selectedSeats.length} x Rp {price.toLocaleString('id-ID')}
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
-        {selectedSeat ? (
+        {selectedSeats.length > 0 ? (
           <Link 
-            href={`/checkout?scheduleId=${scheduleId}&seat=${selectedSeat}`} 
+            href={`/checkout?scheduleId=${scheduleId}&seats=${selectedSeats.join(',')}`} 
             className="btn-primary w-full py-4 rounded-xl text-center font-bold text-sm shadow-md mt-4"
           >
             Lanjutkan ke Pemesanan

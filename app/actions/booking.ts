@@ -1,7 +1,8 @@
 "use server";
 
+import { prisma } from "@/lib/prisma";
+
 export async function getSchedules(origin: string, destination: string, date: string) {
-  const { prisma } = await import("@/lib/prisma");
   const searchDate = new Date(date);
   const nextDay = new Date(searchDate);
   nextDay.setDate(searchDate.getDate() + 1);
@@ -36,7 +37,6 @@ export async function getSchedules(origin: string, destination: string, date: st
 }
 
 export async function getScheduleById(id: string) {
-  const { prisma } = await import("@/lib/prisma");
   return prisma.schedule.findUnique({
     where: { id },
     include: {
@@ -48,16 +48,42 @@ export async function getScheduleById(id: string) {
   });
 }
 
+export async function updatePaymentMethod(bookingCode: string, paymentMethod: string) {
+  return prisma.booking.update({
+    where: { bookingCode },
+    data: { paymentMethod }
+  });
+}
+
+export async function validatePromoCode(code: string, totalAmount: number) {
+  const promo = await prisma.promoCode.findUnique({
+    where: { code: code.toUpperCase(), isActive: true }
+  });
+
+  if (!promo) return { valid: false, message: "Kode promo tidak ditemukan", discount: 0 };
+  if (totalAmount < promo.minOrder) return { valid: false, message: `Minimal pemesanan Rp ${promo.minOrder.toLocaleString('id-ID')}`, discount: 0 };
+
+  let discount = 0;
+  if (promo.discountType === 'FIXED') {
+    discount = promo.discountValue;
+  } else {
+    discount = (totalAmount * promo.discountValue) / 100;
+    if (promo.maxDiscount) discount = Math.min(discount, promo.maxDiscount);
+  }
+
+  return { valid: true, discount, promoId: promo.id };
+}
+
 export async function createBooking(data: {
   scheduleId: string;
-  passengerName: string;
-  passengerEmail?: string;
-  passengerPhone: string;
-  seatNumber: string;
+  contactName: string;
+  contactEmail?: string;
+  contactPhone: string;
+  passengerNames: string[];
+  seatNumbers: string[];
+  promoCodeId?: string;
+  paymentMethod?: string;
 }) {
-  const { prisma } = await import("@/lib/prisma");
-  const { snap } = await import("@/lib/midtrans");
-
   const schedule = await prisma.schedule.findUnique({
     where: { id: data.scheduleId },
     include: { route: true }
@@ -65,7 +91,20 @@ export async function createBooking(data: {
 
   if (!schedule) throw new Error("Jadwal tidak ditemukan");
 
-  const bookingCode = `EL-${Math.floor(100000 + Math.random() * 900000)}-${data.seatNumber}`;
+  const basePrice = schedule.price * data.seatNumbers.length;
+  let discountAmount = 0;
+
+  if (data.promoCodeId) {
+    const promoVal = await validatePromoCodeById(data.promoCodeId, basePrice);
+    if (promoVal.valid) {
+      discountAmount = promoVal.discount;
+    }
+  }
+
+  // Generate unique code for Moota verification (random 3 digits)
+  const uniqueCode = Math.floor(100 + Math.random() * 899);
+  const totalPrice = (basePrice - discountAmount) + uniqueCode;
+  const bookingCode = `EL-${Math.floor(100000 + Math.random() * 900000)}-${data.seatNumbers[0]}`;
 
   return prisma.$transaction(async (tx: any) => {
     // 1. Create the booking
@@ -73,61 +112,61 @@ export async function createBooking(data: {
       data: {
         bookingCode,
         scheduleId: data.scheduleId,
-        passengerName: data.passengerName,
-        passengerEmail: data.passengerEmail,
-        passengerPhone: data.passengerPhone,
-        totalPrice: schedule.price,
+        contactName: data.contactName,
+        contactEmail: data.contactEmail,
+        contactPhone: data.contactPhone,
+        totalPrice,
+        discountAmount,
+        promoCodeId: data.promoCodeId,
+        paymentMethod: data.paymentMethod || 'UNSET',
         status: 'PENDING',
+        // Still keep these for basic compatibility or empty them
+        passengerName: data.passengerNames[0],
+        passengerPhone: data.contactPhone,
+        passengerEmail: data.contactEmail,
+        // Create passengers
+        passengers: {
+          create: data.passengerNames.map(name => ({ name }))
+        }
       },
     });
 
-    // 2. Generate Midtrans Snap Token
-    const parameter = {
-      transaction_details: {
-        order_id: bookingCode,
-        gross_amount: schedule.price,
-      },
-      item_details: [{
-        id: schedule.id,
-        price: schedule.price,
-        quantity: 1,
-        name: `Tiket Travel ${schedule.route.origin} - ${schedule.route.destination}`,
-      }],
-      customer_details: {
-        first_name: data.passengerName,
-        email: data.passengerEmail || "customer@example.com",
-        phone: data.passengerPhone,
-      },
-    };
-
-    const snapToken = await snap.createTransactionToken(parameter);
-
-    // 3. Update the booking with snapToken
-    await tx.booking.update({
-      where: { id: booking.id },
-      data: { snapToken },
-    });
-
-    // 4. Update the seat status
-    await tx.seat.update({
-      where: {
-        scheduleId_seatNumber: {
-          scheduleId: data.scheduleId,
-          seatNumber: data.seatNumber,
+    // 2. Update all selected seats status
+    await Promise.all(data.seatNumbers.map(num => 
+      tx.seat.update({
+        where: {
+          scheduleId_seatNumber: {
+            scheduleId: data.scheduleId,
+            seatNumber: num,
+          },
         },
-      },
-      data: {
-        status: 'BOOKED',
-        bookingId: booking.id,
-      },
-    });
+        data: {
+          status: 'BOOKED',
+          bookingId: booking.id,
+        },
+      })
+    ));
 
-    return { ...booking, snapToken };
+    return booking;
   });
 }
 
+// Helper for internal use
+async function validatePromoCodeById(id: string, totalAmount: number) {
+  const promo = await prisma.promoCode.findUnique({ where: { id, isActive: true } });
+  if (!promo) return { valid: false, discount: 0 };
+  
+  let discount = 0;
+  if (promo.discountType === 'FIXED') {
+    discount = promo.discountValue;
+  } else {
+    discount = (totalAmount * promo.discountValue) / 100;
+    if (promo.maxDiscount) discount = Math.min(discount, promo.maxDiscount);
+  }
+  return { valid: true, discount };
+}
+
 export async function getBookingByCode(code: string) {
-  const { prisma } = await import("@/lib/prisma");
   return prisma.booking.findUnique({
     where: { bookingCode: code },
     include: {
@@ -136,7 +175,8 @@ export async function getBookingByCode(code: string) {
           route: true
         }
       },
-      seats: true
+      seats: true,
+      passengers: true
     }
   });
 }

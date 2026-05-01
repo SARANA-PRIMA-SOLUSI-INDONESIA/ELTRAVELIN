@@ -21,18 +21,18 @@ export default function SearchHero() {
   const cities = ["Pematangsiantar", "Medan", "Kualanamu"];
 
   return (
-    <section className="relative min-h-[800px] flex items-center overflow-hidden bg-background pt-20">
+    <section className="relative min-h-[600px] lg:min-h-[800px] flex items-center overflow-hidden bg-background pt-10 md:pt-20">
       {/* Hero Content Wrapper */}
       <div className="container mx-auto px-6 md:px-12 lg:px-24 flex flex-col lg:flex-row items-center z-10 relative">
         <div className="w-full lg:w-1/2 flex flex-col gap-6 animate-fade-in">
           <span className="font-display font-bold text-gold-warm uppercase tracking-widest text-xs">
             Premium Executive Transit
           </span>
-          <h1 className="text-5xl md:text-7xl font-display font-bold text-navy-deep leading-[1.1]">
+          <h1 className="text-4xl md:text-7xl font-display font-bold text-navy-deep leading-[1.1]">
             The Modern <br /> 
             <span className="italic font-light">Concierge</span> Experience
           </h1>
-          <p className="text-lg text-foreground/60 max-w-md font-body">
+          <p className="text-base md:text-lg text-foreground/60 max-w-md font-body">
             Nikmati pengalaman berkendara kelas eksekutif dengan armada modern dan layanan terbaik di setiap rute kami.
           </p>
           

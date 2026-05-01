@@ -54,8 +54,9 @@ async function main() {
     create: { origin: 'Medan', destination: 'Pematangsiantar' },
   });
 
-  // 2. Clear existing templates & schedules
+  // 2. Clear existing bookings, seats, templates & schedules
   // This is safe for dev seeding
+  await prisma.booking.deleteMany({});
   await prisma.seat.deleteMany({});
   await prisma.schedule.deleteMany({});
   await prisma.scheduleTemplate.deleteMany({});
@@ -63,7 +64,33 @@ async function main() {
   const routes = [r1, r2, r3, r4];
   const times = ['08:00', '10:00', '13:00', '16:00', '19:00'];
 
-  // 3. Create Templates for each route and time
+  // 3. Create Sample Promo Codes
+  console.log('Creating promo codes...');
+  await prisma.promoCode.upsert({
+    where: { code: 'ELPROMO' },
+    update: {},
+    create: {
+      code: 'ELPROMO',
+      discountType: 'PERCENTAGE',
+      discountValue: 10,
+      maxDiscount: 50000,
+      isActive: true,
+    }
+  });
+
+  await prisma.promoCode.upsert({
+    where: { code: 'HEMAT50' },
+    update: {},
+    create: {
+      code: 'HEMAT50',
+      discountType: 'FIXED',
+      discountValue: 50000,
+      minOrder: 200000,
+      isActive: true,
+    }
+  });
+
+  // 4. Create Templates for each route and time
   console.log('Creating schedule templates...');
   for (const route of routes) {
     for (const time of times) {
@@ -72,8 +99,8 @@ async function main() {
           routeId: route.id,
           departureTime: time,
           price: 65000,
-          vehicleType: 'Hiace Premio Executive',
-          capacity: 11,
+          vehicleType: 'Farizon SV (Supervan)',
+          capacity: 16,
           isActive: true,
         },
       });

@@ -2,9 +2,7 @@ import Image from "next/image";
 
 export default function Fleet() {
   const fleets = [
-    { name: "Hiace Premio Executive", capacity: "11 Kursi", img: "/hiace-premio.png", features: ["Reclining Leather Seats", "Individual USB Port", "Premium Audio System"] },
-    { name: "Sprinter Business Class", capacity: "9 Kursi", img: "/sprinter.png", features: ["Captain Seats with Armrests", "High-speed WiFi", "Mini Bar & Snacks"] },
-    { name: "Isuzu Elf Giga Luxury", capacity: "14 Kursi", img: "/isuzu-elf.png", features: ["Full AC Climate Control", "LED Ambient Lighting", "Large Luggage Space"] },
+    { name: "Farizon SV (Supervan)", capacity: "16 Kursi", img: "/farizon-sv.png", features: ["100% Electric - Zero Emission", "B-Pillarless Wide Access", "376km WLTP Range", "ADAS Advanced Safety"] },
   ];
 
   return (
