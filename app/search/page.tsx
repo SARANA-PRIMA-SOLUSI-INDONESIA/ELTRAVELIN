@@ -8,7 +8,7 @@ interface SearchProps {
 
 export default async function SearchResults({ searchParams }: SearchProps) {
   const resolvedParams = await searchParams;
-  const from = resolvedParams.from as string || "Pematangsiantar";
+  const from = resolvedParams.from as string || "Bandung (Ahmad Yani/Cicadas)";
   const to = resolvedParams.to as string || "";
   const date = resolvedParams.date as string || new Date().toISOString().split('T')[0];
   const passengers = resolvedParams.passengers as string || "1";

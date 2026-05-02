@@ -1,12 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { sendETicket } from "@/lib/mail";
 
 export async function POST(request: Request) {
   try {
     // 1. IP Whitelisting for Security
     const forwardedFor = request.headers.get("x-forwarded-for");
     let clientIp = forwardedFor ? forwardedFor.split(",")[0] : "127.0.0.1";
-    
+
     // Clean up IPv6 mapped IPv4 address
     if (clientIp.includes("::ffff:")) {
       clientIp = clientIp.replace("::ffff:", "");
@@ -60,17 +61,28 @@ export async function POST(request: Request) {
 
       if (booking) {
         console.log(`Matching booking found! Code: ${booking.bookingCode}`);
-        
+
         // Update booking status to CONFIRMED
-        await prisma.booking.update({
+        const updatedBooking = await prisma.booking.update({
           where: { id: booking.id },
           data: {
             status: "CONFIRMED",
             settlementTime: new Date(),
           },
+          include: {
+            schedule: {
+              include: {
+                route: true
+              }
+            },
+            seats: true
+          }
         });
 
-        console.log(`Booking ${booking.bookingCode} has been automatically confirmed.`);
+        // Send E-Ticket asynchronously
+        sendETicket(updatedBooking).catch(err => console.error("Error sending E-ticket:", err));
+
+        console.log(`Booking ${booking.bookingCode} has been automatically confirmed and E-Ticket sent.`);
       } else {
         console.log(`No pending booking found for amount ${amount}`);
       }

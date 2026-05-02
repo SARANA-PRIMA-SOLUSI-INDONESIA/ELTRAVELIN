@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
-import SeatMap from "@/components/admin/SeatMap";
+import SeatOccupancyManager from "@/components/admin/SeatOccupancyManager";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -45,7 +45,7 @@ export default async function AdminScheduleSeats({ params }: PageProps) {
               <span className="text-[10px] font-bold text-foreground/40 uppercase tracking-widest">Front Area / Driver</span>
            </div>
            
-           <SeatMap seats={schedule.seats as any} />
+           <SeatOccupancyManager schedule={schedule} seats={schedule.seats as any} />
         </div>
 
         <div className="flex flex-col gap-6">

@@ -1,6 +1,6 @@
 import { getScheduleById } from "@/app/actions/booking";
 import CheckoutForm from "@/components/CheckoutForm";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import BookingWizard from "@/components/BookingWizard";
 import Link from "next/link";
 
@@ -18,6 +18,11 @@ export default async function Checkout({ searchParams }: CheckoutProps) {
   const seatNumbers = seatsParam.split(',');
   const schedule = await getScheduleById(scheduleId);
   if (!schedule) return notFound();
+
+  // Redirect if schedule has already departed
+  if (schedule.departureTime < new Date()) {
+    return redirect("/?error=expired");
+  }
 
   const totalPrice = schedule.price * seatNumbers.length;
 

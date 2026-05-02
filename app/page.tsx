@@ -4,10 +4,10 @@ import RouteCard from "@/components/RouteCard";
 
 export default function Home() {
   const routes = [
-    { from: "Pematangsiantar", to: "Kualanamu (Airport)", price: "65.000", image: "/jakarta-bandung.png" },
-    { from: "Pematangsiantar", to: "Medan", price: "65.000", image: "/semarang-solo.png" },
-    { from: "Kualanamu", to: "Pematangsiantar", price: "65.000", image: "/jogja-surabaya.png" },
-    { from: "Medan", to: "Pematangsiantar", price: "65.000", image: "/jakarta-bandung.png" },
+    { from: "Bandung (Ahmad Yani/Cicadas)", to: "Jakarta (Kuningan)", price: "175.000", image: "/jakarta-bandung.png" },
+    { from: "Bandung (Ahmad Yani/Cicadas)", to: "Soekarno Hatta (Airport)", price: "200.000", image: "/semarang-solo.png" },
+    { from: "Jakarta (Kuningan)", to: "Bandung (Ahmad Yani/Cicadas)", price: "175.000", image: "/jogja-surabaya.png" },
+    { from: "Soekarno Hatta (Airport)", to: "Bandung (Ahmad Yani/Cicadas)", price: "200.000", image: "/jakarta-bandung.png" },
   ];
 
 

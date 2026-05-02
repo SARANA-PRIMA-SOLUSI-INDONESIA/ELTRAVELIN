@@ -1,6 +1,6 @@
 import { getScheduleById } from "@/app/actions/booking";
 import SeatGrid from "@/components/SeatGrid";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import BookingWizard from "@/components/BookingWizard";
 import Link from "next/link";
 
@@ -16,6 +16,11 @@ export default async function SeatSelection({ searchParams }: SeatSelectionProps
 
   const schedule = await getScheduleById(scheduleId);
   if (!schedule) return notFound();
+
+  // Redirect if schedule has already departed
+  if (schedule.departureTime < new Date()) {
+    return redirect("/?error=expired");
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-[#F8F9FA]">

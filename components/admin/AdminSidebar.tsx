@@ -9,8 +9,9 @@ export default function AdminSidebar() {
 
   const menuItems = [
     { label: "Overview", icon: "ri-dashboard-3-line", href: "/admin" },
-    { label: "Jadwal", icon: "ri-calendar-event-line", href: "/admin/schedules" },
-    { label: "Rute & Harga", icon: "ri-map-pin-2-line", href: "/admin/routes" },
+    { label: "Jadwal Harian", icon: "ri-calendar-event-line", href: "/admin/schedules" },
+    { label: "Jadwal Master", icon: "ri-map-pin-2-line", href: "/admin/master" },
+    { label: "Promo", icon: "ri-percent-line", href: "/admin/promos" },
     { label: "Pemesanan", icon: "ri-ticket-2-line", href: "/admin/bookings" },
     { label: "Laporan", icon: "ri-bar-chart-box-line", href: "/admin/reports" },
   ];

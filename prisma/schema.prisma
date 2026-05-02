@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,85 +10,73 @@ model Route {
   id                String             @id @default(cuid())
   origin            String
   destination       String
-  schedules         Schedule[]
-  scheduleTemplates ScheduleTemplate[]
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
+  schedules         Schedule[]
+  scheduleTemplates ScheduleTemplate[]
 
   @@unique([origin, destination])
 }
 
-
 model Schedule {
   id            String            @id @default(cuid())
   routeId       String
-  route         Route             @relation(fields: [routeId], references: [id])
   departureTime DateTime
   arrivalTime   DateTime
-  price         Int // In Rupiah
-  vehicleType   String // e.g. "Hiace Premio Executive"
+  price         Int
+  vehicleType   String
   capacity      Int               @default(11)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  templateId    String?
   isActive      Boolean           @default(true)
   isDeleted     Boolean           @default(false)
   bookings      Booking[]
-  seats         Seat[]
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
-  
-  // Optional: tracking which template created this
-  templateId    String?
+  route         Route             @relation(fields: [routeId], references: [id])
   template      ScheduleTemplate? @relation(fields: [templateId], references: [id])
+  seats         Seat[]
 }
 
 model ScheduleTemplate {
   id            String     @id @default(cuid())
   routeId       String
-  route         Route      @relation(fields: [routeId], references: [id])
-  departureTime String     // e.g. "08:00"
+  departureTime String
   price         Int
   vehicleType   String     @default("Hiace Premio Executive")
   capacity      Int        @default(11)
   isActive      Boolean    @default(true)
-  schedules     Schedule[]
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
+  schedules     Schedule[]
+  route         Route      @relation(fields: [routeId], references: [id])
 }
-
 
 model Booking {
   id              String        @id @default(cuid())
-  bookingCode     String        @unique // e.g. EL-882410-BC
+  bookingCode     String        @unique
   scheduleId      String
-  schedule        Schedule      @relation(fields: [scheduleId], references: [id])
-  
-  // Contact Person (Yang Memesan)
-  contactName     String
-  contactPhone    String
-  contactEmail    String?
-  
-  // Passengers
-  passengers      Passenger[]
-  
-  // Legacy fields (optional to keep for compat or remove)
   passengerName   String?
-  passengerPhone  String?
   passengerEmail  String?
-
+  passengerPhone  String?
   totalPrice      Int
-  discountAmount  Int           @default(0)
-  
-  promoCodeId     String?
-  promoCode       PromoCode?    @relation(fields: [promoCodeId], references: [id])
-
   status          BookingStatus @default(PENDING)
-  seats           Seat[]
   paymentMethod   String?
   paymentProofUrl String?
-  snapToken       String?
-  paymentType     String?
-  settlementTime  DateTime?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
+  paymentType     String?
+  settlementTime  DateTime?
+  snapToken       String?
+  contactEmail    String?
+  contactName     String
+  contactPhone    String
+  discountAmount  Int           @default(0)
+  promoCodeId     String?
+  reminderSentAt  DateTime?
+  promoCode       PromoCode?    @relation(fields: [promoCodeId], references: [id])
+  schedule        Schedule      @relation(fields: [scheduleId], references: [id])
+  passengers      Passenger[]
+  seats           Seat[]
 }
 
 model Passenger {
@@ -104,26 +89,35 @@ model Passenger {
 model PromoCode {
   id            String    @id @default(cuid())
   code          String    @unique
-  discountType  String    // "FIXED" or "PERCENTAGE"
+  discountType  String
   discountValue Int
   minOrder      Int       @default(0)
   maxDiscount   Int?
   isActive      Boolean   @default(true)
-  bookings      Booking[]
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+  bookings      Booking[]
 }
 
 model Seat {
   id         String     @id @default(cuid())
   scheduleId String
-  schedule   Schedule   @relation(fields: [scheduleId], references: [id])
-  seatNumber String     // e.g. "1A", "2C"
+  seatNumber String
   status     SeatStatus @default(AVAILABLE)
   bookingId  String?
   booking    Booking?   @relation(fields: [bookingId], references: [id])
+  schedule   Schedule   @relation(fields: [scheduleId], references: [id])
 
   @@unique([scheduleId, seatNumber])
+}
+
+model Admin {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 enum BookingStatus {
@@ -137,13 +131,4 @@ enum SeatStatus {
   AVAILABLE
   BOOKED
   BLOCKED
-}
-
-model Admin {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String
-  name         String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
 }

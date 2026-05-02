@@ -6,7 +6,7 @@ import { useState } from "react";
 
 export default function SearchHero() {
   const router = useRouter();
-  const [origin, setOrigin] = useState("Pematangsiantar");
+  const [origin, setOrigin] = useState("Bandung (Ahmad Yani/Cicadas)");
   const [destination, setDestination] = useState("");
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]); // Default to today's date
 
@@ -18,7 +18,12 @@ export default function SearchHero() {
     router.push(`/search?from=${origin}&to=${destination}&date=${date}`);
   };
 
-  const cities = ["Pematangsiantar", "Medan", "Kualanamu"];
+  const cities = [
+    "Bandung (Ahmad Yani/Cicadas)",
+    "Bandung (Cijagra)",
+    "Jakarta (Kuningan)",
+    "Soekarno Hatta (Airport)"
+  ];
 
   return (
     <section className="relative min-h-[600px] lg:min-h-[800px] flex items-center overflow-hidden bg-background pt-10 md:pt-20">

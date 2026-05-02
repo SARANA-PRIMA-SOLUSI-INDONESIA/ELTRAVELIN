@@ -117,8 +117,9 @@ export default function CheckoutForm({ scheduleId, seatNumbers, basePrice, vehic
               />
             </div>
             <div className="flex flex-col gap-2 md:col-span-2">
-              <label className="text-[10px] font-bold text-navy-deep uppercase tracking-widest">Email (Opsional)</label>
+              <label className="text-[10px] font-bold text-navy-deep uppercase tracking-widest">Email</label>
               <input 
+                required
                 type="email" 
                 placeholder="email@anda.com"
                 className="bg-surface-low rounded-2xl px-6 py-4 text-sm text-foreground/80 border border-navy-deep/5 focus:ring-2 focus:ring-gold-warm transition-all outline-none"

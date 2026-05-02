@@ -43,13 +43,13 @@ function PaymentContent() {
     }
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center font-display font-bold text-navy-deep animate-pulse">Memuat...</div>;
-  if (!booking) return <div className="min-h-screen flex items-center justify-center font-display font-bold text-navy-deep">Booking tidak ditemukan</div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center font-display font-bold text-navy-deep">Memuat Data Booking...</div>;
+  if (!booking) return <div className="min-h-screen flex items-center justify-center font-display font-bold text-red-500">Booking tidak ditemukan</div>;
 
   return (
     <div className="flex flex-col min-h-screen bg-[#F8F9FA]">
       <BookingWizard step={3} />
-      
+
       <div className="max-w-4xl mx-auto w-full px-6 py-12">
         <div className="flex flex-col lg:flex-row gap-12">
           {/* Left: Selection */}
@@ -62,11 +62,11 @@ function PaymentContent() {
                 {/* Moota Option */}
                 <label className={`flex items-center justify-between p-6 rounded-2xl border-2 transition-all cursor-pointer ${paymentMethod === 'MOOTA' ? 'border-gold-warm bg-gold-warm/5' : 'border-navy-deep/5 hover:border-navy-deep/10 bg-white/40'}`}>
                   <div className="flex items-center gap-4">
-                    <input 
-                      type="radio" 
-                      name="paymentMethod" 
-                      value="MOOTA" 
-                      checked={paymentMethod === 'MOOTA'} 
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value="MOOTA"
+                      checked={paymentMethod === 'MOOTA'}
                       onChange={() => setPaymentMethod('MOOTA')}
                       className="w-5 h-5 accent-gold-warm"
                     />
@@ -84,11 +84,11 @@ function PaymentContent() {
                 {/* Pay at Pool Option */}
                 <label className={`flex items-center justify-between p-6 rounded-2xl border-2 transition-all cursor-pointer ${paymentMethod === 'POOL' ? 'border-red-200 bg-red-50/30' : 'border-navy-deep/5 hover:border-navy-deep/10 bg-white/40'}`}>
                   <div className="flex items-center gap-4">
-                    <input 
-                      type="radio" 
-                      name="paymentMethod" 
-                      value="POOL" 
-                      checked={paymentMethod === 'POOL'} 
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value="POOL"
+                      checked={paymentMethod === 'POOL'}
                       onChange={() => setPaymentMethod('POOL')}
                       className="w-5 h-5 accent-red-500"
                     />
@@ -100,7 +100,7 @@ function PaymentContent() {
                 </label>
               </div>
 
-              <button 
+              <button
                 onClick={handlePayment}
                 disabled={processing}
                 className="btn-primary w-full py-6 rounded-[2rem] font-bold text-base shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all mt-10 disabled:opacity-50"
@@ -134,9 +134,8 @@ function PaymentContent() {
 
 export default function PaymentPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center font-display font-bold text-navy-deep animate-pulse">Memuat Halaman...</div>}>
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center font-display font-bold text-navy-deep">Memuat...</div>}>
       <PaymentContent />
     </Suspense>
   );
 }
-
