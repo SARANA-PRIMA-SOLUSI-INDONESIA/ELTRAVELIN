@@ -36,7 +36,7 @@ export default async function SearchResults({ searchParams }: SearchProps) {
           <div className="flex flex-col">
             <span className="font-display font-bold text-navy-deep">{from} - {to}</span>
             <span className="text-xs text-navy-deep/70">
-              {new Date(date).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} • {passengers} Kursi
+              {new Date(date).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' })} • {passengers} Kursi
             </span>
           </div>
           <Link href="/" className="text-navy-deep">
@@ -79,7 +79,7 @@ export default async function SearchResults({ searchParams }: SearchProps) {
                     <div className="flex flex-col">
                       <span className="text-[10px] font-bold text-foreground/40 uppercase mb-1">{from.split(' ')[0]}</span>
                       <span className="text-lg md:text-xl font-display font-bold text-navy-deep">
-                        {d.departureTime.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                        {d.departureTime.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' })}
                       </span>
                     </div>
 
@@ -95,7 +95,7 @@ export default async function SearchResults({ searchParams }: SearchProps) {
                     <div className="flex flex-col items-end">
                       <span className="text-[10px] font-bold text-foreground/40 uppercase mb-1">{to.split(' ')[0]}</span>
                       <span className="text-lg md:text-xl font-display font-bold text-navy-deep">
-                        {d.arrivalTime.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                        {d.arrivalTime.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' })}
                       </span>
                     </div>
                   </div>

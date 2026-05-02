@@ -42,7 +42,7 @@ export default async function SeatSelection({ searchParams }: SeatSelectionProps
           <div className="flex flex-col">
             <span className="font-display font-bold text-navy-deep">{schedule.route.origin} - {schedule.route.destination}</span>
             <span className="text-xs text-navy-deep/70">
-              {new Date(schedule.departureTime).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} • {schedule.vehicleType}
+              {new Date(schedule.departureTime).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' })} • {schedule.vehicleType}
             </span>
           </div>
         </div>

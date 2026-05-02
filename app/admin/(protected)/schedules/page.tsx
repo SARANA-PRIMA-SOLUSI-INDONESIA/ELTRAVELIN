@@ -58,7 +58,7 @@ async function SchedulesContent({ date }: { date: string }) {
                   <div className="flex justify-between items-start">
                     <div className="flex flex-col">
                       <span className="text-2xl font-display font-bold text-navy-deep">
-                        {s.departureTime.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                        {s.departureTime.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' })}
                       </span>
                       <span className="text-[10px] font-bold text-foreground/40 uppercase tracking-widest">Jam Berangkat</span>
                     </div>

@@ -33,7 +33,7 @@ export default async function AdminScheduleSeats({ params }: PageProps) {
            <i className="ri-arrow-right-s-line"></i>
            <span className="text-navy-deep">{schedule.route.origin} → {schedule.route.destination}</span>
            <i className="ri-arrow-right-s-line"></i>
-           <span className="text-navy-deep">{schedule.departureTime.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
+           <span className="text-navy-deep">{schedule.departureTime.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' })}</span>
         </div>
         <h1 className="text-4xl font-display font-bold text-navy-deep">Okupansi Kursi</h1>
       </div>

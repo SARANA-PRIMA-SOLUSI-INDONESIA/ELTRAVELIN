@@ -70,8 +70,8 @@ export default async function Confirmation({ searchParams }: ConfirmationProps) 
                   {booking.schedule.route.origin} → {booking.schedule.route.destination}
                 </span>
                 <span className="text-xs text-gray-400 font-medium">
-                  {booking.schedule.departureTime.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })} • 
-                  {booking.schedule.departureTime.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                  {booking.schedule.departureTime.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', timeZone: 'Asia/Jakarta' })} • 
+                  {booking.schedule.departureTime.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' })}
                 </span>
               </div>
                <div className="flex flex-col gap-1 text-right">

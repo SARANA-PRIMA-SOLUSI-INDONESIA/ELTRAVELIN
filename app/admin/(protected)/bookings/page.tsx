@@ -56,7 +56,7 @@ export default async function AdminBookings() {
                     <td className="px-8 py-6">
                       <div className="flex flex-col">
                         <span className="text-sm font-bold text-navy-deep">{b.bookingCode}</span>
-                        <span className="text-[10px] text-foreground/40 font-bold uppercase">{new Date(b.createdAt).toLocaleDateString('id-ID')}</span>
+                        <span className="text-[10px] text-foreground/40 font-bold uppercase">{new Date(b.createdAt).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta' })}</span>
                       </div>
                     </td>
                     <td className="px-8 py-6">
@@ -69,7 +69,7 @@ export default async function AdminBookings() {
                       <div className="flex flex-col">
                         <span className="text-xs font-bold text-navy-deep">{b.schedule.route.origin} → {b.schedule.route.destination}</span>
                         <span className="text-[10px] text-foreground/40 font-bold uppercase">
-                          {new Date(b.schedule.departureTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} 
+                          {new Date(b.schedule.departureTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' })} 
                           ({b.seats.map((s: any) => s.seatNumber).join(', ')})
                         </span>
                       </div>
