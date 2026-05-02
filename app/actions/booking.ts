@@ -2,20 +2,33 @@
 
 import { prisma } from "@/lib/prisma";
 
+// Helper to get a Date object forced to Jakarta time
+function getJakartaDate(dateStr?: string, hour = 0, minute = 0, second = 0) {
+  const date = dateStr ? new Date(dateStr) : new Date();
+  const jktString = date.toLocaleString("en-US", { timeZone: "Asia/Jakarta" });
+  const jktDate = new Date(jktString);
+  jktDate.setHours(hour, minute, second, 0);
+  return jktDate;
+}
+
 export async function getSchedules(origin: string, destination: string, date: string) {
-  const now = new Date();
+  // Current time in Jakarta
+  const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Jakarta" }));
   
-  // Parse YYYY-MM-DD to local date
+  // Parse target date and set range in Jakarta time
   const [year, month, day] = date.split('-').map(Number);
-  const startOfSearch = new Date(year, month - 1, day, 0, 0, 0);
-  const endOfSearch = new Date(year, month - 1, day, 23, 59, 59, 999);
+  
+  // Create start/end of day in Jakarta timezone context
+  // We'll use a safer approach for range search
+  const startOfDay = new Date(`${date}T00:00:00+07:00`);
+  const endOfDay = new Date(`${date}T23:59:59+07:00`);
 
   // We want schedules that haven't departed yet.
-  // If search is for today, start from 'now'. If future, start from 00:00.
-  // If past, effectiveGte will be 'now' which is > endOfSearch.
-  const effectiveGte = startOfSearch > now ? startOfSearch : now;
+  // We compare absolute timestamps now.
+  const absoluteNow = new Date(); // Actual current time
+  const effectiveGte = startOfDay > absoluteNow ? startOfDay : absoluteNow;
 
-  if (effectiveGte > endOfSearch) {
+  if (effectiveGte > endOfDay) {
     return [];
   }
 
@@ -27,7 +40,7 @@ export async function getSchedules(origin: string, destination: string, date: st
       },
       departureTime: {
         gte: effectiveGte,
-        lte: endOfSearch,
+        lte: endOfDay,
       },
       isActive: true,
       isDeleted: false,
@@ -138,11 +151,9 @@ export async function createBooking(data: {
         promoCodeId: data.promoCodeId,
         paymentMethod: data.paymentMethod || 'UNSET',
         status: 'PENDING',
-        // Still keep these for basic compatibility or empty them
         passengerName: data.passengerNames[0],
         passengerPhone: data.contactPhone,
         passengerEmail: data.contactEmail,
-        // Create passengers
         passengers: {
           create: data.passengerNames.map(name => ({ name }))
         }
@@ -169,7 +180,6 @@ export async function createBooking(data: {
   });
 }
 
-// Helper for internal use
 async function validatePromoCodeById(id: string, totalAmount: number) {
   const promo = await prisma.promoCode.findUnique({ where: { id, isActive: true } });
   if (!promo) return { valid: false, discount: 0 };
@@ -219,7 +229,6 @@ export async function adminCreateBooking(data: {
   const bookingCode = `ADM-${Math.floor(100000 + Math.random() * 900000)}-${data.seatNumbers[0]}`;
 
   return prisma.$transaction(async (tx: any) => {
-    // 1. Create the booking as CONFIRMED
     const booking = await tx.booking.create({
       data: {
         bookingCode,
@@ -240,7 +249,6 @@ export async function adminCreateBooking(data: {
       },
     });
 
-    // 2. Update all selected seats status
     await Promise.all(data.seatNumbers.map(num => 
       tx.seat.update({
         where: {
