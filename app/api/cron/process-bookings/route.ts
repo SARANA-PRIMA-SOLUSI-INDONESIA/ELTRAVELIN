@@ -7,10 +7,20 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: Request) {
   // Security check: Verify a secret token if provided (except for local testing)
   const authHeader = request.headers.get('authorization');
+  const { searchParams } = new URL(request.url);
+  const urlKey = searchParams.get('key');
+  const cronSecret = process.env.CRON_SECRET?.trim();
   const isLocal = request.url.includes('localhost') || request.url.includes('127.0.0.1');
-  
-  if (!isLocal && process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    console.log("Cron Unauthorized Access Attempt");
+
+  const isAuthorized = 
+    isLocal || 
+    !cronSecret || 
+    authHeader === `Bearer ${cronSecret}` ||
+    authHeader === `bearer ${cronSecret}` ||
+    urlKey === cronSecret;
+
+  if (!isAuthorized) {
+    console.log("[CRON] Unauthorized Access Attempt");
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -39,7 +49,7 @@ export async function GET(request: Request) {
       const diffMs = now.getTime() - booking.createdAt.getTime();
       const minutesElapsed = Math.floor(diffMs / (60 * 1000));
       const method = booking.paymentMethod;
-      
+
       console.log(`[CRON] Booking ${booking.bookingCode}: ${minutesElapsed}m elapsed (Method: ${method})`);
 
       let shouldRemind = false;
@@ -48,7 +58,6 @@ export async function GET(request: Request) {
       let shouldCancel = false;
 
       if (method === 'MOOTA') {
-        // MOOTA: 15m (R1), 25m (R2), 35m (Cancel)
         if (minutesElapsed >= 35) {
           shouldCancel = true;
           message = `Mohon maaf, pesanan Anda dengan kode ${booking.bookingCode} telah hangus karena melewati batas waktu pembayaran 35 menit. Silakan buat pesanan baru. Terima kasih.`;
@@ -95,9 +104,9 @@ export async function GET(request: Request) {
       } else if (shouldRemind) {
         await prisma.booking.update({
           where: { id: booking.id },
-          data: { 
+          data: {
             lastReminderLevel: nextLevel,
-            reminderSentAt: now 
+            reminderSentAt: now
           }
         });
         const res = await sendWhatsAppMessage(booking.contactPhone, message);
@@ -107,10 +116,10 @@ export async function GET(request: Request) {
       }
     }
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       success: true,
       time: now.toISOString(),
-      remindersSent, 
+      remindersSent,
       bookingsExpired,
       details
     });
