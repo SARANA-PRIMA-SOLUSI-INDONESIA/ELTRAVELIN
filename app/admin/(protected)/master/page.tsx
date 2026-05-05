@@ -9,6 +9,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function AdminMaster() {
   const routes = await prisma.route.findMany({
+    where: { isDeleted: false },
     include: {
       scheduleTemplates: {
         orderBy: {
@@ -45,13 +46,13 @@ export default async function AdminMaster() {
                 <h2 className="text-xl font-display font-bold text-navy-deep">{route.origin} → {route.destination}</h2>
               </div>
               <div className="flex gap-3">
-                 <Link 
-                   href={`/admin/master/new-template?routeId=${route.id}`}
-                   className="text-xs font-bold text-navy-deep bg-white px-4 py-2 rounded-lg border border-outline-ghost hover:bg-surface-medium transition-all"
-                 >
-                   Tambah Jam
-                 </Link>
-                 <DeleteButton id={route.id} type="route" />
+                <Link
+                  href={`/admin/master/new-template?routeId=${route.id}`}
+                  className="text-xs font-bold text-navy-deep bg-white px-4 py-2 rounded-lg border border-outline-ghost hover:bg-surface-medium transition-all"
+                >
+                  Tambah Jam
+                </Link>
+                <DeleteButton id={route.id} type="route" />
               </div>
             </div>
 
@@ -74,7 +75,7 @@ export default async function AdminMaster() {
                           <DeleteButton id={t.id} type="template" />
                         </div>
                       </div>
-                      
+
                       <div className="flex flex-col gap-2">
                         <div className="flex justify-between text-xs">
                           <span className="text-foreground/40">Harga</span>

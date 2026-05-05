@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { BookingStatus } from "@prisma/client";
+import ExportButton from "@/components/admin/ExportButton";
 
 export const dynamic = 'force-dynamic';
 
@@ -13,7 +14,7 @@ export default async function AdminBookings() {
       passengers: true
     },
     orderBy: { createdAt: 'desc' },
-    take: 50 // Show latest 50
+    take: 100 // Show more for admin
   });
 
   const getStatusColor = (status: BookingStatus) => {
@@ -27,9 +28,12 @@ export default async function AdminBookings() {
 
   return (
     <div className="flex flex-col gap-10">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-4xl font-display font-bold text-navy-deep">Pemesanan Tiket</h1>
-        <p className="text-foreground/60">Daftar semua transaksi booking, baik online maupun offline (Pool).</p>
+      <div className="flex justify-between items-end">
+        <div className="flex flex-col gap-2">
+          <h1 className="text-4xl font-display font-bold text-navy-deep">Pemesanan Tiket</h1>
+          <p className="text-foreground/60">Daftar semua transaksi booking, baik online maupun offline (Pool).</p>
+        </div>
+        <ExportButton />
       </div>
 
       <div className="bg-white rounded-[2.5rem] shadow-sm border border-outline-ghost overflow-hidden">

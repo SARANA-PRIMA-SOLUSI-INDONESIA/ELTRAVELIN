@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import CronTrigger from "@/components/admin/CronTrigger";
 
 export const dynamic = 'force-dynamic';
 
@@ -14,9 +15,14 @@ export default async function AdminDashboard() {
 
   return (
     <div className="flex flex-col gap-10">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-4xl font-display font-bold text-navy-deep">Overview</h1>
-        <p className="text-foreground/60">Selamat datang di panel kendali El Travel.</p>
+      <div className="flex items-start justify-between">
+        <div className="flex flex-col gap-2">
+          <h1 className="text-4xl font-display font-bold text-navy-deep">Overview</h1>
+          <p className="text-foreground/60">Selamat datang di panel kendali El Travel.</p>
+        </div>
+        <div className="w-96">
+          <CronTrigger />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

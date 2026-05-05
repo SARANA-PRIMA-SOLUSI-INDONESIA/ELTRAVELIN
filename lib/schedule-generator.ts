@@ -31,35 +31,37 @@ export async function syncSchedulesFromTemplates(prismaInstance: PrismaClient, d
     for (const template of templates) {
       const [hours, minutes] = template.departureTime.split(":").map(Number);
       
+      // Create departure in Jakarta time
       const departure = new Date(targetDate);
       departure.setHours(hours, minutes, 0, 0);
       
-      const arrival = new Date(departure);
+      // Ensure we are working with the correct absolute time for WIB
+      // We can use a helper or string manipulation to force offset
+      const isoStr = departure.toISOString().split('T')[0];
+      const departureWIB = new Date(`${isoStr}T${template.departureTime}:00+07:00`);
+
+      const arrival = new Date(departureWIB);
       // Hardcoded 3.5 hours for now, can be customized in template later
-      arrival.setHours(departure.getHours() + 3);
-      arrival.setMinutes(departure.getMinutes() + 30);
+      arrival.setHours(departureWIB.getHours() + 3);
+      arrival.setMinutes(departureWIB.getMinutes() + 30);
 
       // 1. Upsert Schedule
-      // We use a findUnique or similar check. 
-      // Since we don't have a unique constraint on (templateId, departureTime), 
-      // we'll check manually.
-      
       const existing = await prisma.schedule.findFirst({
         where: {
           templateId: template.id,
-          departureTime: departure,
+          departureTime: departureWIB,
         }
       });
 
       if (!existing) {
-        console.log(`Generating schedule for ${template.route.origin} -> ${template.route.destination} on ${departure.toISOString()}`);
+        console.log(`Generating schedule for ${template.route.origin} -> ${template.route.destination} on ${departureWIB.toISOString()}`);
         
         await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
           const schedule = await tx.schedule.create({
             data: {
               routeId: template.routeId,
               templateId: template.id,
-              departureTime: departure,
+              departureTime: departureWIB,
               arrivalTime: arrival,
               price: template.price,
               vehicleType: template.vehicleType,
@@ -67,8 +69,8 @@ export async function syncSchedulesFromTemplates(prismaInstance: PrismaClient, d
             }
           });
 
-          // 2. Generate Seats
-          const seatNumbers = Array.from({ length: 15 }, (_, i) => (i + 1).toString());
+          // 2. Generate Seats based on capacity
+          const seatNumbers = Array.from({ length: template.capacity }, (_, i) => (i + 1).toString());
           await tx.seat.createMany({
             data: seatNumbers.map((num: string) => ({
               scheduleId: schedule.id,

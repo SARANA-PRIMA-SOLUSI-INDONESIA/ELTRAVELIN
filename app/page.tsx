@@ -1,20 +1,45 @@
 import Image from "next/image";
 import SearchHero from "@/components/SearchHero";
+import PromoBanner from "@/components/PromoBanner";
 import RouteCard from "@/components/RouteCard";
+import { prisma } from "@/lib/prisma";
 
-export default function Home() {
-  const routes = [
-    { from: "Bandung (Ahmad Yani/Cicadas)", to: "Jakarta (Kuningan)", price: "175.000", image: "/jakarta-bandung.png" },
-    { from: "Bandung (Ahmad Yani/Cicadas)", to: "Soekarno Hatta (Airport)", price: "200.000", image: "/semarang-solo.png" },
-    { from: "Jakarta (Kuningan)", to: "Bandung (Ahmad Yani/Cicadas)", price: "175.000", image: "/jogja-surabaya.png" },
-    { from: "Soekarno Hatta (Airport)", to: "Bandung (Ahmad Yani/Cicadas)", price: "200.000", image: "/jakarta-bandung.png" },
-  ];
+export default async function Home() {
+  const banner = await prisma.banner.findFirst({
+    where: { isActive: true }
+  });
+
+  const availableRoutes = await prisma.route.findMany({
+    where: { isDeleted: false },
+    include: {
+      scheduleTemplates: {
+        where: { isActive: true },
+        orderBy: { price: 'asc' },
+        take: 1
+      }
+    }
+  });
+
+  const displayRoutes = availableRoutes.map((r, i) => ({
+    from: r.origin,
+    to: r.destination,
+    price: r.scheduleTemplates[0]?.price.toLocaleString('id-ID') || "175.000",
+    image: [
+      "/jakarta-bandung.png",
+      "/semarang-solo.png",
+      "/jogja-surabaya.png",
+      "/jakarta-bandung.png"
+    ][i % 4]
+  }));
 
 
   return (
     <div className="flex flex-col gap-16 md:gap-32 pb-16 md:pb-32">
       {/* Hero Section */}
-      <SearchHero />
+      <SearchHero routes={availableRoutes} />
+
+      {/* Promo Banner */}
+      <PromoBanner data={banner} />
 
 
       {/* Popular Routes Section */}
@@ -37,7 +62,7 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {routes.map((route: any, i: number) => (
+            {displayRoutes.map((route: any, i: number) => (
               <RouteCard key={i} {...route} />
             ))}
           </div>
@@ -52,7 +77,7 @@ export default function Home() {
             <span className="text-xs font-bold text-gold-warm uppercase tracking-widest">Layanan Prioritas</span>
             <h2 className="text-3xl md:text-5xl font-display font-bold text-navy-deep leading-tight">Kenyamanan di Setiap Detail</h2>
           </div>
-          
+
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 w-full">
             {[
               { title: "Kursi Premium", img: "/priority-1.png" },
@@ -128,7 +153,7 @@ export default function Home() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
-              { name: "Budi Santoso", role: "Pengusaha", text: "Pelayanan luar biasa. Sopirnya ramah dan armada Hiace-nya sangat bersih. Perjalanan Jakarta-Bandung terasa sangat singkat karena nyaman." },
+              { name: "Budi Santoso", role: "Pengusaha", text: "Pelayanan luar biasa. Sopirnya ramah and armada Hiace-nya sangat bersih. Perjalanan Jakarta-Bandung terasa sangat singkat karena nyaman." },
               { name: "Sari Wijaya", role: "Digital Nomad", text: "Paling suka dengan layanan door-to-doornya. Sangat memudahkan buat saya yang sering bepergian dengan banyak koper. Highly recommended!" },
               { name: "Andra Pratama", role: "UI Designer", text: "WiFi-nya kencang, bisa tetap meeting di jalan. Kursinya juga bisa direbahkan maksimal jadi bisa istirahat dengan tenang." }
             ].map((t: any, i: number) => (

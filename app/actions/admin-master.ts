@@ -15,9 +15,11 @@ export async function createRoute(origin: string, destination: string) {
 }
 
 export async function deleteRoute(id: string) {
-  // Check if there are any templates/bookings first? 
-  // For now just delete (Prisma will throw if there's a constraint)
-  await prisma.route.delete({ where: { id } });
+  // Soft delete for reports and data integrity
+  await prisma.route.update({
+    where: { id },
+    data: { isDeleted: true }
+  });
   revalidatePath("/admin/master");
 }
 

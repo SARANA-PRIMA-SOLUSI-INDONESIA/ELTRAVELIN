@@ -12,6 +12,7 @@ model Route {
   destination       String
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
+  isDeleted         Boolean            @default(false)
   schedules         Schedule[]
   scheduleTemplates ScheduleTemplate[]
 
@@ -73,6 +74,7 @@ model Booking {
   discountAmount  Int           @default(0)
   promoCodeId     String?
   reminderSentAt  DateTime?
+  lastReminderLevel Int           @default(0)
   promoCode       PromoCode?    @relation(fields: [promoCodeId], references: [id])
   schedule        Schedule      @relation(fields: [scheduleId], references: [id])
   passengers      Passenger[]
@@ -118,6 +120,17 @@ model Admin {
   name         String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+}
+
+model Banner {
+  id        String   @id @default(cuid())
+  title     String
+  subtitle  String?
+  imageUrl  String
+  promoCode String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 enum BookingStatus {

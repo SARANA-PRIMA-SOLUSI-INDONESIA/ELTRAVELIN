@@ -15,11 +15,7 @@ export async function getSchedules(origin: string, destination: string, date: st
   // Current time in Jakarta
   const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Jakarta" }));
   
-  // Parse target date and set range in Jakarta time
-  const [year, month, day] = date.split('-').map(Number);
-  
   // Create start/end of day in Jakarta timezone context
-  // We'll use a safer approach for range search
   const startOfDay = new Date(`${date}T00:00:00+07:00`);
   const endOfDay = new Date(`${date}T23:59:59+07:00`);
 
@@ -37,6 +33,7 @@ export async function getSchedules(origin: string, destination: string, date: st
       route: {
         origin: { contains: origin, mode: 'insensitive' },
         destination: { contains: destination, mode: 'insensitive' },
+        isDeleted: false,
       },
       departureTime: {
         gte: effectiveGte,

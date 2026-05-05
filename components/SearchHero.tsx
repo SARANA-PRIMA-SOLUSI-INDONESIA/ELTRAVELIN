@@ -2,32 +2,41 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
-export default function SearchHero() {
+export default function SearchHero({ routes = [] }: { routes: any[] }) {
   const router = useRouter();
-  const [origin, setOrigin] = useState("Bandung (Ahmad Yani/Cicadas)");
+  
+  // Get unique origins
+  const origins = Array.from(new Set(routes.map(r => r.origin))).sort();
+  
+  const [origin, setOrigin] = useState("");
   const [destination, setDestination] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]); // Default to today's date
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+
+  // Set default origin if available
+  useEffect(() => {
+    if (origins.length > 0 && !origin) {
+      setOrigin(origins[0]);
+    }
+  }, [origins, origin]);
+
+  // Get destinations based on selected origin
+  const destinations = routes
+    .filter(r => r.origin === origin)
+    .map(r => r.destination)
+    .sort();
 
   const handleSearch = () => {
-    if (!destination) {
-      alert("Pilih kota tujuan terlebih dahulu");
+    if (!origin || !destination) {
+      alert("Pilih kota asal dan tujuan terlebih dahulu");
       return;
     }
     router.push(`/search?from=${origin}&to=${destination}&date=${date}`);
   };
 
-  const cities = [
-    "Bandung (Ahmad Yani/Cicadas)",
-    "Bandung (Cijagra)",
-    "Jakarta (Kuningan)",
-    "Soekarno Hatta (Airport)"
-  ];
-
   return (
     <section className="relative min-h-[600px] lg:min-h-[800px] flex items-center overflow-hidden bg-background pt-10 md:pt-20">
-      {/* Hero Content Wrapper */}
       <div className="container mx-auto px-6 md:px-12 lg:px-24 flex flex-col lg:flex-row items-center z-10 relative">
         <div className="w-full lg:w-1/2 flex flex-col gap-6 animate-fade-in">
           <span className="font-display font-bold text-gold-warm uppercase tracking-widest text-xs">
@@ -41,17 +50,20 @@ export default function SearchHero() {
             Nikmati pengalaman berkendara kelas eksekutif dengan armada modern dan layanan terbaik di setiap rute kami.
           </p>
           
-          {/* Glass Search Form */}
           <div className="mt-8 glass rounded-3xl p-8 shadow-ambient w-full max-w-xl">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="flex flex-col gap-2">
                 <label className="text-xs font-bold text-navy-deep uppercase tracking-wider">Asal</label>
                 <select 
                   value={origin}
-                  onChange={(e) => setOrigin(e.target.value)}
+                  onChange={(e) => {
+                    setOrigin(e.target.value);
+                    setDestination(""); // Reset destination when origin changes
+                  }}
                   className="bg-surface-low rounded-xl px-4 py-3 text-sm text-foreground/80 cursor-pointer hover:bg-surface-medium transition-colors border-none focus:ring-2 focus:ring-gold-warm"
                 >
-                  {cities.map((c: string) => <option key={c} value={c}>{c}</option>)}
+                  <option value="" disabled>Pilih Kota Asal</option>
+                  {origins.map((c: string) => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
               <div className="flex flex-col gap-2">
@@ -60,9 +72,10 @@ export default function SearchHero() {
                   value={destination}
                   onChange={(e) => setDestination(e.target.value)}
                   className="bg-surface-low rounded-xl px-4 py-3 text-sm text-foreground/80 cursor-pointer hover:bg-surface-medium transition-colors border-none focus:ring-2 focus:ring-gold-warm"
+                  disabled={!origin}
                 >
                   <option value="" disabled>Pilih Kota Tujuan</option>
-                  {cities.filter((c: string) => c !== origin).map((c: string) => <option key={c} value={c}>{c}</option>)}
+                  {destinations.map((c: string) => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
               <div className="flex flex-col gap-2">
@@ -71,6 +84,7 @@ export default function SearchHero() {
                   type="date"
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
+                  min={new Date().toISOString().split('T')[0]}
                   className="bg-surface-low rounded-xl px-4 py-3 text-sm text-foreground/80 cursor-pointer hover:bg-surface-medium transition-colors border-none focus:ring-2 focus:ring-gold-warm"
                 />
               </div>
@@ -87,7 +101,6 @@ export default function SearchHero() {
         </div>
       </div>
 
-      {/* Asymmetrical Hero Image */}
       <div className="absolute top-0 right-0 w-3/4 h-full lg:w-3/5 pointer-events-none opacity-40 lg:opacity-100 transition-opacity">
         <div className="relative w-full h-full">
           <Image 
@@ -97,7 +110,6 @@ export default function SearchHero() {
             className="object-cover object-left rounded-l-[100px] lg:rounded-l-[200px]"
             priority
           />
-          {/* Gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-r from-background via-background/40 to-transparent"></div>
         </div>
       </div>
