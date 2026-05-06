@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getSchedules } from "@/app/actions/booking";
 import BookingWizard from "@/components/BookingWizard";
+import ScheduleCard from "@/components/ScheduleCard";
 
 interface SearchProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -63,69 +64,12 @@ export default async function SearchResults({ searchParams }: SearchProps) {
             </div>
           ) : (
             departures.map((d: any) => (
-              <div 
+              <ScheduleCard 
                 key={d.id} 
-                className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col md:flex-row items-stretch transition-all hover:shadow-md"
-              >
-                {/* Left: Info */}
-                <div className="p-6 md:p-8 flex flex-row md:flex-col justify-between md:justify-center items-center md:items-start md:min-w-[200px] border-b md:border-b-0 md:border-r border-gray-50">
-                  <h3 className="text-base md:text-lg font-display font-bold text-navy-deep leading-tight mb-0 md:mb-1">{d.vehicleType}</h3>
-                  <span className="text-[10px] md:text-xs font-bold text-foreground/40">{d._count.seats} Bangku available</span>
-                </div>
-
-                {/* Middle: Timeline */}
-                <div className="flex-grow p-6 md:p-8 flex flex-col justify-between gap-6">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex flex-col">
-                      <span className="text-[10px] font-bold text-foreground/40 uppercase mb-1">{from.split(' ')[0]}</span>
-                      <span className="text-lg md:text-xl font-display font-bold text-navy-deep">
-                        {d.departureTime.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' })}
-                      </span>
-                    </div>
-
-                    <div className="flex-grow flex flex-col items-center gap-1 px-2 md:px-4">
-                      <div className="w-full h-[1px] bg-gray-200 relative flex justify-center">
-                        <div className="absolute -top-[3px] left-0 w-1.5 h-1.5 rounded-full bg-gray-200"></div>
-                        <div className="absolute -top-[3px] right-0 w-1.5 h-1.5 rounded-full bg-gold-warm"></div>
-                        <div className="absolute -top-[1.5px] left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-gray-300"></div>
-                        <span className="absolute -bottom-5 text-[9px] md:text-[10px] font-bold text-gray-300 hidden xs:block">3j 30m</span>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col items-end">
-                      <span className="text-[10px] font-bold text-foreground/40 uppercase mb-1">{to.split(' ')[0]}</span>
-                      <span className="text-lg md:text-xl font-display font-bold text-navy-deep">
-                        {d.arrivalTime.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' })}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2 md:gap-4">
-                    <div className="flex items-center gap-1 px-2 py-0.5 bg-green-50 rounded">
-                      <i className="ri-checkbox-circle-fill text-[8px] md:text-[10px] text-green-600"></i>
-                      <span className="text-[8px] md:text-[10px] font-bold text-green-700 uppercase tracking-tight">Bisa Refund</span>
-                    </div>
-                    <div className="flex items-center gap-1 px-2 py-0.5 bg-blue-50 rounded">
-                      <i className="ri-history-line text-[8px] md:text-[10px] text-blue-600"></i>
-                      <span className="text-[8px] md:text-[10px] font-bold text-blue-700 uppercase tracking-tight">Bisa Reschedule</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Right: Price & Select */}
-                <div className="p-6 md:p-8 bg-[#FDFDFD] flex flex-row md:flex-col justify-between md:justify-center items-center md:items-end gap-4 md:min-w-[220px] border-t md:border-t-0 md:border-l border-gray-50">
-                  <div className="flex flex-col items-start md:items-end">
-                    <span className="text-lg md:text-xl font-display font-bold text-navy-deep">Rp {d.price.toLocaleString('id-ID')}</span>
-                    <span className="text-[10px] font-bold text-foreground/40 uppercase">/seat</span>
-                  </div>
-                  <Link 
-                    href={`/seat-selection?scheduleId=${d.id}`}
-                    className="bg-[#EFEFEF] hover:bg-gold-warm hover:text-white text-navy-deep font-bold py-2.5 md:py-3 px-6 md:px-8 rounded-xl text-center transition-all shadow-sm text-sm md:text-base w-auto md:w-full"
-                  >
-                    Select
-                  </Link>
-                </div>
-              </div>
+                schedule={d} 
+                fromName={from} 
+                toName={to} 
+              />
             ))
           )}
         </div>

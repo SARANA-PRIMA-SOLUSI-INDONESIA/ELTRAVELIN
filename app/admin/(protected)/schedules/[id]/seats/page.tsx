@@ -12,18 +12,25 @@ export default async function AdminScheduleSeats({ params }: PageProps) {
     where: { id: resolvedParams.id },
     include: {
       route: true,
-      seats: {
+      operatingTrip: {
         include: {
-          booking: true
-        },
-        orderBy: {
-          seatNumber: 'asc'
+          seats: {
+            include: {
+              booking: true
+            },
+            orderBy: {
+              seatNumber: 'asc'
+            }
+          }
         }
       }
     }
   });
 
   if (!schedule) notFound();
+
+  // Extract seats so the UI component works
+  const seats = schedule.operatingTrip?.seats || [];
 
   return (
     <div className="flex flex-col gap-10">
@@ -45,7 +52,7 @@ export default async function AdminScheduleSeats({ params }: PageProps) {
               <span className="text-[10px] font-bold text-foreground/40 uppercase tracking-widest">Front Area / Driver</span>
            </div>
            
-           <SeatOccupancyManager schedule={schedule} seats={schedule.seats as any} />
+           <SeatOccupancyManager schedule={schedule} seats={seats as any} />
         </div>
 
         <div className="flex flex-col gap-6">
@@ -76,13 +83,13 @@ export default async function AdminScheduleSeats({ params }: PageProps) {
               <div className="flex justify-between items-end">
                  <div className="flex flex-col">
                     <span className="text-4xl font-display font-bold">
-                      {schedule.seats.filter((s: any) => s.status === 'BOOKED').length}
+                      {seats.filter((s: any) => s.status === 'BOOKED').length}
                     </span>
                     <span className="text-xs opacity-60">Kursi Terisi</span>
                  </div>
                  <div className="text-right flex flex-col">
                     <span className="text-2xl font-display font-bold text-gold-warm">
-                      {Math.round((schedule.seats.filter((s: any) => s.status === 'BOOKED').length / schedule.capacity) * 100)}%
+                      {Math.round((seats.filter((s: any) => s.status === 'BOOKED').length / schedule.capacity) * 100) || 0}%
                     </span>
                     <span className="text-xs opacity-60">Okupansi</span>
                  </div>

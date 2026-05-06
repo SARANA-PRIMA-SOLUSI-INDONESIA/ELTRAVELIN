@@ -12,6 +12,9 @@ export default async function Home() {
   const availableRoutes = await prisma.route.findMany({
     where: { isDeleted: false },
     include: {
+      stops: {
+        orderBy: { sequence: 'asc' }
+      },
       scheduleTemplates: {
         where: { isActive: true },
         orderBy: { price: 'asc' },

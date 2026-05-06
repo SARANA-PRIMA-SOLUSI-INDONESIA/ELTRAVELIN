@@ -12,7 +12,7 @@ export async function syncSchedulesFromTemplates(prismaInstance: PrismaClient, d
   
   const templates = await prisma.scheduleTemplate.findMany({
     where: { isActive: true },
-    include: { route: true }
+    include: { route: true, vehicle: true }
   });
 
   if (templates.length === 0) {
@@ -41,42 +41,70 @@ export async function syncSchedulesFromTemplates(prismaInstance: PrismaClient, d
       const departureWIB = new Date(`${isoStr}T${template.departureTime}:00+07:00`);
 
       const arrival = new Date(departureWIB);
-      // Hardcoded 3.5 hours for now, can be customized in template later
-      arrival.setHours(departureWIB.getHours() + 3);
-      arrival.setMinutes(departureWIB.getMinutes() + 30);
+      const [arrHours, arrMins] = template.arrivalTime.split(":").map(Number);
+      arrival.setHours(arrHours, arrMins, 0, 0);
 
-      // 1. Upsert Schedule
-      const existing = await prisma.schedule.findFirst({
+      // If arrival time is earlier than departure time, it means it arrives the next day
+      if (arrival.getTime() < departureWIB.getTime()) {
+        arrival.setDate(arrival.getDate() + 1);
+      }
+
+      // 1. Check if Schedule already exists
+      const existingSchedule = await prisma.schedule.findFirst({
         where: {
           templateId: template.id,
           departureTime: departureWIB,
         }
       });
 
-      if (!existing) {
+      if (!existingSchedule) {
         console.log(`Generating schedule for ${template.route.origin} -> ${template.route.destination} on ${departureWIB.toISOString()}`);
         
         await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-          const schedule = await tx.schedule.create({
+          // Find existing OperatingTrip for this specific vehicle on this specific date
+          const existingTrip = await tx.operatingTrip.findFirst({
+            where: {
+              vehicleId: template.vehicleId,
+              date: targetDate
+            }
+          });
+
+          let operatingTripId = existingTrip?.id;
+
+          // If no operating trip exists for this vehicle today, create one
+          if (!operatingTripId) {
+            const newTrip = await tx.operatingTrip.create({
+              data: {
+                vehicleId: template.vehicleId,
+                date: targetDate,
+                status: 'SCHEDULED'
+              }
+            });
+            operatingTripId = newTrip.id;
+
+            // Generate Seats for the new physical trip based on vehicle capacity
+            const seatNumbers = Array.from({ length: template.vehicle.capacity }, (_, i) => (i + 1).toString());
+            await tx.seat.createMany({
+              data: seatNumbers.map((num: string) => ({
+                operatingTripId: operatingTripId as string,
+                seatNumber: num,
+                status: 'AVAILABLE',
+              })),
+            });
+          }
+
+          // Create the Marketing Schedule linked to the OperatingTrip
+          await tx.schedule.create({
             data: {
               routeId: template.routeId,
               templateId: template.id,
               departureTime: departureWIB,
               arrivalTime: arrival,
               price: template.price,
-              vehicleType: template.vehicleType,
-              capacity: template.capacity,
+              vehicleType: template.vehicle.name,
+              capacity: template.vehicle.capacity,
+              operatingTripId: operatingTripId,
             }
-          });
-
-          // 2. Generate Seats based on capacity
-          const seatNumbers = Array.from({ length: template.capacity }, (_, i) => (i + 1).toString());
-          await tx.seat.createMany({
-            data: seatNumbers.map((num: string) => ({
-              scheduleId: schedule.id,
-              seatNumber: num,
-              status: 'AVAILABLE',
-            })),
           });
         });
       }

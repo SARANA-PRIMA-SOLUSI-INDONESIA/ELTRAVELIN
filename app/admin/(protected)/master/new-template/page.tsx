@@ -1,8 +1,8 @@
 "use client";
 
-import { createTemplate } from "@/app/actions/admin-master";
+import { createTemplate, getVehicles } from "@/app/actions/admin-master";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, Suspense } from "react";
+import { useState, Suspense, useEffect } from "react";
 import Link from "next/link";
 
 function NewTemplateForm() {
@@ -12,9 +12,17 @@ function NewTemplateForm() {
   
   const [loading, setLoading] = useState(false);
   const [departureTime, setDepartureTime] = useState("08:00");
+  const [arrivalTime, setArrivalTime] = useState("11:30");
   const [price, setPrice] = useState(175000);
-  const [vehicleType, setVehicleType] = useState("Farizon SV (Supervan)");
-  const [capacity, setCapacity] = useState(15);
+  const [vehicleId, setVehicleId] = useState("");
+  const [vehicles, setVehicles] = useState<any[]>([]);
+
+  useEffect(() => {
+    getVehicles().then(v => {
+      setVehicles(v);
+      if (v.length > 0) setVehicleId(v[0].id);
+    });
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,9 +33,9 @@ function NewTemplateForm() {
       await createTemplate({
         routeId,
         departureTime,
+        arrivalTime,
         price: Number(price),
-        vehicleType,
-        capacity: Number(capacity),
+        vehicleId,
       });
       router.push("/admin/master");
     } catch (error) {
@@ -62,6 +70,16 @@ function NewTemplateForm() {
             />
           </div>
           <div className="flex flex-col gap-2">
+            <label className="text-xs font-bold text-navy-deep uppercase tracking-widest">Jam Tiba (Estimasi)</label>
+            <input 
+              type="time" 
+              value={arrivalTime}
+              onChange={(e) => setArrivalTime(e.target.value)}
+              className="bg-surface-low rounded-xl px-4 py-4 text-sm outline-none border-none focus:ring-2 focus:ring-gold-warm"
+              required
+            />
+          </div>
+          <div className="flex flex-col gap-2">
             <label className="text-xs font-bold text-navy-deep uppercase tracking-widest">Harga Tiket (Rp)</label>
             <input 
               type="number" 
@@ -72,24 +90,18 @@ function NewTemplateForm() {
             />
           </div>
           <div className="flex flex-col gap-2">
-            <label className="text-xs font-bold text-navy-deep uppercase tracking-widest">Tipe Armada</label>
-            <input 
-              type="text" 
-              value={vehicleType}
-              onChange={(e) => setVehicleType(e.target.value)}
-              className="bg-surface-low rounded-xl px-4 py-4 text-sm outline-none border-none focus:ring-2 focus:ring-gold-warm"
+            <label className="text-xs font-bold text-navy-deep uppercase tracking-widest">Pilih Armada Mobil</label>
+            <select 
+              value={vehicleId}
+              onChange={(e) => setVehicleId(e.target.value)}
+              className="bg-surface-low rounded-xl px-4 py-4 text-sm outline-none border-none focus:ring-2 focus:ring-gold-warm cursor-pointer"
               required
-            />
-          </div>
-          <div className="flex flex-col gap-2">
-            <label className="text-xs font-bold text-navy-deep uppercase tracking-widest">Kapasitas Kursi</label>
-            <input 
-              type="number" 
-              value={capacity}
-              onChange={(e) => setCapacity(Number(e.target.value))}
-              className="bg-surface-low rounded-xl px-4 py-4 text-sm outline-none border-none focus:ring-2 focus:ring-gold-warm"
-              required
-            />
+            >
+              <option value="" disabled>-- Pilih Mobil --</option>
+              {vehicles.map(v => (
+                <option key={v.id} value={v.id}>{v.name} ({v.plateNumber}) - {v.capacity} Kursi</option>
+              ))}
+            </select>
           </div>
         </div>
 

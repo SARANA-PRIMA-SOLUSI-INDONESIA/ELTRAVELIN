@@ -11,6 +11,11 @@ export default async function AdminMaster() {
   const routes = await prisma.route.findMany({
     where: { isDeleted: false },
     include: {
+      stops: {
+        orderBy: {
+          sequence: 'asc'
+        }
+      },
       scheduleTemplates: {
         orderBy: {
           departureTime: 'asc'
@@ -38,18 +43,38 @@ export default async function AdminMaster() {
       <div className="flex flex-col gap-12">
         {routes.map((route: any) => (
           <div key={route.id} className="bg-white rounded-[2.5rem] shadow-sm border border-outline-ghost overflow-hidden">
-            <div className="bg-surface-low px-8 py-6 flex justify-between items-center border-b border-outline-ghost">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-gold-soft flex items-center justify-center">
-                  <i className="ri-route-line text-navy-deep"></i>
+            <div className="bg-surface-low px-8 py-6 flex flex-col sm:flex-row gap-4 sm:items-center justify-between border-b border-outline-ghost">
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-full bg-gold-soft flex items-center justify-center">
+                    <i className="ri-route-line text-navy-deep"></i>
+                  </div>
+                  <h2 className="text-xl font-display font-bold text-navy-deep">{route.origin} → {route.destination}</h2>
                 </div>
-                <h2 className="text-xl font-display font-bold text-navy-deep">{route.origin} → {route.destination}</h2>
+                {route.stops && route.stops.length > 0 && (
+                  <div className="flex items-center flex-wrap gap-2 text-xs font-bold text-foreground/40 pl-14 uppercase tracking-wider">
+                    {route.stops.map((stop: any, idx: number) => (
+                      <span key={stop.id} className="flex items-center gap-2">
+                        <span className="hover:text-gold-warm transition-colors">{stop.name}</span>
+                        {idx < route.stops.length - 1 && <i className="ri-arrow-right-double-line text-gold-warm"></i>}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
-              <div className="flex gap-3">
+              <div className="flex gap-2.5 pl-14 sm:pl-0">
+                <Link
+                  href={`/admin/master/stops?routeId=${route.id}`}
+                  className="text-xs font-bold text-navy-deep bg-white px-4 py-2.5 rounded-xl border border-outline-ghost hover:bg-gold-soft hover:text-white transition-all flex items-center gap-1.5 shadow-sm"
+                >
+                  <i className="ri-map-pin-line text-sm"></i>
+                  Kelola Titik
+                </Link>
                 <Link
                   href={`/admin/master/new-template?routeId=${route.id}`}
-                  className="text-xs font-bold text-navy-deep bg-white px-4 py-2 rounded-lg border border-outline-ghost hover:bg-surface-medium transition-all"
+                  className="text-xs font-bold text-white bg-navy-deep px-4 py-2.5 rounded-xl border border-transparent hover:bg-gold-warm transition-all flex items-center gap-1.5 shadow-sm"
                 >
+                  <i className="ri-add-line text-sm"></i>
                   Tambah Jam
                 </Link>
                 <DeleteButton id={route.id} type="route" />

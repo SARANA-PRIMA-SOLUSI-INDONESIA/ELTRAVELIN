@@ -28,13 +28,13 @@ export default function SeatGrid({ initialSeats, scheduleId, price }: SeatGridPr
     );
   };
 
-  // Layout definition based on sketch
+  // Layout definition based on sketch (4 column grid to show aisle)
   const rows = [
-    { type: 'front', seats: ['2', '1', 'SUPIR'] },
-    { type: 'row', seats: ['5', '4', '3'] },
-    { type: 'row', seats: ['8', '7', '6'] },
-    { type: 'row', seats: ['11', '10', '9'] },
-    { type: 'back', seats: ['15', '14', '13', '12'] },
+    ['2', '1', null, 'SUPIR'],
+    [null, '5', '4', '3'],
+    [null, '8', '7', '6'],
+    [null, '11', '10', '9'],
+    ['15', '14', '13', '12'],
   ];
 
   const getSeatByNumber = (num: string) => initialSeats.find(s => s.seatNumber === num);
@@ -49,18 +49,22 @@ export default function SeatGrid({ initialSeats, scheduleId, price }: SeatGridPr
         
         <div className="flex flex-col gap-8 w-full items-center">
           {rows.map((row, rowIdx) => (
-            <div key={rowIdx} className={`grid ${row.seats.length === 4 ? 'grid-cols-4' : 'grid-cols-3'} gap-4 md:gap-6 w-full max-w-[320px]`}>
-              {row.seats.map((seatNum) => {
+            <div key={rowIdx} className="grid grid-cols-4 gap-4 md:gap-6 w-full max-w-[320px]">
+              {row.map((seatNum, colIdx) => {
+                if (seatNum === null) {
+                  return <div key={`empty-${rowIdx}-${colIdx}`} className="w-12 h-14 md:w-14 md:h-16"></div>;
+                }
+
                 if (seatNum === 'SUPIR') {
                   return (
-                    <div key="supir" className="w-12 h-14 md:w-14 md:h-16 rounded-xl flex items-center justify-center bg-gray-100 text-[10px] font-bold text-gray-400 uppercase">
+                    <div key="supir" className="w-12 h-14 md:w-14 md:h-16 rounded-xl flex items-center justify-center bg-gray-200 text-[10px] font-bold text-gray-500 uppercase">
                       Supir
                     </div>
                   );
                 }
 
                 const seat = getSeatByNumber(seatNum);
-                if (!seat) return <div key={seatNum} className="w-12 h-14 md:w-14 md:h-16"></div>;
+                if (!seat) return <div key={`not-found-${seatNum}`} className="w-12 h-14 md:w-14 md:h-16 border border-dashed border-gray-300 rounded-xl flex items-center justify-center text-gray-300 text-xs">{seatNum}</div>;
 
                 const isSelected = selectedSeats.includes(seat.seatNumber);
                 const isAvailable = seat.status === 'AVAILABLE';

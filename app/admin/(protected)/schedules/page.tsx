@@ -16,7 +16,7 @@ async function SchedulesContent({ date }: { date: string }) {
   const startOfDay = new Date(selectedDate.setHours(0, 0, 0, 0));
   const endOfDay = new Date(selectedDate.setHours(23, 59, 59, 999));
 
-  const routes = await prisma.route.findMany({
+  const routesData = await prisma.route.findMany({
     include: {
       schedules: {
         where: { 
@@ -30,13 +30,27 @@ async function SchedulesContent({ date }: { date: string }) {
           departureTime: 'asc'
         },
         include: {
-          _count: {
-            select: { seats: { where: { status: 'BOOKED' } } }
+          operatingTrip: {
+            include: {
+              _count: {
+                select: { seats: { where: { status: 'BOOKED' } } }
+              }
+            }
           }
         }
       }
     }
   });
+
+  const routes = routesData.map(route => ({
+    ...route,
+    schedules: route.schedules.map((s: any) => ({
+      ...s,
+      _count: {
+        seats: s.operatingTrip?._count?.seats || 0
+      }
+    }))
+  }));
 
   return (
     <div className="flex flex-col gap-12">

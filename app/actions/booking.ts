@@ -20,7 +20,6 @@ export async function getSchedules(origin: string, destination: string, date: st
   const endOfDay = new Date(`${date}T23:59:59+07:00`);
 
   // We want schedules that haven't departed yet.
-  // We compare absolute timestamps now.
   const absoluteNow = new Date(); // Actual current time
   const effectiveGte = startOfDay > absoluteNow ? startOfDay : absoluteNow;
 
@@ -28,7 +27,7 @@ export async function getSchedules(origin: string, destination: string, date: st
     return [];
   }
 
-  return prisma.schedule.findMany({
+  const schedules = await prisma.schedule.findMany({
     where: {
       route: {
         origin: { contains: origin, mode: 'insensitive' },
@@ -43,11 +42,23 @@ export async function getSchedules(origin: string, destination: string, date: st
       isDeleted: false,
     },
     include: {
-      route: true,
-      _count: {
-        select: {
-          seats: {
-            where: { status: 'AVAILABLE' }
+      route: {
+        include: {
+          stops: {
+            orderBy: {
+              sequence: 'asc'
+            }
+          }
+        }
+      },
+      operatingTrip: {
+        include: {
+          _count: {
+            select: {
+              seats: {
+                where: { status: 'AVAILABLE' }
+              }
+            }
           }
         }
       }
@@ -56,18 +67,37 @@ export async function getSchedules(origin: string, destination: string, date: st
       departureTime: 'asc',
     },
   });
+
+  return schedules.map((s: any) => ({
+    ...s,
+    _count: {
+      seats: s.operatingTrip?._count?.seats || 0
+    }
+  }));
 }
 
 export async function getScheduleById(id: string) {
-  return prisma.schedule.findUnique({
+  const schedule = await prisma.schedule.findUnique({
     where: { id },
     include: {
       route: true,
-      seats: {
-        orderBy: { seatNumber: 'asc' }
+      operatingTrip: {
+        include: {
+          seats: {
+            orderBy: { seatNumber: 'asc' }
+          }
+        }
       }
     }
   });
+
+  if (!schedule) return null;
+
+  // Map operatingTrip seats to the schedule object so UI doesn't break
+  return {
+    ...schedule,
+    seats: schedule.operatingTrip?.seats || []
+  };
 }
 
 export async function updatePaymentMethod(bookingCode: string, paymentMethod: string) {
@@ -157,21 +187,23 @@ export async function createBooking(data: {
       },
     });
 
-    // 2. Update all selected seats status
-    await Promise.all(data.seatNumbers.map(num => 
-      tx.seat.update({
-        where: {
-          scheduleId_seatNumber: {
-            scheduleId: data.scheduleId,
-            seatNumber: num,
+    // 2. Update all selected seats status for the physical vehicle trip
+    if (schedule.operatingTripId) {
+      await Promise.all(data.seatNumbers.map(num => 
+        tx.seat.update({
+          where: {
+            operatingTripId_seatNumber: {
+              operatingTripId: schedule.operatingTripId as string,
+              seatNumber: num,
+            },
           },
-        },
-        data: {
-          status: 'BOOKED',
-          bookingId: booking.id,
-        },
-      })
-    ));
+          data: {
+            status: 'BOOKED',
+            bookingId: booking.id,
+          },
+        })
+      ));
+    }
 
     return booking;
   });
@@ -246,20 +278,23 @@ export async function adminCreateBooking(data: {
       },
     });
 
-    await Promise.all(data.seatNumbers.map(num => 
-      tx.seat.update({
-        where: {
-          scheduleId_seatNumber: {
-            scheduleId: data.scheduleId,
-            seatNumber: num,
+    // 2. Update all selected seats status for the physical vehicle trip
+    if (schedule.operatingTripId) {
+      await Promise.all(data.seatNumbers.map(num => 
+        tx.seat.update({
+          where: {
+            operatingTripId_seatNumber: {
+              operatingTripId: schedule.operatingTripId as string,
+              seatNumber: num,
+            },
           },
-        },
-        data: {
-          status: 'BOOKED',
-          bookingId: booking.id,
-        },
-      })
-    ));
+          data: {
+            status: 'BOOKED',
+            bookingId: booking.id,
+          },
+        })
+      ));
+    }
 
     return booking;
   });

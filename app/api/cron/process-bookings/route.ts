@@ -5,16 +5,15 @@ import { NextResponse } from "next/server";
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
-  // Security check: Verify a secret token if provided (except for local testing)
   const authHeader = request.headers.get('authorization');
   const { searchParams } = new URL(request.url);
   const urlKey = searchParams.get('key');
   const cronSecret = process.env.CRON_SECRET?.trim();
   const isLocal = request.url.includes('localhost') || request.url.includes('127.0.0.1');
 
-  const isAuthorized = 
-    isLocal || 
-    !cronSecret || 
+  const isAuthorized =
+    isLocal ||
+    !cronSecret ||
     authHeader === `Bearer ${cronSecret}` ||
     authHeader === `bearer ${cronSecret}` ||
     urlKey === cronSecret;
