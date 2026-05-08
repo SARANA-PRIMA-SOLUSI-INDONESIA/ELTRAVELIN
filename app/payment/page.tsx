@@ -26,11 +26,6 @@ function PaymentContent() {
   }, [code]);
 
   const handlePayment = async () => {
-    if (paymentMethod === 'POOL') {
-      alert("⚠️ Maaf, saat ini pembayaran hanya bisa dilakukan melalui Transfer Bank (Otomatis).");
-      return;
-    }
-
     setProcessing(true);
     try {
       await updatePaymentMethod(code!, paymentMethod);

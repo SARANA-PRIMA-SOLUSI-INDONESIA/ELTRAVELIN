@@ -42,14 +42,14 @@ export default async function Confirmation({ searchParams }: ConfirmationProps) 
 
           <div className="flex flex-col gap-2">
             <h1 className="text-3xl font-display font-black text-navy-deep tracking-tight">
-              {isConfirmed ? "Pemesanan Berhasil!" : isMoota ? "Menunggu Pembayaran" : "Pemesanan Diterima"}
+              {isConfirmed ? "Pemesanan Berhasil!" : isMoota ? "Menunggu Pembayaran" : "Menunggu Pembayaran di Pool"}
             </h1>
-            <p className="text-gray-400 font-medium text-sm max-w-sm mx-auto leading-relaxed">
+            <p className="text-gray-400 font-medium text-sm max-w-md mx-auto leading-relaxed">
               {isConfirmed 
                 ? "Tiket Anda telah terbit. Silakan tunjukkan QR Code di bawah saat boarding." 
                 : isMoota 
                   ? "Segera lakukan transfer agar kursi Anda tidak dibatalkan otomatis oleh sistem."
-                  : "Silakan lakukan pembayaran langsung di loket pool 30 menit sebelum keberangkatan."}
+                  : "Segera lakukan pembayaran langsung di loket pool maksimal 60 menit dari pemesanan agar kursi Anda tidak dibatalkan otomatis oleh sistem."}
             </p>
           </div>
         </div>
@@ -125,6 +125,40 @@ export default async function Confirmation({ searchParams }: ConfirmationProps) 
               </div>
             )}
 
+            {/* Conditionally show Payment Instructions if Pending and Pool */}
+            {!isConfirmed && isPool && (
+              <div className="flex flex-col gap-6 p-8 bg-red-500/5 rounded-3xl border border-red-500/20">
+                <div className="flex flex-col gap-2 text-center">
+                  <span className="text-[10px] font-bold text-navy-deep/40 uppercase tracking-[0.2em]">Total Pembayaran di Loket</span>
+                  <span className="text-3xl font-display font-black text-navy-deep tracking-tight">
+                    Rp {booking.totalPrice.toLocaleString('id-ID')}
+                  </span>
+                  <p className="text-[10px] text-red-500 font-bold uppercase tracking-widest bg-white/50 py-2 rounded-lg">
+                    ⚠️ Batas Waktu Pembayaran: 60 Menit
+                  </p>
+                </div>
+
+                <div className="flex flex-col gap-4 text-left p-6 bg-white rounded-2xl border border-navy-deep/5 text-sm">
+                  <div className="flex gap-3 items-start">
+                    <i className="ri-information-line text-lg text-red-500 mt-0.5"></i>
+                    <div className="flex flex-col gap-2">
+                      <p className="font-bold text-navy-deep">Petunjuk Pembayaran di Loket:</p>
+                      <ul className="list-decimal pl-4 flex flex-col gap-1 text-gray-500 text-xs leading-relaxed">
+                        <li>Kunjungi loket resmi Pool keberangkatan Anda.</li>
+                        <li>Sebutkan <strong>Kode Booking #{booking.bookingCode}</strong> kepada petugas loket.</li>
+                        <li>Lakukan pembayaran sebesar nominal di atas secara tunai atau debit.</li>
+                        <li>Setelah lunas, petugas akan memverifikasi tiket Anda dan status pemesanan akan otomatis berubah menjadi LUNAS / BERHASIL.</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
+                <p className="text-center text-[10px] text-navy-deep/50 leading-relaxed">
+                  Harap selesaikan pembayaran sebelum batas waktu berakhir agar pemesanan kursi Anda tidak dibatalkan otomatis oleh sistem.
+                </p>
+              </div>
+            )}
+
             {/* Conditionally show QR Code if Confirmed OR Pay at Pool */}
             {(isConfirmed || isPool) && (
               <div className="flex flex-col items-center gap-6 py-8 border-t border-dashed border-gray-100">
@@ -135,7 +169,7 @@ export default async function Confirmation({ searchParams }: ConfirmationProps) 
                   </div>
                 </div>
                 <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
-                  {isConfirmed ? "Gunakan QR Code untuk Boarding" : "Tunjukkan QR ini saat bayar di loket"}
+                  {isConfirmed ? "Gunakan QR Code untuk Boarding" : "Gunakan Kode Booking Saat Pembayaran"}
                 </p>
               </div>
             )}
