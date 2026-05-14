@@ -13,6 +13,9 @@ export default function NewPromo() {
   const [discountValue, setDiscountValue] = useState(0);
   const [minOrder, setMinOrder] = useState(0);
   const [maxDiscount, setMaxDiscount] = useState<number | undefined>(undefined);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [usageLimit, setUsageLimit] = useState<number | undefined>(undefined);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,9 +26,12 @@ export default function NewPromo() {
       await createPromo({
         code,
         discountType,
-        discountValue,
-        minOrder,
-        maxDiscount,
+        discountValue: Math.round(discountValue),
+        minOrder: Math.round(minOrder),
+        maxDiscount: maxDiscount ? Math.round(maxDiscount) : undefined,
+        startDate: startDate ? new Date(startDate) : undefined,
+        endDate: endDate ? new Date(endDate) : undefined,
+        usageLimit: usageLimit ? Math.round(usageLimit) : undefined,
       });
       router.push("/admin/promos");
     } catch (error) {
@@ -105,6 +111,46 @@ export default function NewPromo() {
                 className="bg-surface-low rounded-xl px-4 py-4 text-sm focus:ring-2 focus:ring-gold-warm outline-none border-none"
                 disabled={discountType === 'FIXED'}
               />
+            </div>
+          </div>
+
+          <div className="border-t border-outline-ghost pt-6 mt-2">
+            <h3 className="text-sm font-bold text-navy-deep mb-4 flex items-center gap-2">
+              <i className="ri-settings-4-line text-gold-warm"></i>
+              Batas Validitas & Kuota
+            </h3>
+            
+            <div className="grid grid-cols-2 gap-6 mb-6">
+              <div className="flex flex-col gap-2">
+                <label className="text-xs font-bold text-navy-deep uppercase tracking-widest">Tanggal Mulai</label>
+                <input 
+                  type="date" 
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="bg-surface-low rounded-xl px-4 py-4 text-sm focus:ring-2 focus:ring-gold-warm outline-none border-none"
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <label className="text-xs font-bold text-navy-deep uppercase tracking-widest">Tanggal Berakhir</label>
+                <input 
+                  type="date" 
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="bg-surface-low rounded-xl px-4 py-4 text-sm focus:ring-2 focus:ring-gold-warm outline-none border-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <label className="text-xs font-bold text-navy-deep uppercase tracking-widest">Kuota Pemakaian</label>
+              <input 
+                type="number" 
+                value={usageLimit || ''}
+                onChange={(e) => setUsageLimit(e.target.value ? Number(e.target.value) : undefined)}
+                placeholder="Kosongkan jika tidak ada batas"
+                className="bg-surface-low rounded-xl px-4 py-4 text-sm focus:ring-2 focus:ring-gold-warm outline-none border-none"
+              />
+              <p className="text-[10px] text-foreground/40 italic">Promo akan otomatis mati jika kuota habis.</p>
             </div>
           </div>
         </div>

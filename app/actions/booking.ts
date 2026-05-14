@@ -12,69 +12,126 @@ function getJakartaDate(dateStr?: string, hour = 0, minute = 0, second = 0) {
   return jktDate;
 }
 
-export async function getSchedules(origin: string, destination: string, date: string) {
-  // Current time in Jakarta
-  const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Jakarta" }));
-  
+export async function getSchedules(
+  origin: string, 
+  destination: string, 
+  date: string, 
+  options?: {
+    timeFilter?: string[];
+    sortBy?: string;
+    page?: number;
+    pageSize?: number;
+  }
+) {
+  const page = options?.page || 1;
+  const pageSize = options?.pageSize || 10;
+  const skip = (page - 1) * pageSize;
+
   // Create start/end of day in Jakarta timezone context
   const startOfDay = new Date(`${date}T00:00:00+07:00`);
   const endOfDay = new Date(`${date}T23:59:59+07:00`);
 
-  // We want schedules that haven't departed yet.
-  const absoluteNow = new Date(); // Actual current time
+  const absoluteNow = new Date(); 
   const effectiveGte = startOfDay > absoluteNow ? startOfDay : absoluteNow;
 
   if (effectiveGte > endOfDay) {
-    return [];
+    return { data: [], total: 0 };
   }
 
-  const schedules = await prisma.schedule.findMany({
-    where: {
-      route: {
-        origin: { contains: origin, mode: 'insensitive' },
-        destination: { contains: destination, mode: 'insensitive' },
+  // Time filter logic
+  let timeQuery = {};
+  if (options?.timeFilter && options.timeFilter.length > 0) {
+    const orConditions = options.timeFilter.map(time => {
+      if (time === 'pagi') return { departureTime: { gte: new Date(`${date}T05:00:00+07:00`), lte: new Date(`${date}T10:59:59+07:00`) } };
+      if (time === 'siang') return { departureTime: { gte: new Date(`${date}T11:00:00+07:00`), lte: new Date(`${date}T14:59:59+07:00`) } };
+      if (time === 'sore') return { departureTime: { gte: new Date(`${date}T15:00:00+07:00`), lte: new Date(`${date}T18:59:59+07:00`) } };
+      if (time === 'malam') return { departureTime: { gte: new Date(`${date}T19:00:00+07:00`), lte: new Date(`${date}T23:59:59+07:00`) } };
+      return {};
+    });
+    timeQuery = { OR: orConditions };
+  }
+
+  // Sort logic
+  let orderBy: any = { departureTime: 'asc' };
+  if (options?.sortBy === 'price_asc') orderBy = { price: 'asc' };
+  if (options?.sortBy === 'price_desc') orderBy = { price: 'desc' };
+  if (options?.sortBy === 'time_desc') orderBy = { departureTime: 'desc' };
+
+  const [schedules, total] = await Promise.all([
+    prisma.schedule.findMany({
+      where: {
+        AND: [
+          {
+            route: {
+              origin: { contains: origin, mode: 'insensitive' },
+              destination: { contains: destination, mode: 'insensitive' },
+              isDeleted: false,
+            },
+          },
+          {
+            departureTime: {
+              gte: effectiveGte,
+              lte: endOfDay,
+            },
+          },
+          timeQuery,
+        ],
+        isActive: true,
         isDeleted: false,
       },
-      departureTime: {
-        gte: effectiveGte,
-        lte: endOfDay,
-      },
-      isActive: true,
-      isDeleted: false,
-    },
-    include: {
-      route: {
-        include: {
-          stops: {
-            orderBy: {
-              sequence: 'asc'
-            }
+      include: {
+        route: {
+          include: {
+            stops: { orderBy: { sequence: 'asc' } }
           }
-        }
-      },
-      operatingTrip: {
-        include: {
-          _count: {
-            select: {
-              seats: {
-                where: { status: 'AVAILABLE' }
+        },
+        operatingTrip: {
+          include: {
+            _count: {
+              select: {
+                seats: { where: { status: 'AVAILABLE' } }
               }
             }
           }
         }
+      },
+      orderBy,
+      skip,
+      take: pageSize,
+    }),
+    prisma.schedule.count({
+      where: {
+        AND: [
+          {
+            route: {
+              origin: { contains: origin, mode: 'insensitive' },
+              destination: { contains: destination, mode: 'insensitive' },
+              isDeleted: false,
+            },
+          },
+          {
+            departureTime: {
+              gte: effectiveGte,
+              lte: endOfDay,
+            },
+          },
+          timeQuery,
+        ],
+        isActive: true,
+        isDeleted: false,
       }
-    },
-    orderBy: {
-      departureTime: 'asc',
-    },
-  });
+    })
+  ]);
 
-  return schedules.map((s: any) => ({
-    ...s,
-    _count: {
-      seats: s.operatingTrip?._count?.seats || 0
-    }
-  }));
+  return {
+    data: schedules.map((s: any) => ({
+      ...s,
+      _count: {
+        seats: s.operatingTrip?._count?.seats || 0
+      }
+    })),
+    total
+  };
 }
 
 export async function getScheduleById(id: string) {
@@ -111,9 +168,24 @@ export async function updatePaymentMethod(bookingCode: string, paymentMethod: st
 export async function validatePromoCode(code: string, totalAmount: number) {
   const promo = await prisma.promoCode.findUnique({
     where: { code: code.toUpperCase(), isActive: true }
-  });
+  }) as any;
 
   if (!promo) return { valid: false, message: "Kode promo tidak ditemukan", discount: 0 };
+
+  // Check Dates
+  const now = new Date();
+  if (promo.startDate && new Date(promo.startDate) > now) {
+    return { valid: false, message: "Promo belum dimulai", discount: 0 };
+  }
+  if (promo.endDate && new Date(promo.endDate) < now) {
+    return { valid: false, message: "Promo sudah kedaluwarsa", discount: 0 };
+  }
+
+  // Check Quota
+  if (promo.usageLimit && promo.usedCount >= promo.usageLimit) {
+    return { valid: false, message: "Kuota promo sudah habis", discount: 0 };
+  }
+
   if (totalAmount < promo.minOrder) return { valid: false, message: `Minimal pemesanan Rp ${promo.minOrder.toLocaleString('id-ID')}`, discount: 0 };
 
   let discount = 0;
@@ -206,14 +278,30 @@ export async function createBooking(data: {
       ));
     }
 
+    // 3. Increment Promo usedCount if applicable
+    if (data.promoCodeId) {
+      await tx.promoCode.update({
+        where: { id: data.promoCodeId },
+        data: { usedCount: { increment: 1 } }
+      });
+    }
+
     return booking;
   });
 }
 
 async function validatePromoCodeById(id: string, totalAmount: number) {
-  const promo = await prisma.promoCode.findUnique({ where: { id, isActive: true } });
+  const promo = await prisma.promoCode.findUnique({ where: { id, isActive: true } }) as any;
   if (!promo) return { valid: false, discount: 0 };
   
+  // Check Dates
+  const now = new Date();
+  if (promo.startDate && new Date(promo.startDate) > now) return { valid: false, discount: 0 };
+  if (promo.endDate && new Date(promo.endDate) < now) return { valid: false, discount: 0 };
+
+  // Check Quota
+  if (promo.usageLimit && promo.usedCount >= promo.usageLimit) return { valid: false, discount: 0 };
+
   let discount = 0;
   if (promo.discountType === 'FIXED') {
     discount = promo.discountValue;

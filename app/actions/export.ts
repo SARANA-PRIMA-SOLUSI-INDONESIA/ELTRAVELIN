@@ -16,17 +16,20 @@ export async function exportBookingsToExcel() {
   });
 
   const data = bookings.map(b => ({
+    "Tgl Pesan": new Date(b.createdAt).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: '2-digit' }),
     "Kode Booking": b.bookingCode,
-    "Nama Kontak": b.contactName,
-    "WhatsApp": b.contactPhone,
-    "Email": b.contactEmail,
-    "Rute": `${b.schedule.route.origin} -> ${b.schedule.route.destination}`,
-    "Keberangkatan": new Date(b.schedule.departureTime).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' }),
-    "Kursi": b.seats.map(s => s.seatNumber).join(", "),
+    "Pemesan": b.contactName,
+    "Telepon": b.contactPhone,
+    "Email": b.contactEmail || '-',
+    "Penumpang": b.passengers?.map((p: any) => p.name).join(', ') || '-',
+    "Kursi": b.seats?.length > 0 ? b.seats.map((s: any) => s.seatNumber).sort((a: any, b: any) => a - b).join(', ') : '-',
+    "Jam Berangkat": new Date(b.schedule.departureTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' }),
+    "Tgl Berangkat": new Date(b.schedule.departureTime).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }),
+    "Asal": b.schedule.route.origin,
+    "Tujuan": b.schedule.route.destination,
     "Total Bayar": b.totalPrice,
     "Status": b.status,
-    "Metode Pembayaran": b.paymentMethod,
-    "Waktu Pesan": new Date(b.createdAt).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' }),
+    "Metode": b.paymentMethod || 'UNSET',
   }));
 
   const worksheet = XLSX.utils.json_to_sheet(data);

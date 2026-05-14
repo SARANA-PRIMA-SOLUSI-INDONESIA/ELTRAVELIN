@@ -9,13 +9,20 @@ export async function createPromo(data: {
   discountValue: number;
   minOrder: number;
   maxDiscount?: number;
+  startDate?: Date;
+  endDate?: Date;
+  usageLimit?: number;
 }) {
   const promo = await prisma.promoCode.create({
     data: {
       ...data,
+      discountValue: Math.round(data.discountValue),
+      minOrder: Math.round(data.minOrder),
+      maxDiscount: data.maxDiscount ? Math.round(data.maxDiscount) : undefined,
+      usageLimit: data.usageLimit ? Math.round(data.usageLimit) : undefined,
       code: data.code.toUpperCase(),
-      isActive: true
-    }
+      isActive: true,
+    } as any
   });
   revalidatePath("/admin/promos");
   return promo;

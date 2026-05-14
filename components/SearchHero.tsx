@@ -107,6 +107,7 @@ export default function SearchHero({ routes = [] }: { routes: any[] }) {
             src="/hero-luxury.png"
             alt="Luxury Bus Interior"
             fill
+            sizes="(max-width: 1024px) 100vw, 60vw"
             className="object-cover object-left rounded-l-[100px] lg:rounded-l-[200px]"
             priority
           />

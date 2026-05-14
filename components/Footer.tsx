@@ -7,12 +7,13 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between gap-12">
         <div className="max-w-sm">
           <Link href="/" className="flex items-center gap-2 mb-6">
-            <div className="relative w-56 h-10 overflow-hidden">
-              <Image 
-                src="/images/logo eltravel.png" 
-                alt="EL Travel Logo" 
-                fill 
-                className="object-contain object-left scale-[1.8]"
+            <div className="relative w-48 h-12">
+              <Image
+                src="/images/logo.png"
+                alt="EL Travel Logo"
+                fill
+                sizes="192px"
+                className="object-contain object-left"
               />
             </div>
           </Link>
@@ -57,7 +58,7 @@ export default function Footer() {
           </div>
         </div>
       </div>
-      
+
       <div className="max-w-7xl mx-auto mt-20 flex flex-wrap gap-x-8 gap-y-4 text-xs text-foreground/40 font-body">
         <Link href="#" className="hover:text-foreground/60">Syarat & Ketentuan</Link>
         <Link href="#" className="hover:text-foreground/60">Kebijakan Privasi</Link>

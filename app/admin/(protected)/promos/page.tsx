@@ -32,9 +32,22 @@ export default async function AdminPromos() {
           promos.map((promo: any) => (
             <div key={promo.id} className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-transparent hover:border-gold-soft transition-all flex flex-col gap-6 group">
               <div className="flex justify-between items-start">
-                <div className="flex flex-col">
+                <div className="flex flex-col gap-1">
                   <span className="text-2xl font-display font-bold text-navy-deep tracking-wider">{promo.code}</span>
-                  <span className="text-[10px] font-bold text-foreground/40 uppercase tracking-widest">Kode Promo</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold text-foreground/40 uppercase tracking-widest">Kode Promo</span>
+                    {/* Status Badge */}
+                    {(() => {
+                      const now = new Date();
+                      const isExpired = promo.endDate && new Date(promo.endDate) < now;
+                      const isFull = promo.usageLimit && promo.usedCount >= promo.usageLimit;
+                      
+                      if (!promo.isActive) return <span className="text-[9px] bg-foreground/10 text-foreground/60 px-2 py-0.5 rounded-full">MATI</span>;
+                      if (isExpired) return <span className="text-[9px] bg-red-500/10 text-red-600 px-2 py-0.5 rounded-full">KEDALUWARSA</span>;
+                      if (isFull) return <span className="text-[9px] bg-orange-500/10 text-orange-600 px-2 py-0.5 rounded-full">KUOTA HABIS</span>;
+                      return <span className="text-[9px] bg-green-500/10 text-green-600 px-2 py-0.5 rounded-full">AKTIF</span>;
+                    })()}
+                  </div>
                 </div>
                 <div className="flex gap-2">
                    <PromoToggle id={promo.id} initialStatus={promo.isActive} />
@@ -50,15 +63,23 @@ export default async function AdminPromos() {
                     </span>
                  </div>
                  <div className="flex justify-between text-sm">
+                    <span className="text-foreground/60">Kuota</span>
+                    <span className="font-bold text-navy-deep">
+                       {promo.usageLimit ? `${promo.usedCount} / ${promo.usageLimit}` : '∞ (Tak Terbatas)'}
+                    </span>
+                 </div>
+                 {promo.startDate && (
+                   <div className="flex justify-between text-sm">
+                      <span className="text-foreground/60">Masa Berlaku</span>
+                      <span className="font-bold text-navy-deep text-[11px]">
+                         {new Date(promo.startDate).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })} - {promo.endDate ? new Date(promo.endDate).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: '2-digit' }) : '∞'}
+                      </span>
+                   </div>
+                 )}
+                 <div className="flex justify-between text-sm">
                     <span className="text-foreground/60">Min. Order</span>
                     <span className="font-bold text-navy-deep">Rp {promo.minOrder.toLocaleString('id-ID')}</span>
                  </div>
-                 {promo.maxDiscount && (
-                   <div className="flex justify-between text-sm">
-                      <span className="text-foreground/60">Maks. Diskon</span>
-                      <span className="font-bold text-navy-deep">Rp {promo.maxDiscount.toLocaleString('id-ID')}</span>
-                   </div>
-                 )}
               </div>
 
               <div className="pt-4 border-t border-outline-ghost flex justify-between items-center text-[10px] font-bold text-foreground/40 uppercase tracking-widest">

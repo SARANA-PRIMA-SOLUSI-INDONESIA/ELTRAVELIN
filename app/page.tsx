@@ -1,7 +1,7 @@
 import Image from "next/image";
 import SearchHero from "@/components/SearchHero";
 import PromoBanner from "@/components/PromoBanner";
-import RouteCard from "@/components/RouteCard";
+import RouteSlider from "@/components/RouteSlider";
 import { prisma } from "@/lib/prisma";
 
 export default async function Home() {
@@ -65,13 +65,7 @@ export default async function Home() {
             </button>
           </div>
 
-          <div className="flex gap-8 overflow-x-auto pb-12 snap-x no-scrollbar -mx-4 px-4 md:mx-0 md:px-0">
-            {displayRoutes.map((route: any, i: number) => (
-              <div key={i} className="w-[320px] md:w-[400px] flex-shrink-0 snap-start">
-                <RouteCard {...route} />
-              </div>
-            ))}
-          </div>
+          <RouteSlider routes={displayRoutes} />
         </div>
       </section>
 
@@ -95,7 +89,13 @@ export default async function Home() {
             ].map((f: any, i: number) => (
               <div key={i} className="flex flex-col items-center gap-6 group">
                 <div className="w-full aspect-square relative pebble-mask shadow-ambient">
-                  <Image src={f.img} alt={f.title} fill className="object-cover transition-transform duration-500 group-hover:scale-110" />
+                  <Image 
+                    src={f.img} 
+                    alt={f.title} 
+                    fill 
+                    sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 16vw"
+                    className="object-cover transition-transform duration-500 group-hover:scale-110" 
+                  />
                 </div>
                 <div className="flex flex-col gap-1">
                   <h3 className="font-display font-bold text-navy-deep text-sm tracking-tight">{f.title}</h3>
@@ -120,7 +120,13 @@ export default async function Home() {
             ].map((fleet: any, i: number) => (
               <div key={i} className={`flex flex-col ${fleet.reverse ? 'lg:flex-row-reverse' : 'lg:flex-row'} items-center gap-8 md:gap-12 lg:gap-24`}>
                 <div className="w-full lg:w-3/5 relative aspect-video overflow-hidden rounded-3xl md:rounded-[3rem] shadow-ambient">
-                  <Image src={fleet.img} alt={fleet.name} fill className="object-cover" />
+                  <Image 
+                    src={fleet.img} 
+                    alt={fleet.name} 
+                    fill 
+                    sizes="(max-width: 1024px) 100vw, 60vw"
+                    className="object-cover" 
+                  />
                 </div>
                 <div className="w-full lg:w-2/5 flex flex-col gap-6">
                   <div className="flex flex-col gap-2">
