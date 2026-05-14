@@ -39,36 +39,23 @@ export async function updateBanner(formData: FormData) {
   }
 
   // Update or Create in DB
-  if (id) {
+  if (id && id !== "undefined" && id !== "") {
     await prisma.banner.update({
       where: { id },
       data: {
         imageUrl,
         isActive,
-        title: "Promo Banner", // Default values
-        subtitle: "",
-        promoCode: "",
+        title: "Promo Banner",
       },
     });
   } else {
-    const existing = await prisma.banner.findFirst();
-    if (existing) {
-      await prisma.banner.update({
-        where: { id: existing.id },
-        data: {
-          imageUrl,
-          isActive,
-        },
-      });
-    } else {
-      await prisma.banner.create({
-        data: {
-          title: "Promo Banner",
-          imageUrl,
-          isActive,
-        },
-      });
-    }
+    await prisma.banner.create({
+      data: {
+        title: "Promo Banner",
+        imageUrl,
+        isActive,
+      },
+    });
   }
 
   revalidatePath("/");

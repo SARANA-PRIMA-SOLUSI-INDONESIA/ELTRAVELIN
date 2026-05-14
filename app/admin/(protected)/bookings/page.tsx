@@ -65,8 +65,14 @@ export default async function AdminBookings() {
                     </td>
                     <td className="px-8 py-6">
                       <div className="flex flex-col">
-                        <span className="text-sm font-bold text-navy-deep">{b.contactName}</span>
-                        <span className="text-[10px] text-foreground/40 font-bold uppercase">{b.contactPhone}</span>
+                        <span className="text-sm font-bold text-navy-deep">
+                          {b.passengers && b.passengers.length > 0 
+                            ? b.passengers.map((p: any) => p.name).join(', ') 
+                            : b.contactName}
+                        </span>
+                        <span className="text-[10px] text-foreground/40 font-bold uppercase">
+                          {b.contactPhone} {b.contactName !== (b.passengers?.[0]?.name) && `(By: ${b.contactName})`}
+                        </span>
                       </div>
                     </td>
                     <td className="px-8 py-6">

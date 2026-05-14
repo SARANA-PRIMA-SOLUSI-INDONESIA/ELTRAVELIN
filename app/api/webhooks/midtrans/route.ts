@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { prisma } from '@/lib/prisma';
+import { sendBookingSuccessMessage } from '@/lib/whatsapp';
 
 export async function POST(req: Request) {
   try {
@@ -37,14 +38,26 @@ export async function POST(req: Request) {
       bookingStatus = 'PENDING';
     }
 
-    await prisma.booking.update({
+    const updatedBooking = await prisma.booking.update({
       where: { bookingCode: order_id },
       data: { 
         status: bookingStatus,
         paymentType: payment_type,
         settlementTime: (transaction_status === 'settlement' || transaction_status === 'capture') ? new Date() : null
+      },
+      include: {
+        schedule: {
+          include: {
+            route: true
+          }
+        },
+        seats: true
       }
     });
+
+    if (bookingStatus === 'CONFIRMED') {
+      sendBookingSuccessMessage(updatedBooking).catch(err => console.error("Error sending Midtrans WA success:", err));
+    }
 
     console.log(`Booking ${order_id} updated to ${bookingStatus}`);
 

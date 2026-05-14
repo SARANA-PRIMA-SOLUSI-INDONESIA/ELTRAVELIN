@@ -1,10 +1,9 @@
 @import "tailwindcss";
 
 :root {
-  /* Colors - The Executive Transit Experience */
   --background: #fbf8fa;
   --foreground: #1b1b1d;
-  
+
   --surface-low: #f5f3f5;
   --surface-medium: #f0edef;
   --surface-high: #eae7e9;
@@ -14,10 +13,10 @@
   --navy-deep: #0A1628;
   --navy-light: #101c2e;
   --navy-accent: #3c475b;
-  
+
   --gold-warm: #F5A623;
   --gold-soft: #ffddb4;
-  
+
   --error: #ba1a1a;
   --outline-ghost: rgba(197, 198, 205, 0.2);
 
@@ -29,7 +28,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  
+
   --color-surface-low: var(--surface-low);
   --color-surface-medium: var(--surface-medium);
   --color-surface-high: var(--surface-high);
@@ -39,14 +38,14 @@
   --color-navy-deep: var(--navy-deep);
   --color-navy-light: var(--navy-light);
   --color-navy-accent: var(--navy-accent);
-  
+
   --color-gold-warm: var(--gold-warm);
   --color-gold-soft: var(--gold-soft);
-  
+
   /* Typography */
   --font-display: var(--font-manrope);
   --font-body: var(--font-inter);
-  
+
   /* Shadows */
   --shadow-ambient: 0 12px 32px rgba(16, 28, 46, 0.08);
 
@@ -63,7 +62,11 @@ body {
 }
 
 /* Typography Scale */
-h1, h2, h3, h4, .font-display {
+h1,
+h2,
+h3,
+h4,
+.font-display {
   font-family: var(--font-manrope), sans-serif;
   letter-spacing: -0.02em;
 }
@@ -94,8 +97,15 @@ h1, h2, h3, h4, .font-display {
 }
 
 @keyframes fade-in {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .animate-fade-in {
@@ -107,3 +117,11 @@ h1, h2, h3, h4, .font-display {
   overflow: hidden;
 }
 
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

@@ -5,8 +5,9 @@ import RouteCard from "@/components/RouteCard";
 import { prisma } from "@/lib/prisma";
 
 export default async function Home() {
-  const banner = await prisma.banner.findFirst({
-    where: { isActive: true }
+  const banners = await prisma.banner.findMany({
+    where: { isActive: true },
+    take: 3
   });
 
   const availableRoutes = await prisma.route.findMany({
@@ -41,8 +42,8 @@ export default async function Home() {
       {/* Hero Section */}
       <SearchHero routes={availableRoutes} />
 
-      {/* Promo Banner */}
-      <PromoBanner data={banner} />
+      {/* Promo Banner Slider */}
+      <PromoBanner banners={banners} />
 
 
       {/* Popular Routes Section */}
@@ -64,9 +65,11 @@ export default async function Home() {
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="flex gap-8 overflow-x-auto pb-12 snap-x no-scrollbar -mx-4 px-4 md:mx-0 md:px-0">
             {displayRoutes.map((route: any, i: number) => (
-              <RouteCard key={i} {...route} />
+              <div key={i} className="w-[320px] md:w-[400px] flex-shrink-0 snap-start">
+                <RouteCard {...route} />
+              </div>
             ))}
           </div>
         </div>

@@ -2,7 +2,6 @@ export async function sendWhatsAppMessage(to: string, message: string) {
   const apiKey = process.env.STARSENDER_API_KEY;
 
   if (!apiKey) {
-    console.error("STARSENDER_API_KEY is not set in environment variables.");
     return { success: false, message: "API Key tidak terbaca." };
   }
 
@@ -34,4 +33,22 @@ export async function sendWhatsAppMessage(to: string, message: string) {
     console.error("Failed to send WhatsApp message:", error);
     throw error;
   }
+}
+
+export async function sendBookingSuccessMessage(booking: any) {
+  const message = `*PEMESANAN BERHASIL!* 🎉
+
+Halo ${booking.contactName}, pembayaran Anda telah kami terima. Berikut adalah detail tiket Anda:
+
+🎫 *Kode Booking:* ${booking.bookingCode}
+📍 *Rute:* ${booking.schedule.route.origin} → ${booking.schedule.route.destination}
+⏰ *Keberangkatan:* ${new Date(booking.schedule.departureTime).toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'short', timeZone: 'Asia/Jakarta' })}
+💺 *Nomor Kursi:* ${booking.seats.map((s: any) => s.seatNumber).join(', ')}
+
+Lihat E-Ticket lengkap Anda di sini:
+${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/confirmation?code=${booking.bookingCode}
+
+Mohon hadir 30 menit sebelum keberangkatan. Terima kasih telah memilih EL Travel!`;
+
+  return sendWhatsAppMessage(booking.contactPhone, message);
 }

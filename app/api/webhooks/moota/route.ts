@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { sendETicket } from "@/lib/mail";
+import { sendBookingSuccessMessage } from "@/lib/whatsapp";
 
 export async function POST(request: Request) {
   try {
@@ -79,8 +80,9 @@ export async function POST(request: Request) {
           }
         });
 
-        // Send E-Ticket asynchronously
+        // Send E-Ticket & WhatsApp notification asynchronously
         sendETicket(updatedBooking).catch(err => console.error("Error sending E-ticket:", err));
+        sendBookingSuccessMessage(updatedBooking).catch(err => console.error("Error sending WA success:", err));
 
         console.log(`Booking ${booking.bookingCode} has been automatically confirmed and E-Ticket sent.`);
       } else {
