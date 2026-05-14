@@ -18,6 +18,13 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "EL Travel | The Executive Transit Experience",
   description: "Experience premium travel with EL Travel. VIP concierge service, modern fleet, and door-to-door convenience.",
+  manifest: "/manifest.webmanifest",
+  themeColor: "#0A1628",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "EL Travel",
+  },
 };
 
 export default function RootLayout({
