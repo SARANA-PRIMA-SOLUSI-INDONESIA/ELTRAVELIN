@@ -10,7 +10,7 @@ export async function updateBanner(formData: FormData) {
     const isActive = formData.get("isActive") === "true";
     const file = formData.get("imageFile") as File | null;
     let imageUrl = formData.get("imageUrl") as string;
-    const token = process.env.BLOB_EL_TRAVELIN_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN;
+    const token = process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_EL_TRAVELIN_READ_WRITE_TOKEN;
 
     if (file && file.size > 0) {
       try {
