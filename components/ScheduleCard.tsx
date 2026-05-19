@@ -41,26 +41,53 @@ export default function ScheduleCard({ schedule, fromName, toName }: ScheduleCar
   const departureDate = new Date(schedule.departureTime);
   const arrivalDate = new Date(schedule.arrivalTime);
 
-  // Helper to parse "+20 Menit" or "+1.5 Jam" and format absolute stop time
+  // Helper to parse "+20 Menit" or "+1.5 Jam" or absolute "10:30" / "10.30" and format absolute stop time
   const getStopAbsoluteTime = (offsetStr?: string | null) => {
     if (!offsetStr) return departureDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' });
-    const dateCopy = new Date(departureDate);
     
+    // Check if it's already an absolute time format (e.g. HH:mm or HH.mm)
+    const timeMatch = offsetStr.trim().match(/^(\d{1,2})[:.](\d{2})$/);
+    if (timeMatch) {
+      const hours = timeMatch[1].padStart(2, '0');
+      const minutes = timeMatch[2];
+      return `${hours}.${minutes}`;
+    }
+
+    const dateCopy = new Date(departureDate);
     const cleanStr = offsetStr.toLowerCase().replace('+', '').trim();
     if (cleanStr.includes('menit')) {
       const mins = parseInt(cleanStr);
       if (!isNaN(mins)) dateCopy.setMinutes(dateCopy.getMinutes() + mins);
+      return dateCopy.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' });
     } else if (cleanStr.includes('jam')) {
       const hours = parseFloat(cleanStr);
       if (!isNaN(hours)) dateCopy.setMinutes(dateCopy.getMinutes() + Math.round(hours * 60));
+      return dateCopy.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' });
     }
     
-    return dateCopy.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' });
+    return offsetStr;
   };
 
   const getStopAbsoluteDate = (offsetStr?: string | null) => {
     const dateCopy = new Date(departureDate);
     if (offsetStr) {
+      // Check absolute time format
+      const timeMatch = offsetStr.trim().match(/^(\d{1,2})[:.](\d{2})$/);
+      if (timeMatch) {
+        const stopHour = parseInt(timeMatch[1]);
+        const stopMin = parseInt(timeMatch[2]);
+        
+        // Extract departure time in WIB timezone
+        const depWIBStr = departureDate.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' });
+        const [depHour, depMin] = depWIBStr.split(':').map(Number);
+        
+        // If the stop time is earlier than departure time, it's highly likely the next day
+        if (stopHour < depHour || (stopHour === depHour && stopMin < depMin)) {
+          dateCopy.setDate(dateCopy.getDate() + 1);
+        }
+        return dateCopy.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' }).toUpperCase();
+      }
+
       const cleanStr = offsetStr.toLowerCase().replace('+', '').trim();
       if (cleanStr.includes('menit')) {
         const mins = parseInt(cleanStr);
