@@ -83,6 +83,12 @@ export async function GET(request: Request) {
           nextLevel = 1;
           message = `Halo ${booking.contactName}, diingatkan kembali untuk pembayaran booking ${booking.bookingCode} di Pool dalam 40 menit ke depan.`;
         }
+      } else if (method === 'UNSET' || !method) {
+        // UNSET/Abandoned: Cancel after 15 minutes
+        if (minutesElapsed >= 15) {
+          shouldCancel = true;
+          message = `Mohon maaf, pesanan Anda dengan kode ${booking.bookingCode} telah dibatalkan secara otomatis karena belum menyelesaikan pemilihan metode pembayaran. Silakan lakukan pemesanan kembali.`;
+        }
       }
 
       if (shouldCancel) {

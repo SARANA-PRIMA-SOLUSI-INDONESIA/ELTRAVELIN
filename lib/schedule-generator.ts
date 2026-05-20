@@ -31,22 +31,25 @@ export async function syncSchedulesFromTemplates(prismaInstance: PrismaClient, d
     for (const template of templates) {
       const [hours, minutes] = template.departureTime.split(":").map(Number);
       
-      // Create departure in Jakarta time
-      const departure = new Date(targetDate);
-      departure.setHours(hours, minutes, 0, 0);
-      
       // Ensure we are working with the correct absolute time for WIB
-      // We can use a helper or string manipulation to force offset
-      const isoStr = departure.toISOString().split('T')[0];
-      const departureWIB = new Date(`${isoStr}T${template.departureTime}:00+07:00`);
+      const year = targetDate.getFullYear();
+      const month = String(targetDate.getMonth() + 1).padStart(2, '0');
+      const day = String(targetDate.getDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${day}`;
 
-      const arrival = new Date(departureWIB);
-      const [arrHours, arrMins] = template.arrivalTime.split(":").map(Number);
-      arrival.setHours(arrHours, arrMins, 0, 0);
+      const departureWIB = new Date(`${dateStr}T${template.departureTime}:00+07:00`);
+
+      let arrival = new Date(`${dateStr}T${template.arrivalTime}:00+07:00`);
 
       // If arrival time is earlier than departure time, it means it arrives the next day
       if (arrival.getTime() < departureWIB.getTime()) {
-        arrival.setDate(arrival.getDate() + 1);
+        const nextDate = new Date(targetDate);
+        nextDate.setDate(targetDate.getDate() + 1);
+        const nextYear = nextDate.getFullYear();
+        const nextMonth = String(nextDate.getMonth() + 1).padStart(2, '0');
+        const nextDay = String(nextDate.getDate()).padStart(2, '0');
+        const nextDateStr = `${nextYear}-${nextMonth}-${nextDay}`;
+        arrival = new Date(`${nextDateStr}T${template.arrivalTime}:00+07:00`);
       }
 
       // 1. Check if Schedule already exists

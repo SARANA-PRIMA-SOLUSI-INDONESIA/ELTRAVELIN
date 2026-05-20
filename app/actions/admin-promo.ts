@@ -12,6 +12,7 @@ export async function createPromo(data: {
   startDate?: Date;
   endDate?: Date;
   usageLimit?: number;
+  showOnCheckout?: boolean;
 }) {
   const promo = await prisma.promoCode.create({
     data: {
@@ -22,6 +23,7 @@ export async function createPromo(data: {
       usageLimit: data.usageLimit ? Math.round(data.usageLimit) : undefined,
       code: data.code.toUpperCase(),
       isActive: true,
+      showOnCheckout: data.showOnCheckout || false,
     } as any
   });
   revalidatePath("/admin/promos");
@@ -32,6 +34,14 @@ export async function updatePromoStatus(id: string, isActive: boolean) {
   await prisma.promoCode.update({
     where: { id },
     data: { isActive }
+  });
+  revalidatePath("/admin/promos");
+}
+
+export async function updatePromoShowStatus(id: string, showOnCheckout: boolean) {
+  await prisma.promoCode.update({
+    where: { id },
+    data: { showOnCheckout }
   });
   revalidatePath("/admin/promos");
 }

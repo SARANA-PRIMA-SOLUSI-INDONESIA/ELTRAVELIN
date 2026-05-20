@@ -37,12 +37,17 @@ export default function BannerForm({ initialData }: { initialData: any }) {
         formData.append("imageFile", selectedFile);
       }
 
-      await updateBanner(formData);
-      router.refresh();
-      alert("Banner berhasil diperbarui!");
-    } catch (error) {
+      const res = await updateBanner(formData);
+      if (res && !res.success) {
+        console.error("Update banner error:", res.error);
+        alert(`Gagal memperbarui banner: ${res.error}`);
+      } else {
+        router.refresh();
+        alert("Banner berhasil diperbarui!");
+      }
+    } catch (error: any) {
       console.error(error);
-      alert("Gagal memperbarui banner.");
+      alert(`Gagal memperbarui banner: ${error.message || error}`);
     } finally {
       setLoading(false);
     }

@@ -1,4 +1,4 @@
-import { getScheduleById } from "@/app/actions/booking";
+import { getScheduleById, getCheckoutPromos } from "@/app/actions/booking";
 import CheckoutForm from "@/components/CheckoutForm";
 import { notFound, redirect } from "next/navigation";
 import BookingWizard from "@/components/BookingWizard";
@@ -16,7 +16,11 @@ export default async function Checkout({ searchParams }: CheckoutProps) {
   if (!scheduleId || !seatsParam) return notFound();
 
   const seatNumbers = seatsParam.split(',');
-  const schedule = await getScheduleById(scheduleId);
+  const [schedule, availablePromos] = await Promise.all([
+    getScheduleById(scheduleId),
+    getCheckoutPromos()
+  ]);
+
   if (!schedule) return notFound();
 
   // Redirect if schedule has already departed
@@ -59,6 +63,7 @@ export default async function Checkout({ searchParams }: CheckoutProps) {
           basePrice={schedule.price} 
           vehicleType={schedule.vehicleType}
           departureTime={schedule.departureTime}
+          availablePromos={availablePromos}
         />
       </div>
     </div>
