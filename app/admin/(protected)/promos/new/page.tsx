@@ -16,6 +16,7 @@ export default function NewPromo() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [usageLimit, setUsageLimit] = useState<number | undefined>(undefined);
+  const [showOnCheckout, setShowOnCheckout] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,6 +33,7 @@ export default function NewPromo() {
         startDate: startDate ? new Date(startDate) : undefined,
         endDate: endDate ? new Date(endDate) : undefined,
         usageLimit: usageLimit ? Math.round(usageLimit) : undefined,
+        showOnCheckout,
       });
       router.push("/admin/promos");
     } catch (error) {
@@ -151,6 +153,24 @@ export default function NewPromo() {
                 className="bg-surface-low rounded-xl px-4 py-4 text-sm focus:ring-2 focus:ring-gold-warm outline-none border-none"
               />
               <p className="text-[10px] text-foreground/40 italic">Promo akan otomatis mati jika kuota habis.</p>
+            </div>
+
+            <div className="flex flex-col gap-2 border-t border-outline-ghost pt-6 mt-4">
+              <div className="flex items-center justify-between bg-surface-low rounded-xl px-6 py-4">
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs font-bold text-navy-deep uppercase tracking-widest">Tampilkan di Checkout</span>
+                  <span className="text-[10px] text-foreground/50">Pelanggan dapat melihat dan menyalin promo ini langsung dari halaman checkout</span>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer select-none">
+                  <input 
+                    type="checkbox" 
+                    checked={showOnCheckout} 
+                    onChange={(e) => setShowOnCheckout(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-foreground/20 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gold-warm"></div>
+                </label>
+              </div>
             </div>
           </div>
         </div>

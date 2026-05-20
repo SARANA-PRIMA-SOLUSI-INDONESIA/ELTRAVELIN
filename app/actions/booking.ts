@@ -398,3 +398,31 @@ export async function adminCreateBooking(data: {
     return booking;
   });
 }
+
+export async function getCheckoutPromos() {
+  const now = new Date();
+  const promos = await prisma.promoCode.findMany({
+    where: {
+      isActive: true,
+      showOnCheckout: true,
+      AND: [
+        {
+          OR: [
+            { startDate: null },
+            { startDate: { lte: now } }
+          ]
+        },
+        {
+          OR: [
+            { endDate: null },
+            { endDate: { gte: now } }
+          ]
+        }
+      ]
+    },
+    orderBy: { createdAt: 'desc' }
+  });
+
+  return promos.filter((p: any) => !p.usageLimit || p.usedCount < p.usageLimit);
+}
+

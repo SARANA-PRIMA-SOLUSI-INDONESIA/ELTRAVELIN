@@ -38,7 +38,7 @@ export default function PromoBanner({ banners }: { banners: any[] }) {
             className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar bg-surface-low"
           >
             {banners.map((banner, index) => (
-              <div key={banner.id || index} className="min-w-full h-[200px] md:h-[300px] relative snap-start">
+              <div key={banner.id || index} className="min-w-full h-[250px] md:h-[380px] lg:h-[420px] relative snap-start">
                 <Image
                   src={banner.imageUrl || "/promo-banner.png"}
                   alt={banner.title || "Promo Banner"}

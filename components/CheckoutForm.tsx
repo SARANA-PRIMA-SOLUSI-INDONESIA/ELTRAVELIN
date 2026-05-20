@@ -10,15 +10,17 @@ interface CheckoutFormProps {
   basePrice: number;
   vehicleType: string;
   departureTime: Date;
+  availablePromos?: any[];
 }
 
-export default function CheckoutForm({ scheduleId, seatNumbers, basePrice, vehicleType, departureTime }: CheckoutFormProps) {
+export default function CheckoutForm({ scheduleId, seatNumbers, basePrice, vehicleType, departureTime, availablePromos = [] }: CheckoutFormProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [promoLoading, setPromoLoading] = useState(false);
   const [promoInput, setPromoInput] = useState("");
   const [appliedPromo, setAppliedPromo] = useState<{ id: string; discount: number; code: string } | null>(null);
   const [promoError, setPromoError] = useState("");
+  const [copiedPromo, setCopiedPromo] = useState<string | null>(null);
 
   const [contactData, setContactData] = useState({
     name: "",
@@ -38,14 +40,18 @@ export default function CheckoutForm({ scheduleId, seatNumbers, basePrice, vehic
     setPassengerNames(newNames);
   };
 
-  const handleApplyPromo = async () => {
-    if (!promoInput) return;
+  const handleApplyPromo = async (codeOverride?: any) => {
+    const codeToApply = typeof codeOverride === 'string' ? codeOverride : promoInput;
+    if (!codeToApply) return;
+    
     setPromoLoading(true);
     setPromoError("");
     try {
-      const result = await validatePromoCode(promoInput, basePrice * seatNumbers.length);
+      const result = await validatePromoCode(codeToApply, basePrice * seatNumbers.length);
       if (result.valid) {
-        setAppliedPromo({ id: result.promoId!, discount: result.discount!, code: promoInput.toUpperCase() });
+        setAppliedPromo({ id: result.promoId!, discount: result.discount!, code: codeToApply.toUpperCase() });
+        setPromoInput(codeToApply.toUpperCase());
+        setPromoError("");
       } else {
         setPromoError(result.message || "Kode tidak valid");
         setAppliedPromo(null);
@@ -54,6 +60,19 @@ export default function CheckoutForm({ scheduleId, seatNumbers, basePrice, vehic
       setPromoError("Gagal memvalidasi kode");
     } finally {
       setPromoLoading(false);
+    }
+  };
+
+  const handlePromoClick = async (code: string) => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopiedPromo(code);
+      setTimeout(() => setCopiedPromo(null), 2000);
+      await handleApplyPromo(code);
+    } catch (err) {
+      console.error("Gagal menyalin kode ke clipboard: ", err);
+      // Auto-apply promo even if clipboard is unavailable
+      await handleApplyPromo(code);
     }
   };
 
@@ -157,6 +176,79 @@ export default function CheckoutForm({ scheduleId, seatNumbers, basePrice, vehic
             ))}
           </div>
         </div>
+
+        {/* Available Promos (Tickets) */}
+        {availablePromos.length > 0 && (
+          <div className="flex flex-col gap-4">
+            <span className="text-[10px] font-bold text-navy-deep uppercase tracking-widest px-2">Promo Spesial Untuk Anda</span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              {availablePromos.map((promo: any) => {
+                const isSelected = appliedPromo?.code === promo.code;
+                const isCopied = copiedPromo === promo.code;
+                
+                return (
+                  <button
+                    key={promo.id}
+                    type="button"
+                    onClick={() => handlePromoClick(promo.code)}
+                    className={`relative text-left flex flex-col justify-between overflow-hidden bg-white rounded-[1.5rem] p-6 cursor-pointer transition-all shadow-sm hover:shadow-md hover:scale-[1.02] active:scale-[0.98] border ${
+                      isSelected 
+                        ? "border-gold-warm bg-gradient-to-br from-gold-soft/10 to-gold-warm/5" 
+                        : "border-navy-deep/5"
+                    }`}
+                  >
+                    {/* Left & Right Ticket Notches */}
+                    <div className="absolute top-1/2 -left-3 w-6 h-6 rounded-full bg-[#F8F9FA] border-r border-outline-ghost transform -translate-y-1/2"></div>
+                    <div className="absolute top-1/2 -right-3 w-6 h-6 rounded-full bg-[#F8F9FA] border-l border-outline-ghost transform -translate-y-1/2"></div>
+
+                    {/* Dotted separator across the notches */}
+                    <div className="absolute top-1/2 left-3 right-3 border-t border-dashed border-foreground/10 transform -translate-y-1/2 z-0"></div>
+
+                    <div className="flex justify-between items-start gap-4 pb-4 z-10">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-xs font-bold text-navy-deep/45 uppercase tracking-widest">HEMAT</span>
+                        <span className="text-xl font-display font-extrabold text-navy-deep">
+                          {promo.discountType === 'FIXED' 
+                            ? `Rp ${promo.discountValue.toLocaleString('id-ID')}` 
+                            : `${promo.discountValue}%`}
+                        </span>
+                      </div>
+                      <div className={`px-2.5 py-1 rounded-lg text-[10px] font-bold tracking-wider uppercase transition-all ${
+                        isSelected 
+                          ? "bg-gold-warm text-white" 
+                          : "bg-navy-deep/5 text-navy-deep"
+                      }`}>
+                        {promo.code}
+                      </div>
+                    </div>
+
+                    <div className="pt-4 flex justify-between items-center text-[10px] text-foreground/50 z-10 w-full mt-2">
+                      <span>Min. Transaksi Rp {promo.minOrder.toLocaleString('id-ID')}</span>
+                      <span className={`font-bold flex items-center gap-1 uppercase tracking-wider ${isSelected ? 'text-gold-warm' : 'text-navy-deep'}`}>
+                        {isCopied ? (
+                          <>
+                            <i className="ri-checkbox-circle-fill text-green-500 text-xs"></i>
+                            Tersalin!
+                          </>
+                        ) : isSelected ? (
+                          <>
+                            <i className="ri-checkbox-circle-line text-xs text-gold-warm"></i>
+                            Terpasang
+                          </>
+                        ) : (
+                          <>
+                            <i className="ri-file-copy-line text-xs"></i>
+                            Gunakan
+                          </>
+                        )}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Promo Code */}
         <div className="glass rounded-[2rem] md:rounded-[3rem] p-8 md:p-10 shadow-ambient border border-white/20">

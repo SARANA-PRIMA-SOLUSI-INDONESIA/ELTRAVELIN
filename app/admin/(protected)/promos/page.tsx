@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import PromoToggle from "@/components/admin/PromoToggle";
+import PromoShowToggle from "@/components/admin/PromoShowToggle";
 import DeleteButton from "@/components/admin/DeleteButton";
 
 export const dynamic = 'force-dynamic';
@@ -49,7 +50,8 @@ export default async function AdminPromos() {
                     })()}
                   </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex items-center gap-2">
+                   <PromoShowToggle id={promo.id} initialStatus={promo.showOnCheckout} />
                    <PromoToggle id={promo.id} initialStatus={promo.isActive} />
                    <DeleteButton id={promo.id} type="promo" />
                 </div>
