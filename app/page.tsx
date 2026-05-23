@@ -4,6 +4,8 @@ import PromoBanner from "@/components/PromoBanner";
 import RouteSlider from "@/components/RouteSlider";
 import { prisma } from "@/lib/prisma";
 
+export const dynamic = 'force-dynamic';
+
 export default async function Home() {
   const banners = await prisma.banner.findMany({
     where: { isActive: true },
