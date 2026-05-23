@@ -7,24 +7,35 @@ import { prisma } from "@/lib/prisma";
 export const dynamic = 'force-dynamic';
 
 export default async function Home() {
-  const banners = await prisma.banner.findMany({
-    where: { isActive: true },
-    orderBy: { createdAt: 'desc' }
-  });
+  let banners: any[] = [];
+  let availableRoutes: any[] = [];
 
-  const availableRoutes = await prisma.route.findMany({
-    where: { isDeleted: false },
-    include: {
-      stops: {
-        orderBy: { sequence: 'asc' }
-      },
-      scheduleTemplates: {
-        where: { isActive: true },
-        orderBy: { price: 'asc' },
-        take: 1
+  try {
+    banners = await prisma.banner.findMany({
+      where: { isActive: true },
+      orderBy: { createdAt: 'desc' }
+    });
+  } catch (e) {
+    console.error('[HOME] Failed to fetch banners:', e);
+  }
+
+  try {
+    availableRoutes = await prisma.route.findMany({
+      where: { isDeleted: false },
+      include: {
+        stops: {
+          orderBy: { sequence: 'asc' }
+        },
+        scheduleTemplates: {
+          where: { isActive: true },
+          orderBy: { price: 'asc' },
+          take: 1
+        }
       }
-    }
-  });
+    });
+  } catch (e) {
+    console.error('[HOME] Failed to fetch routes:', e);
+  }
 
   const displayRoutes = availableRoutes.map((r, i) => ({
     from: r.origin,
