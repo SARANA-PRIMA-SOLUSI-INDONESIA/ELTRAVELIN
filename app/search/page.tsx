@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getSchedules } from "@/app/actions/booking";
+import { getSchedulesWithStops } from "@/app/actions/booking";
 import BookingWizard from "@/components/BookingWizard";
 import ScheduleCard from "@/components/ScheduleCard";
 import SearchFilter from "@/components/SearchFilter";
@@ -11,8 +11,9 @@ interface SearchProps {
 
 export default async function SearchResults({ searchParams }: SearchProps) {
   const resolvedParams = await searchParams;
-  const from = resolvedParams.from as string || "";
-  const to = resolvedParams.to as string || "";
+  // Support both old format (from/to) and new format (originStop/destStop)
+  const originStop = (resolvedParams.originStop as string) || (resolvedParams.from as string) || "";
+  const destStop = (resolvedParams.destStop as string) || (resolvedParams.to as string) || "";
   const date = resolvedParams.date as string || new Date().toISOString().split('T')[0];
   const passengers = resolvedParams.passengers as string || "1";
   
@@ -22,7 +23,7 @@ export default async function SearchResults({ searchParams }: SearchProps) {
   const page = parseInt(resolvedParams.page as string || "1");
   const pageSize = 10;
 
-  const { data: departures, total } = await getSchedules(from, to, date, {
+  const { data: departures, total } = await getSchedulesWithStops(originStop, destStop, date, {
     timeFilter: times,
     sortBy: sort,
     page,
@@ -48,7 +49,7 @@ export default async function SearchResults({ searchParams }: SearchProps) {
       <div className="bg-gold-warm py-4 px-6 md:px-12 lg:px-24">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="flex flex-col">
-            <span className="font-display font-bold text-navy-deep">{from} <i className="ri-arrow-right-line mx-2"></i> {to}</span>
+            <span className="font-display font-bold text-navy-deep">{originStop} <i className="ri-arrow-right-line mx-2"></i> {destStop}</span>
             <span className="text-xs text-navy-deep/70">
               {new Date(date).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' })} • {passengers} Kursi
             </span>
@@ -89,9 +90,14 @@ export default async function SearchResults({ searchParams }: SearchProps) {
               {departures.map((d: any) => (
                 <ScheduleCard 
                   key={d.id} 
-                  schedule={d} 
-                  fromName={from} 
-                  toName={to} 
+                  schedule={{
+                    ...d,
+                    originStopId: d.originStopId,
+                    destinationStopId: d.destinationStopId,
+                  }} 
+                  fromName={originStop} 
+                  toName={destStop}
+                  segmentPrice={d.segmentPrice}
                 />
               ))}
               

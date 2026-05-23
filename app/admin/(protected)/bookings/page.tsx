@@ -28,10 +28,10 @@ export default async function AdminBookings({ searchParams }: AdminBookingsProps
       statusFilter !== "ALL" ? { status: statusFilter as BookingStatus } : {},
       query ? {
         OR: [
-          { bookingCode: { contains: query, mode: 'insensitive' } },
-          { contactName: { contains: query, mode: 'insensitive' } },
-          { contactPhone: { contains: query, mode: 'insensitive' } },
-          { passengers: { some: { name: { contains: query, mode: 'insensitive' } } } }
+          { bookingCode: { contains: query } },
+          { contactName: { contains: query } },
+          { contactPhone: { contains: query } },
+          { passengers: { some: { name: { contains: query } } } }
         ]
       } : {}
     ]

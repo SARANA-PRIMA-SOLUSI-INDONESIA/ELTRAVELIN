@@ -7,32 +7,58 @@ import { useState, useEffect } from "react";
 export default function SearchHero({ routes = [] }: { routes: any[] }) {
   const router = useRouter();
   
-  // Get unique origins
-  const origins = Array.from(new Set(routes.map(r => r.origin))).sort();
+  // Collect all stops from all routes (flatten stops array)
+  const allStops = routes.flatMap((r: any) => 
+    r.stops?.map((s: any) => ({
+      ...s,
+      routeId: r.id,
+      routeOrigin: r.origin,
+      routeDestination: r.destination,
+    })) || []
+  );
   
-  const [origin, setOrigin] = useState("");
-  const [destination, setDestination] = useState("");
+  // Get unique stop names across all routes
+  const uniqueStopNames = Array.from(new Set(allStops.map(s => s.name))).sort();
+  
+  const [originStop, setOriginStop] = useState("");
+  const [destinationStop, setDestinationStop] = useState("");
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
 
   // Set default origin if available
   useEffect(() => {
-    if (origins.length > 0 && !origin) {
-      setOrigin(origins[0]);
+    if (uniqueStopNames.length > 0 && !originStop) {
+      setOriginStop(uniqueStopNames[0]);
     }
-  }, [origins, origin]);
+  }, [uniqueStopNames, originStop]);
 
-  // Get destinations based on selected origin
-  const destinations = routes
-    .filter(r => r.origin === origin)
-    .map(r => r.destination)
-    .sort();
+  // Get valid destinations based on selected origin (same route, higher sequence)
+  const validDestinations = (() => {
+    if (!originStop) return [];
+    
+    // Find all stops that share a route with originStop and have higher sequence
+    const originStops = allStops.filter(s => s.name === originStop);
+    const possibleDestinations = new Set<string>();
+    
+    for (const origin of originStops) {
+      // Find all stops on same route with higher sequence
+      const routeStops = allStops.filter(s => s.routeId === origin.routeId);
+      const destStops = routeStops.filter(s => s.sequence > origin.sequence);
+      destStops.forEach(s => possibleDestinations.add(s.name));
+    }
+    
+    return Array.from(possibleDestinations).sort();
+  })();
 
   const handleSearch = () => {
-    if (!origin || !destination) {
-      alert("Pilih kota asal dan tujuan terlebih dahulu");
+    if (!originStop || !destinationStop) {
+      alert("Pilih titik asal dan tujuan terlebih dahulu");
       return;
     }
-    router.push(`/search?from=${origin}&to=${destination}&date=${date}`);
+    if (originStop === destinationStop) {
+      alert("Titik asal dan tujuan tidak boleh sama");
+      return;
+    }
+    router.push(`/search?originStop=${encodeURIComponent(originStop)}&destStop=${encodeURIComponent(destinationStop)}&date=${date}`);
   };
 
   return (
@@ -53,29 +79,29 @@ export default function SearchHero({ routes = [] }: { routes: any[] }) {
           <div className="mt-8 glass rounded-3xl p-8 shadow-ambient w-full max-w-xl">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="flex flex-col gap-2">
-                <label className="text-xs font-bold text-navy-deep uppercase tracking-wider">Asal</label>
+                <label className="text-xs font-bold text-navy-deep uppercase tracking-wider">Titik Naik</label>
                 <select 
-                  value={origin}
+                  value={originStop}
                   onChange={(e) => {
-                    setOrigin(e.target.value);
-                    setDestination(""); // Reset destination when origin changes
+                    setOriginStop(e.target.value);
+                    setDestinationStop(""); // Reset destination when origin changes
                   }}
                   className="bg-surface-low rounded-xl px-4 py-3 text-sm text-foreground/80 cursor-pointer hover:bg-surface-medium transition-colors border-none focus:ring-2 focus:ring-gold-warm"
                 >
-                  <option value="" disabled>Pilih Kota Asal</option>
-                  {origins.map((c: string) => <option key={c} value={c}>{c}</option>)}
+                  <option value="" disabled>Pilih Titik Naik</option>
+                  {uniqueStopNames.map((name: string) => <option key={name} value={name}>{name}</option>)}
                 </select>
               </div>
               <div className="flex flex-col gap-2">
-                <label className="text-xs font-bold text-navy-deep uppercase tracking-wider">Tujuan</label>
+                <label className="text-xs font-bold text-navy-deep uppercase tracking-wider">Titik Turun</label>
                 <select 
-                  value={destination}
-                  onChange={(e) => setDestination(e.target.value)}
+                  value={destinationStop}
+                  onChange={(e) => setDestinationStop(e.target.value)}
                   className="bg-surface-low rounded-xl px-4 py-3 text-sm text-foreground/80 cursor-pointer hover:bg-surface-medium transition-colors border-none focus:ring-2 focus:ring-gold-warm"
-                  disabled={!origin}
+                  disabled={!originStop}
                 >
-                  <option value="" disabled>Pilih Kota Tujuan</option>
-                  {destinations.map((c: string) => <option key={c} value={c}>{c}</option>)}
+                  <option value="" disabled>Pilih Titik Turun</option>
+                  {validDestinations.map((name: string) => <option key={name} value={name}>{name}</option>)}
                 </select>
               </div>
               <div className="flex flex-col gap-2">

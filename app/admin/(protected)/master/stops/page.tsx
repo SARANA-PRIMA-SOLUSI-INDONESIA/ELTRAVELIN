@@ -17,6 +17,7 @@ function StopsManagerForm() {
   // Form fields
   const [name, setName] = useState("");
   const [stopTime, setStopTime] = useState("");
+  const [price, setPrice] = useState<number>(0);
   const [insertSequence, setInsertSequence] = useState<number>(1);
 
   // Load route and stops
@@ -44,9 +45,10 @@ function StopsManagerForm() {
 
     setLoading(true);
     try {
-      await createRouteStop(routeId, name, Number(insertSequence), stopTime || undefined);
+      await createRouteStop(routeId, name, Number(insertSequence), stopTime || undefined, price);
       setName("");
       setStopTime("");
+      setPrice(0);
       await loadData();
     } catch (error) {
       alert("Gagal menambahkan titik singgah: " + (error as any).message);
@@ -126,6 +128,21 @@ function StopsManagerForm() {
             </div>
 
             <div className="flex flex-col gap-2">
+              <label className="text-xs font-bold text-navy-deep uppercase tracking-widest">Harga dari Titik Sebelumnya (Rp)</label>
+              <input 
+                type="number" 
+                min="0"
+                placeholder="0"
+                value={price}
+                onChange={(e) => setPrice(Number(e.target.value))}
+                className="bg-surface-low rounded-xl px-4 py-3.5 text-sm outline-none border-none focus:ring-2 focus:ring-gold-warm"
+              />
+              <p className="text-[10px] text-foreground/40 mt-1 leading-normal">
+                Harga untuk perjalanan dari titik sebelumnya ke titik ini. Titik pertama = 0.
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-2">
               <label className="text-xs font-bold text-navy-deep uppercase tracking-widest">Estimasi Jam Singgah (Opsional)</label>
               <input 
                 type="time" 
@@ -189,6 +206,9 @@ function StopsManagerForm() {
                     <div className="flex flex-col gap-1">
                       <span className="text-xs font-bold text-gold-warm uppercase tracking-wider">Titik Ke-{stop.sequence}</span>
                       <h3 className="text-base font-display font-bold text-navy-deep uppercase">{stop.name}</h3>
+                      <span className="text-xs text-green-600 font-medium">
+                        Rp {(stop.price || 0).toLocaleString('id-ID')}
+                      </span>
                       {stop.stopTime && (
                         <span className="text-xs text-foreground/50 font-medium flex items-center gap-1.5 mt-0.5">
                           <i className="ri-time-line text-xs"></i> Estimasi Jam: {stop.stopTime} WIB
@@ -225,6 +245,58 @@ function StopsManagerForm() {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Price Preview Table */}
+          {stops.length >= 2 && (
+            <div className="mt-10 pt-8 border-t border-surface-medium">
+              <h3 className="text-sm font-display font-bold text-navy-deep mb-4 flex items-center gap-2">
+                <i className="ri-money-dollar-circle-line text-gold-warm"></i>
+                Preview Harga per Segment (Kumulatif)
+              </h3>
+              <div className="bg-surface-low rounded-2xl p-4 overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-surface-medium">
+                      <th className="text-left py-2 px-3 text-xs font-bold text-foreground/50 uppercase">Dari</th>
+                      <th className="text-left py-2 px-3 text-xs font-bold text-foreground/50 uppercase">Ke</th>
+                      <th className="text-right py-2 px-3 text-xs font-bold text-foreground/50 uppercase">Harga</th>
+                      <th className="text-right py-2 px-3 text-xs font-bold text-foreground/50 uppercase">Keterangan</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stops.map((fromStop, fromIdx) => {
+                      // Calculate cumulative prices to all subsequent stops
+                      return stops.slice(fromIdx + 1).map((toStop, toIdx) => {
+                        // Price is stored AT the destination stop (cost FROM previous TO this)
+                        // So price from A to B = price at B
+                        // Price from A to C = price at B + price at C
+                        let segmentPrice = 0;
+                        for (let i = fromIdx + 1; i <= fromIdx + 1 + toIdx && i < stops.length; i++) {
+                          segmentPrice += stops[i].price || 0;
+                        }
+                        
+                        return (
+                          <tr key={`${fromStop.id}-${toStop.id}`} className="border-b border-surface-medium/50 last:border-0">
+                            <td className="py-2 px-3 font-medium text-navy-deep">{fromStop.name}</td>
+                            <td className="py-2 px-3 font-medium text-navy-deep">{toStop.name}</td>
+                            <td className="py-2 px-3 text-right font-bold text-green-600">
+                              Rp {segmentPrice.toLocaleString('id-ID')}
+                            </td>
+                            <td className="py-2 px-3 text-right text-xs text-foreground/40">
+                              {toIdx === 0 ? `Harga di titik tujuan` : `+${toIdx} titik di tengah`}
+                            </td>
+                          </tr>
+                        );
+                      });
+                    }).flat()}
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-[10px] text-foreground/40 mt-2">
+                * Harga dihitung dengan menjumlahkan &quot;Harga dari Titik Sebelumnya&quot; untuk setiap titik yang dilalui.
+              </p>
             </div>
           )}
         </div>

@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma";
 export default async function Home() {
   const banners = await prisma.banner.findMany({
     where: { isActive: true },
-    take: 3
+    orderBy: { createdAt: 'desc' }
   });
 
   const availableRoutes = await prisma.route.findMany({

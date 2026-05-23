@@ -113,7 +113,7 @@ export async function deleteSchedule(id: string) {
 
 // --- RouteStop Actions ---
 
-export async function createRouteStop(routeId: string, name: string, sequence: number, stopTime?: string) {
+export async function createRouteStop(routeId: string, name: string, sequence: number, stopTime?: string, price?: number) {
   const result = await prisma.$transaction(async (tx) => {
     // 1. Get all stops with sequence >= input sequence, ordered descending
     const stopsToShift = await tx.routeStop.findMany({
@@ -140,7 +140,8 @@ export async function createRouteStop(routeId: string, name: string, sequence: n
         routeId,
         name,
         sequence,
-        stopTime: stopTime || null
+        stopTime: stopTime || null,
+        price: price || 0
       }
     });
 

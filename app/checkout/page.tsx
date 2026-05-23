@@ -12,6 +12,9 @@ export default async function Checkout({ searchParams }: CheckoutProps) {
   const resolvedParams = await searchParams;
   const scheduleId = resolvedParams.scheduleId as string;
   const seatsParam = resolvedParams.seats as string;
+  const originStopId = resolvedParams.originStopId as string | undefined;
+  const destinationStopId = resolvedParams.destinationStopId as string | undefined;
+  const segmentPrice = resolvedParams.segmentPrice ? parseInt(resolvedParams.segmentPrice as string) : undefined;
 
   if (!scheduleId || !seatsParam) return notFound();
 
@@ -28,7 +31,8 @@ export default async function Checkout({ searchParams }: CheckoutProps) {
     return redirect("/?error=expired");
   }
 
-  const totalPrice = schedule.price * seatNumbers.length;
+  const pricePerSeat = segmentPrice || schedule.price;
+  const totalPrice = pricePerSeat * seatNumbers.length;
 
   return (
     <div className="flex flex-col min-h-screen bg-[#F8F9FA]">
@@ -60,10 +64,13 @@ export default async function Checkout({ searchParams }: CheckoutProps) {
         <CheckoutForm 
           scheduleId={scheduleId} 
           seatNumbers={seatNumbers} 
-          basePrice={schedule.price} 
+          basePrice={pricePerSeat} 
           vehicleType={schedule.vehicleType}
           departureTime={schedule.departureTime}
           availablePromos={availablePromos}
+          originStopId={originStopId}
+          destinationStopId={destinationStopId}
+          segmentPrice={segmentPrice}
         />
       </div>
     </div>
