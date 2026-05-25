@@ -16,10 +16,16 @@ export async function POST(request: Request) {
 
     const MOOTA_IP = "103.236.201.178";
     const isLocalhost = clientIp === "127.0.0.1" || clientIp === "::1" || clientIp === "localhost" || clientIp === "::ffff:127.0.0.1";
+    const isSandboxMode = process.env.MOOTA_SANDBOX_MODE === "true";
 
-    if (clientIp !== MOOTA_IP && !isLocalhost) {
+    // Allow sandbox mode for testing (Moota sandbox uses different IPs)
+    if (!isSandboxMode && clientIp !== MOOTA_IP && !isLocalhost) {
       console.warn(`Blocked unauthorized IP: ${clientIp}`);
       return NextResponse.json({ message: "Unauthorized IP" }, { status: 403 });
+    }
+
+    if (isSandboxMode) {
+      console.log("[SANDBOX MODE] Accepting webhook from:", clientIp);
     }
 
     const bodyText = await request.text();

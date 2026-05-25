@@ -505,6 +505,19 @@ async function validatePromoCodeById(id: string, totalAmount: number) {
   return { valid: true, discount };
 }
 
+export async function getBookingById(id: string) {
+  return prisma.booking.findUnique({
+    where: { id },
+    include: {
+      schedule: {
+        include: { route: true }
+      },
+      seats: true,
+      passengers: true
+    }
+  });
+}
+
 export async function getBookingByCode(code: string) {
   return prisma.booking.findUnique({
     where: { bookingCode: code },
@@ -516,6 +529,30 @@ export async function getBookingByCode(code: string) {
       },
       seats: true,
       passengers: true
+    }
+  });
+}
+
+export async function updateBooking(id: string, data: {
+  contactName: string;
+  contactEmail?: string;
+  contactPhone: string;
+  passengerNames: string[];
+  status: string;
+}) {
+  // First delete existing passengers
+  await prisma.passenger.deleteMany({ where: { bookingId: id } });
+
+  return prisma.booking.update({
+    where: { id },
+    data: {
+      contactName: data.contactName,
+      contactEmail: data.contactEmail || null,
+      contactPhone: data.contactPhone,
+      status: data.status as any,
+      passengers: {
+        create: data.passengerNames.map(name => ({ name }))
+      }
     }
   });
 }
@@ -617,5 +654,248 @@ export async function getCheckoutPromos() {
   });
 
   return promos.filter((p: any) => !p.usageLimit || p.usedCount < p.usageLimit);
+}
+
+// ========== RESCHEDULE, REFUND & CHANGE ROUTE ACTIONS ==========
+
+export async function rescheduleBooking(bookingId: string, newScheduleId: string) {
+  const booking = await prisma.booking.findUnique({
+    where: { id: bookingId },
+    include: { schedule: true, seats: true }
+  });
+
+  if (!booking) throw new Error("Booking tidak ditemukan");
+  if (booking.status !== 'CONFIRMED') throw new Error("Hanya booking yang sudah bayar yang dapat di-reschedule");
+
+  const newSchedule = await prisma.schedule.findUnique({
+    where: { id: newScheduleId },
+    include: { route: true }
+  });
+
+  if (!newSchedule) throw new Error("Jadwal baru tidak ditemukan");
+  if (newSchedule.departureTime < new Date()) throw new Error("Jadwal baru sudah berlalu");
+
+  return prisma.$transaction(async (tx: any) => {
+    // Release old seats
+    if (booking.schedule.operatingTripId) {
+      await tx.seat.updateMany({
+        where: {
+          operatingTripId: booking.schedule.operatingTripId,
+          bookingId: booking.id
+        },
+        data: { status: 'AVAILABLE', bookingId: null }
+      });
+    }
+
+    // Calculate new price
+    const pricePerSeat = newSchedule.price;
+    const passengerCount = booking.seats.length || 1;
+    const newTotalPrice = pricePerSeat * passengerCount;
+
+    // Update booking with new schedule
+    const updatedBooking = await tx.booking.update({
+      where: { id: bookingId },
+      data: {
+        scheduleId: newScheduleId,
+        totalPrice: newTotalPrice,
+        discountAmount: 0
+      },
+      include: {
+        schedule: { include: { route: true } },
+        seats: true,
+        passengers: true
+      }
+    });
+
+    // Book new seats if operating trip exists
+    if (newSchedule.operatingTripId) {
+      const availableSeats = await tx.seat.findMany({
+        where: {
+          operatingTripId: newSchedule.operatingTripId,
+          status: 'AVAILABLE'
+        },
+        take: passengerCount,
+        orderBy: { seatNumber: 'asc' }
+      });
+
+      if (availableSeats.length < passengerCount) {
+        throw new Error("Kursi tidak tersedia untuk jadwal baru");
+      }
+
+      for (const seat of availableSeats) {
+        await tx.seat.update({
+          where: { id: seat.id },
+          data: { status: 'BOOKED', bookingId: booking.id }
+        });
+      }
+    }
+
+    return updatedBooking;
+  });
+}
+
+export async function processRefund(bookingId: string, refundAmount: number, reason: string) {
+  const booking = await prisma.booking.findUnique({
+    where: { id: bookingId },
+    include: { schedule: true, seats: true }
+  });
+
+  if (!booking) throw new Error("Booking tidak ditemukan");
+  if (booking.status !== 'CONFIRMED') throw new Error("Hanya booking yang sudah bayar yang dapat di-refund");
+
+  return prisma.$transaction(async (tx: any) => {
+    // Release seats
+    if (booking.schedule.operatingTripId) {
+      await tx.seat.updateMany({
+        where: {
+          operatingTripId: booking.schedule.operatingTripId,
+          bookingId: booking.id
+        },
+        data: { status: 'AVAILABLE', bookingId: null }
+      });
+    }
+
+    // Update booking to CANCELLED with refund info
+    const updatedBooking = await tx.booking.update({
+      where: { id: bookingId },
+      data: {
+        status: 'CANCELLED',
+        // Store refund info in a simple way - you might want to create a separate Refund model
+        paymentProofUrl: `REFUND:${refundAmount}:${reason}:${new Date().toISOString()}`
+      },
+      include: {
+        schedule: { include: { route: true } },
+        seats: true,
+        passengers: true
+      }
+    });
+
+    return { success: true, booking: updatedBooking, refundAmount, reason };
+  });
+}
+
+export async function changeBookingRoute(bookingId: string, newRouteId: string, newScheduleId: string) {
+  const booking = await prisma.booking.findUnique({
+    where: { id: bookingId },
+    include: { schedule: true, seats: true, segment: true }
+  });
+
+  if (!booking) throw new Error("Booking tidak ditemukan");
+  if (booking.status !== 'CONFIRMED') throw new Error("Hanya booking yang sudah bayar yang dapat pindah rute");
+
+  const newSchedule = await prisma.schedule.findUnique({
+    where: { id: newScheduleId },
+    include: { route: { include: { stops: true } } }
+  });
+
+  if (!newSchedule) throw new Error("Jadwal baru tidak ditemukan");
+  if (newSchedule.routeId !== newRouteId) throw new Error("Jadwal tidak sesuai dengan rute");
+
+  return prisma.$transaction(async (tx: any) => {
+    // Release old seats
+    if (booking.schedule.operatingTripId) {
+      await tx.seat.updateMany({
+        where: {
+          operatingTripId: booking.schedule.operatingTripId,
+          bookingId: booking.id
+        },
+        data: { status: 'AVAILABLE', bookingId: null }
+      });
+    }
+
+    // Calculate new price
+    const pricePerSeat = newSchedule.price;
+    const passengerCount = booking.seats.length || 1;
+    const newTotalPrice = pricePerSeat * passengerCount;
+
+    // Delete old segment if exists
+    if (booking.segment) {
+      await tx.bookingSegment.delete({
+        where: { id: booking.segment.id }
+      });
+    }
+
+    // Update booking with new schedule and route
+    const updatedBooking = await tx.booking.update({
+      where: { id: bookingId },
+      data: {
+        scheduleId: newScheduleId,
+        totalPrice: newTotalPrice,
+        discountAmount: 0
+      },
+      include: {
+        schedule: { include: { route: true } },
+        seats: true,
+        passengers: true
+      }
+    });
+
+    // Book new seats if operating trip exists
+    if (newSchedule.operatingTripId) {
+      const availableSeats = await tx.seat.findMany({
+        where: {
+          operatingTripId: newSchedule.operatingTripId,
+          status: 'AVAILABLE'
+        },
+        take: passengerCount,
+        orderBy: { seatNumber: 'asc' }
+      });
+
+      if (availableSeats.length < passengerCount) {
+        throw new Error("Kursi tidak tersedia untuk rute baru");
+      }
+
+      for (const seat of availableSeats) {
+        await tx.seat.update({
+          where: { id: seat.id },
+          data: { status: 'BOOKED', bookingId: booking.id }
+        });
+      }
+    }
+
+    return updatedBooking;
+  });
+}
+
+// Get available schedules for reschedule (same route, future dates)
+export async function getAvailableSchedulesForReschedule(routeId: string, excludeScheduleId: string) {
+  const now = new Date();
+
+  return prisma.schedule.findMany({
+    where: {
+      routeId: routeId,
+      id: { not: excludeScheduleId },
+      departureTime: { gte: now },
+      isActive: true,
+      isDeleted: false
+    },
+    include: {
+      route: true,
+      operatingTrip: {
+        include: {
+          _count: {
+            select: {
+              seats: { where: { status: 'AVAILABLE' } }
+            }
+          }
+        }
+      }
+    },
+    orderBy: { departureTime: 'asc' }
+  });
+}
+
+// Get all active routes for change route feature
+export async function getAllActiveRoutes() {
+  return prisma.route.findMany({
+    where: { isDeleted: false },
+    include: {
+      stops: { orderBy: { sequence: 'asc' } }
+    },
+    orderBy: [
+      { origin: 'asc' },
+      { destination: 'asc' }
+    ]
+  });
 }
 

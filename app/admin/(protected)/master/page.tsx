@@ -63,21 +63,28 @@ export default async function AdminMaster() {
                 )}
               </div>
               <div className="flex gap-2.5 pl-14 sm:pl-0">
-                <Link
-                  href={`/admin/master/stops?routeId=${route.id}`}
-                  className="text-xs font-bold text-navy-deep bg-white px-4 py-2.5 rounded-xl border border-outline-ghost hover:bg-gold-soft hover:text-white transition-all flex items-center gap-1.5 shadow-sm"
-                >
-                  <i className="ri-map-pin-line text-sm"></i>
-                  Kelola Titik
-                </Link>
-                <Link
-                  href={`/admin/master/new-template?routeId=${route.id}`}
-                  className="text-xs font-bold text-white bg-navy-deep px-4 py-2.5 rounded-xl border border-transparent hover:bg-gold-warm transition-all flex items-center gap-1.5 shadow-sm"
-                >
-                  <i className="ri-add-line text-sm"></i>
-                  Tambah Jam
-                </Link>
-                <DeleteButton id={route.id} type="route" />
+                 <Link
+                   href={`/admin/master/stops?routeId=${route.id}`}
+                   className="text-xs font-bold text-navy-deep bg-white px-4 py-2.5 rounded-xl border border-outline-ghost hover:bg-gold-soft hover:text-white transition-all flex items-center gap-1.5 shadow-sm"
+                 >
+                   <i className="ri-map-pin-line text-sm"></i>
+                   Kelola Titik
+                 </Link>
+                 <Link
+                   href={`/admin/master/new-template?routeId=${route.id}`}
+                   className="text-xs font-bold text-white bg-navy-deep px-4 py-2.5 rounded-xl border border-transparent hover:bg-gold-warm transition-all flex items-center gap-1.5 shadow-sm"
+                 >
+                   <i className="ri-add-line text-sm"></i>
+                   Tambah Jam
+                 </Link>
+                 <Link
+                   href={`/admin/master/edit-route?id=${route.id}`}
+                   className="text-xs font-bold text-yellow-500 bg-white px-4 py-2.5 rounded-xl border border-yellow-400 hover:bg-yellow-500 hover:text-white transition-all flex items-center gap-1.5 shadow-sm"
+                 >
+                   <i className="ri-edit-line text-sm"></i>
+                   Edit Rute
+                 </Link>
+                 <DeleteButton id={route.id} type="route" />
               </div>
             </div>
 
@@ -97,6 +104,12 @@ export default async function AdminMaster() {
                         </div>
                         <div className="flex gap-2">
                           <TemplateToggle id={t.id} initialStatus={t.isActive} />
+                          <Link
+                            href={`/admin/master/edit-template?id=${t.id}`}
+                            className="text-xs font-bold text-yellow-500 bg-white px-3 py-2 rounded-lg border border-yellow-400 hover:bg-yellow-500 hover:text-white transition-all"
+                          >
+                            <i className="ri-edit-line text-sm"></i>
+                          </Link>
                           <DeleteButton id={t.id} type="template" />
                         </div>
                       </div>
