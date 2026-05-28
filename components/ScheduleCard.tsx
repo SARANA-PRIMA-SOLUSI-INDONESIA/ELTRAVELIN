@@ -30,16 +30,59 @@ interface Schedule {
 }
 
 interface ScheduleCardProps {
-  schedule: Schedule;
+  schedule: Schedule & {
+    originStopId?: string;
+    destinationStopId?: string;
+  };
   fromName: string;
   toName: string;
+  segmentPrice?: number;
 }
 
-export default function ScheduleCard({ schedule, fromName, toName }: ScheduleCardProps) {
+export default function ScheduleCard({ schedule, fromName, toName, segmentPrice }: ScheduleCardProps) {
   const [isOpen, setIsOpen] = useState(false);
 
-  const departureDate = new Date(schedule.departureTime);
-  const arrivalDate = new Date(schedule.arrivalTime);
+  const routeDepartureDate = new Date(schedule.departureTime);
+  const routeArrivalDate = new Date(schedule.arrivalTime);
+
+  // Find origin and destination stops from the selected points
+  const originStop = schedule.route.stops?.find(s => s.name === fromName);
+  const destStop = schedule.route.stops?.find(s => s.name === toName);
+
+  // Calculate actual departure time from origin stop
+  const getStopTimeAsDate = (stopTime?: string | null, baseDate: Date = routeDepartureDate) => {
+    if (!stopTime) return baseDate;
+    
+    // Check absolute time format
+    const timeMatch = stopTime.trim().match(/^(\d{1,2})[:.](\d{2})$/);
+    if (timeMatch) {
+      const dateCopy = new Date(baseDate);
+      dateCopy.setHours(parseInt(timeMatch[1]), parseInt(timeMatch[2]), 0, 0);
+      return dateCopy;
+    }
+
+    // Relative time
+    const dateCopy = new Date(baseDate);
+    const cleanStr = stopTime.toLowerCase().replace('+', '').trim();
+    if (cleanStr.includes('menit')) {
+      const mins = parseInt(cleanStr);
+      if (!isNaN(mins)) dateCopy.setMinutes(dateCopy.getMinutes() + mins);
+    } else if (cleanStr.includes('jam')) {
+      const hours = parseFloat(cleanStr);
+      if (!isNaN(hours)) dateCopy.setMinutes(dateCopy.getMinutes() + Math.round(hours * 60));
+    }
+    return dateCopy;
+  };
+
+  // Use origin stop time if available, otherwise route departure
+  const departureDate = originStop?.stopTime 
+    ? getStopTimeAsDate(originStop.stopTime, routeDepartureDate)
+    : routeDepartureDate;
+
+  // Use destination stop time if available, otherwise route arrival
+  const arrivalDate = destStop?.stopTime
+    ? getStopTimeAsDate(destStop.stopTime, routeDepartureDate)
+    : routeArrivalDate;
 
   // Helper to parse "+20 Menit" or "+1.5 Jam" or absolute "10:30" / "10.30" and format absolute stop time
   const getStopAbsoluteTime = (offsetStr?: string | null) => {
@@ -101,24 +144,20 @@ export default function ScheduleCard({ schedule, fromName, toName }: ScheduleCar
     return dateCopy.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' }).toUpperCase();
   };
 
-  // Construct all timeline items including departure and arrival
-  const timelineItems = [
-    {
-      name: schedule.route.origin,
-      time: departureDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' }),
-      date: departureDate.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' }).toUpperCase(),
-    },
-    ...(schedule.route.stops || []).map(s => ({
-      name: s.name,
-      time: getStopAbsoluteTime(s.stopTime),
-      date: getStopAbsoluteDate(s.stopTime),
-    })),
-    {
-      name: schedule.route.destination,
-      time: arrivalDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' }),
-      date: arrivalDate.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' }).toUpperCase(),
-    },
-  ];
+  // Filter stops to show only between fromName and toName (inclusive)
+  const stopsInSegment = (schedule.route.stops || []).filter(s => {
+    // Find sequence of fromName and toName
+    const fromSeq = schedule.route.stops?.find(st => st.name === fromName)?.sequence ?? 0;
+    const toSeq = schedule.route.stops?.find(st => st.name === toName)?.sequence ?? 999;
+    return s.sequence >= fromSeq && s.sequence <= toSeq;
+  });
+
+  // Construct timeline items from selected origin to destination
+  const timelineItems = stopsInSegment.map(s => ({
+    name: s.name,
+    time: getStopAbsoluteTime(s.stopTime),
+    date: getStopAbsoluteDate(s.stopTime),
+  }));
 
   return (
     <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden flex flex-col transition-all hover:shadow-md">
@@ -181,11 +220,13 @@ export default function ScheduleCard({ schedule, fromName, toName }: ScheduleCar
         {/* Right: Price & Select */}
         <div className="p-6 md:p-8 bg-[#FDFDFD] flex flex-row md:flex-col justify-between md:justify-center items-center md:items-end gap-4 md:min-w-[220px] border-t md:border-t-0 md:border-l border-gray-50">
           <div className="flex flex-col items-start md:items-end">
-            <span className="text-lg md:text-xl font-display font-bold text-navy-deep">Rp {schedule.price.toLocaleString('id-ID')}</span>
+            <span className="text-lg md:text-xl font-display font-bold text-navy-deep">
+              Rp {(segmentPrice || schedule.price).toLocaleString('id-ID')}
+            </span>
             <span className="text-[10px] font-bold text-foreground/40 uppercase">/seat</span>
           </div>
           <Link 
-            href={`/seat-selection?scheduleId=${schedule.id}`}
+            href={`/seat-selection?scheduleId=${schedule.id}${schedule.originStopId ? `&originStopId=${schedule.originStopId}` : ''}${schedule.destinationStopId ? `&destinationStopId=${schedule.destinationStopId}` : ''}${segmentPrice ? `&segmentPrice=${segmentPrice}` : ''}`}
             className="bg-[#EFEFEF] hover:bg-gold-warm hover:text-white text-navy-deep font-bold py-2.5 md:py-3 px-6 md:px-8 rounded-xl text-center transition-all shadow-sm text-sm md:text-base w-auto md:w-full"
           >
             Select

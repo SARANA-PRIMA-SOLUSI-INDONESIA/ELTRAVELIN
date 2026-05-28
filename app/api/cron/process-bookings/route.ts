@@ -11,6 +11,8 @@ export async function GET(request: Request) {
   const cronSecret = process.env.CRON_SECRET?.trim();
   const isLocal = request.url.includes('localhost') || request.url.includes('127.0.0.1');
 
+  console.log(`[CRON] Request from: ${request.url}, isLocal: ${isLocal}, hasSecret: ${!!cronSecret}`);
+
   const isAuthorized =
     isLocal ||
     !cronSecret ||
@@ -25,6 +27,12 @@ export async function GET(request: Request) {
 
   const now = new Date();
   console.log(`[CRON] Starting check at ${now.toISOString()}`);
+
+  // Check env vars
+  const hasDbUrl = !!process.env.DATABASE_URL;
+  const hasDirectUrl = !!process.env.DIRECT_URL;
+  const hasWaKey = !!process.env.STARSENDER_API_KEY;
+  console.log(`[CRON] Env check - DB_URL: ${hasDbUrl}, DIRECT_URL: ${hasDirectUrl}, WA_KEY: ${hasWaKey}`);
 
   try {
     const pendingBookings = await prisma.booking.findMany({
@@ -102,10 +110,16 @@ export async function GET(request: Request) {
             data: { status: "AVAILABLE", bookingId: null }
           });
         });
-        const res = await sendWhatsAppMessage(booking.contactPhone, message);
-        console.log(`[CRON] Cancelled booking ${booking.bookingCode} and sent WA:`, res);
+        let waRes = { success: false, message: "Not sent" };
+        try {
+          waRes = await sendWhatsAppMessage(booking.contactPhone, message);
+          console.log(`[CRON] Cancelled booking ${booking.bookingCode} and sent WA:`, waRes);
+        } catch (waError: any) {
+          console.error(`[CRON] Failed to send WA for ${booking.bookingCode}:`, waError.message);
+          waRes = { success: false, message: waError.message };
+        }
         bookingsExpired++;
-        details.push({ code: booking.bookingCode, action: 'CANCEL', wa: res });
+        details.push({ code: booking.bookingCode, action: 'CANCEL', wa: waRes });
       } else if (shouldRemind) {
         await prisma.booking.update({
           where: { id: booking.id },
@@ -114,10 +128,16 @@ export async function GET(request: Request) {
             reminderSentAt: now
           }
         });
-        const res = await sendWhatsAppMessage(booking.contactPhone, message);
-        console.log(`[CRON] Reminded (L${nextLevel}) booking ${booking.bookingCode} and sent WA:`, res);
+        let waRes = { success: false, message: "Not sent" };
+        try {
+          waRes = await sendWhatsAppMessage(booking.contactPhone, message);
+          console.log(`[CRON] Reminded (L${nextLevel}) booking ${booking.bookingCode} and sent WA:`, waRes);
+        } catch (waError: any) {
+          console.error(`[CRON] Failed to send WA reminder for ${booking.bookingCode}:`, waError.message);
+          waRes = { success: false, message: waError.message };
+        }
         remindersSent++;
-        details.push({ code: booking.bookingCode, action: `REMIND_L${nextLevel}`, wa: res });
+        details.push({ code: booking.bookingCode, action: `REMIND_L${nextLevel}`, wa: waRes });
       }
     }
 
@@ -130,6 +150,15 @@ export async function GET(request: Request) {
     });
   } catch (error: any) {
     console.error("[CRON] Error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("[CRON] Stack:", error.stack);
+    return NextResponse.json({ 
+      error: error.message, 
+      stack: error.stack,
+      env: {
+        hasDbUrl: !!process.env.DATABASE_URL,
+        hasDirectUrl: !!process.env.DIRECT_URL,
+        hasCronSecret: !!process.env.CRON_SECRET
+      }
+    }, { status: 500 });
   }
 }

@@ -11,9 +11,12 @@ interface CheckoutFormProps {
   vehicleType: string;
   departureTime: Date;
   availablePromos?: any[];
+  originStopId?: string;
+  destinationStopId?: string;
+  segmentPrice?: number;
 }
 
-export default function CheckoutForm({ scheduleId, seatNumbers, basePrice, vehicleType, departureTime, availablePromos = [] }: CheckoutFormProps) {
+export default function CheckoutForm({ scheduleId, seatNumbers, basePrice, vehicleType, departureTime, availablePromos = [], originStopId, destinationStopId, segmentPrice }: CheckoutFormProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [promoLoading, setPromoLoading] = useState(false);
@@ -88,6 +91,9 @@ export default function CheckoutForm({ scheduleId, seatNumbers, basePrice, vehic
         passengerNames,
         seatNumbers,
         promoCodeId: appliedPromo?.id,
+        originStopId,
+        destinationStopId,
+        segmentPrice,
       });
 
       router.push(`/payment?code=${booking.bookingCode}`);

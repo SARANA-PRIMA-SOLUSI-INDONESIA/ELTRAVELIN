@@ -48,7 +48,7 @@ Halo ${booking.contactName}, pembayaran Anda telah kami terima. Berikut adalah d
 Lihat E-Ticket lengkap Anda di sini:
 ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/confirmation?code=${booking.bookingCode}
 
-Mohon hadir 30 menit sebelum keberangkatan. Terima kasih telah memilih EL Travel!`;
+Mohon hadir 30 menit sebelum keberangkatan. Terima kasih telah memilih ELTravel!`;
 
   return sendWhatsAppMessage(booking.contactPhone, message);
 }

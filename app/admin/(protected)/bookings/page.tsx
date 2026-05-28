@@ -3,6 +3,7 @@ import { BookingStatus, Prisma } from "@prisma/client";
 import ExportButton from "@/components/admin/ExportButton";
 import AdminBookingFilter from "@/components/admin/AdminBookingFilter";
 import Pagination from "@/components/Pagination";
+import BookingActions from "@/components/admin/BookingActions";
 
 export const dynamic = 'force-dynamic';
 
@@ -28,10 +29,10 @@ export default async function AdminBookings({ searchParams }: AdminBookingsProps
       statusFilter !== "ALL" ? { status: statusFilter as BookingStatus } : {},
       query ? {
         OR: [
-          { bookingCode: { contains: query, mode: 'insensitive' } },
-          { contactName: { contains: query, mode: 'insensitive' } },
-          { contactPhone: { contains: query, mode: 'insensitive' } },
-          { passengers: { some: { name: { contains: query, mode: 'insensitive' } } } }
+          { bookingCode: { contains: query } },
+          { contactName: { contains: query } },
+          { contactPhone: { contains: query } },
+          { passengers: { some: { name: { contains: query } } } }
         ]
       } : {}
     ]
@@ -101,13 +102,14 @@ export default async function AdminBookings({ searchParams }: AdminBookingsProps
                 <th className="px-4 py-6 text-[11px] font-bold text-navy-deep uppercase tracking-wider whitespace-nowrap">Rute</th>
                 <th className="px-4 py-6 text-[11px] font-bold text-navy-deep uppercase tracking-wider whitespace-nowrap">Total</th>
                 <th className="px-4 py-6 text-[11px] font-bold text-navy-deep uppercase tracking-wider whitespace-nowrap text-center">Status</th>
-                <th className="px-4 py-6 text-[11px] font-bold text-navy-deep uppercase tracking-wider whitespace-nowrap pr-8 text-center">Metode</th>
+                <th className="px-4 py-6 text-[11px] font-bold text-navy-deep uppercase tracking-wider whitespace-nowrap text-center">Metode</th>
+                <th className="px-4 py-6 text-[11px] font-bold text-navy-deep uppercase tracking-wider whitespace-nowrap pr-8 text-center">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-outline-ghost">
               {bookings.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="px-8 py-20 text-center text-sm text-foreground/40 italic">Data tidak ditemukan.</td>
+                  <td colSpan={12} className="px-8 py-20 text-center text-sm text-foreground/40 italic">Data tidak ditemukan.</td>
                 </tr>
               ) : (
                 bookings.map((b: any) => (
@@ -162,10 +164,21 @@ export default async function AdminBookings({ searchParams }: AdminBookingsProps
                          {b.status}
                        </span>
                     </td>
-                    <td className="px-4 py-6 pr-8 text-center">
+                    <td className="px-4 py-6 text-center">
                        <span className="text-[10px] font-bold text-foreground/40 uppercase tracking-widest bg-surface-medium px-3 py-1.5 rounded-lg border border-outline-ghost">
                          {b.paymentMethod || 'UNSET'}
                        </span>
+                    </td>
+                    <td className="px-4 py-6 pr-8 text-center">
+                      <BookingActions
+                        bookingId={b.id}
+                        bookingCode={b.bookingCode}
+                        status={b.status}
+                        scheduleId={b.scheduleId}
+                        routeId={b.schedule.route.id}
+                        totalPrice={b.totalPrice}
+                        paymentMethod={b.paymentMethod}
+                      />
                     </td>
                   </tr>
                 ))

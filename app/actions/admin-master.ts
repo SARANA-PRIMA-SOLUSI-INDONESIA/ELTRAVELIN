@@ -27,6 +27,16 @@ export async function deleteRoute(id: string) {
   revalidatePath("/routes");
 }
 
+export async function updateRoute(id: string, origin: string, destination: string) {
+  await prisma.route.update({
+    where: { id },
+    data: { origin, destination }
+  });
+  revalidatePath("/admin/master");
+  revalidatePath("/");
+  revalidatePath("/routes");
+}
+
 // --- Template Actions ---
 
 export async function createTemplate(data: {
@@ -113,7 +123,7 @@ export async function deleteSchedule(id: string) {
 
 // --- RouteStop Actions ---
 
-export async function createRouteStop(routeId: string, name: string, sequence: number, stopTime?: string) {
+export async function createRouteStop(routeId: string, name: string, sequence: number, stopTime?: string, price?: number) {
   const result = await prisma.$transaction(async (tx) => {
     // 1. Get all stops with sequence >= input sequence, ordered descending
     const stopsToShift = await tx.routeStop.findMany({
@@ -140,7 +150,8 @@ export async function createRouteStop(routeId: string, name: string, sequence: n
         routeId,
         name,
         sequence,
-        stopTime: stopTime || null
+        stopTime: stopTime || null,
+        price: price || 0
       }
     });
 
@@ -208,6 +219,16 @@ export async function reorderRouteStops(routeId: string, orderedIds: string[]) {
   } catch (e) {}
 }
 
+export async function getRouteById(id: string) {
+  return prisma.route.findUnique({
+    where: { id },
+    include: {
+      stops: { orderBy: { sequence: 'asc' } },
+      scheduleTemplates: { orderBy: { departureTime: 'asc' } }
+    }
+  });
+}
+
 export async function getRouteWithStops(id: string) {
   return prisma.route.findUnique({
     where: { id },
@@ -216,5 +237,27 @@ export async function getRouteWithStops(id: string) {
         orderBy: { sequence: 'asc' }
       }
     }
+  });
+}
+
+export async function updateTemplate(id: string, data: {
+  departureTime: string;
+  arrivalTime: string;
+  price: number;
+  vehicleId: string;
+}) {
+  await prisma.scheduleTemplate.update({
+    where: { id },
+    data
+  });
+  revalidatePath("/admin/master");
+  revalidatePath("/");
+  revalidatePath("/routes");
+}
+
+export async function getTemplateById(id: string) {
+  return prisma.scheduleTemplate.findUnique({
+    where: { id },
+    include: { vehicle: true, route: true }
   });
 }

@@ -4,25 +4,38 @@ import PromoBanner from "@/components/PromoBanner";
 import RouteSlider from "@/components/RouteSlider";
 import { prisma } from "@/lib/prisma";
 
-export default async function Home() {
-  const banners = await prisma.banner.findMany({
-    where: { isActive: true },
-    take: 3
-  });
+export const dynamic = 'force-dynamic';
 
-  const availableRoutes = await prisma.route.findMany({
-    where: { isDeleted: false },
-    include: {
-      stops: {
-        orderBy: { sequence: 'asc' }
-      },
-      scheduleTemplates: {
-        where: { isActive: true },
-        orderBy: { price: 'asc' },
-        take: 1
+export default async function Home() {
+  let banners: any[] = [];
+  let availableRoutes: any[] = [];
+
+  try {
+    banners = await prisma.banner.findMany({
+      where: { isActive: true },
+      orderBy: { createdAt: 'desc' }
+    });
+  } catch (e) {
+    console.error('[HOME] Failed to fetch banners:', e);
+  }
+
+  try {
+    availableRoutes = await prisma.route.findMany({
+      where: { isDeleted: false },
+      include: {
+        stops: {
+          orderBy: { sequence: 'asc' }
+        },
+        scheduleTemplates: {
+          where: { isActive: true },
+          orderBy: { price: 'asc' },
+          take: 1
+        }
       }
-    }
-  });
+    });
+  } catch (e) {
+    console.error('[HOME] Failed to fetch routes:', e);
+  }
 
   const displayRoutes = availableRoutes.map((r, i) => ({
     from: r.origin,

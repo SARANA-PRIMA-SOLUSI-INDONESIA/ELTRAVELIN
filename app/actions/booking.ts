@@ -63,8 +63,8 @@ export async function getSchedules(
         AND: [
           {
             route: {
-              origin: { contains: origin, mode: 'insensitive' },
-              destination: { contains: destination, mode: 'insensitive' },
+              origin: { contains: origin },
+              destination: { contains: destination },
               isDeleted: false,
             },
           },
@@ -104,8 +104,8 @@ export async function getSchedules(
         AND: [
           {
             route: {
-              origin: { contains: origin, mode: 'insensitive' },
-              destination: { contains: destination, mode: 'insensitive' },
+              origin: { contains: origin },
+              destination: { contains: destination },
               isDeleted: false,
             },
           },
@@ -130,6 +130,182 @@ export async function getSchedules(
         seats: s.operatingTrip?._count?.seats || 0
       }
     })),
+    total
+  };
+}
+
+// New function: Search schedules by stops (origin and destination stops)
+export async function getSchedulesWithStops(
+  originStop: string,
+  destStop: string,
+  date: string,
+  options?: {
+    timeFilter?: string[];
+    sortBy?: string;
+    page?: number;
+    pageSize?: number;
+  }
+) {
+  const page = options?.page || 1;
+  const pageSize = options?.pageSize || 10;
+  const skip = (page - 1) * pageSize;
+
+  // Create start/end of day in Jakarta timezone context
+  const startOfDay = new Date(`${date}T00:00:00+07:00`);
+  const endOfDay = new Date(`${date}T23:59:59+07:00`);
+
+  const absoluteNow = new Date();
+  const effectiveGte = startOfDay > absoluteNow ? startOfDay : absoluteNow;
+
+  if (effectiveGte > endOfDay) {
+    return { data: [], total: 0 };
+  }
+
+  // Find all routes that have both origin and destination stops
+  // and origin comes before destination in sequence
+  const routesWithStops = await prisma.route.findMany({
+    where: {
+      isDeleted: false,
+      stops: {
+        some: {
+          name: { contains: originStop },
+        }
+      }
+    },
+    include: {
+      stops: {
+        orderBy: { sequence: 'asc' }
+      }
+    }
+  });
+
+  // Filter routes where destination stop exists and comes after origin
+  const validRoutes = routesWithStops.filter(route => {
+    const originIndex = route.stops.findIndex(s => s.name.toLowerCase().includes(originStop.toLowerCase()));
+    const destIndex = route.stops.findIndex(s => s.name.toLowerCase().includes(destStop.toLowerCase()));
+    return originIndex !== -1 && destIndex !== -1 && destIndex > originIndex;
+  });
+
+  if (validRoutes.length === 0) {
+    return { data: [], total: 0 };
+  }
+
+  const routeIds = validRoutes.map(r => r.id);
+
+  // Time filter logic
+  let timeQuery = {};
+  if (options?.timeFilter && options.timeFilter.length > 0) {
+    const orConditions = options.timeFilter.map(time => {
+      if (time === 'pagi') return { departureTime: { gte: new Date(`${date}T05:00:00+07:00`), lte: new Date(`${date}T10:59:59+07:00`) } };
+      if (time === 'siang') return { departureTime: { gte: new Date(`${date}T11:00:00+07:00`), lte: new Date(`${date}T14:59:59+07:00`) } };
+      if (time === 'sore') return { departureTime: { gte: new Date(`${date}T15:00:00+07:00`), lte: new Date(`${date}T18:59:59+07:00`) } };
+      if (time === 'malam') return { departureTime: { gte: new Date(`${date}T19:00:00+07:00`), lte: new Date(`${date}T23:59:59+07:00`) } };
+      return {};
+    });
+    timeQuery = { OR: orConditions };
+  }
+
+  // Sort logic - by departureTime default
+  let orderBy: any = { departureTime: 'asc' };
+
+  const [schedules, total] = await Promise.all([
+    prisma.schedule.findMany({
+      where: {
+        AND: [
+          { routeId: { in: routeIds } },
+          {
+            departureTime: {
+              gte: effectiveGte,
+              lte: endOfDay,
+            },
+          },
+          timeQuery,
+        ],
+        isActive: true,
+        isDeleted: false,
+      },
+      include: {
+        route: {
+          include: {
+            stops: {
+              orderBy: { sequence: 'asc' }
+            }
+          }
+        },
+        operatingTrip: {
+          include: {
+            _count: {
+              select: {
+                seats: { where: { status: 'AVAILABLE' } }
+              }
+            }
+          }
+        }
+      },
+      orderBy,
+      skip,
+      take: pageSize,
+    }),
+    prisma.schedule.count({
+      where: {
+        AND: [
+          { routeId: { in: routeIds } },
+          {
+            departureTime: {
+              gte: effectiveGte,
+              lte: endOfDay,
+            },
+          },
+          timeQuery,
+        ],
+        isActive: true,
+        isDeleted: false,
+      }
+    })
+  ]);
+
+  // Calculate segment price for each schedule
+  const schedulesWithSegmentPrice = schedules.map((schedule: any) => {
+    const route = schedule.route;
+    const originIndex = route.stops.findIndex((s: any) => s.name.toLowerCase().includes(originStop.toLowerCase()));
+    const destIndex = route.stops.findIndex((s: any) => s.name.toLowerCase().includes(destStop.toLowerCase()));
+    
+    // Sum prices from stops AFTER origin up to destination (inclusive)
+    // Price at each stop represents cost FROM previous stop TO this stop
+    let segmentPrice = 0;
+    for (let i = originIndex + 1; i <= destIndex && i < route.stops.length; i++) {
+      segmentPrice += route.stops[i].price || 0;
+    }
+    
+    // If segment price is 0, fall back to schedule price divided by number of stops
+    if (segmentPrice === 0) {
+      const totalStops = route.stops.length;
+      const segmentStops = destIndex - originIndex + 1;
+      segmentPrice = Math.round((schedule.price / totalStops) * segmentStops);
+    }
+
+    return {
+      ...schedule,
+      segmentPrice,
+      originStopId: route.stops[originIndex]?.id,
+      destinationStopId: route.stops[destIndex]?.id,
+      originStopSequence: route.stops[originIndex]?.sequence,
+      destStopSequence: route.stops[destIndex]?.sequence,
+      _count: {
+        seats: schedule.operatingTrip?._count?.seats || 0
+      }
+    };
+  });
+
+  // Apply price sorting if requested
+  if (options?.sortBy === 'price_asc') {
+    schedulesWithSegmentPrice.sort((a: any, b: any) => a.segmentPrice - b.segmentPrice);
+  } else if (options?.sortBy === 'price_desc') {
+    schedulesWithSegmentPrice.sort((a: any, b: any) => b.segmentPrice - a.segmentPrice);
+  }
+
+  return {
+    data: schedulesWithSegmentPrice,
     total
   };
 }
@@ -208,6 +384,9 @@ export async function createBooking(data: {
   seatNumbers: string[];
   promoCodeId?: string;
   paymentMethod?: string;
+  originStopId?: string;
+  destinationStopId?: string;
+  segmentPrice?: number;
 }) {
   const schedule = await prisma.schedule.findUnique({
     where: { id: data.scheduleId },
@@ -222,7 +401,9 @@ export async function createBooking(data: {
     throw new Error("Jadwal sudah berangkat dan tidak dapat dipesan lagi.");
   }
 
-  const basePrice = schedule.price * data.seatNumbers.length;
+  // Use segment price if available, otherwise use schedule price
+  const pricePerSeat = data.segmentPrice || schedule.price;
+  const basePrice = pricePerSeat * data.seatNumbers.length;
   let discountAmount = 0;
 
   if (data.promoCodeId) {
@@ -259,6 +440,18 @@ export async function createBooking(data: {
         }
       },
     });
+
+    // 1b. Create BookingSegment if stop IDs provided
+    if (data.originStopId && data.destinationStopId) {
+      await tx.bookingSegment.create({
+        data: {
+          bookingId: booking.id,
+          originStopId: data.originStopId,
+          destinationStopId: data.destinationStopId,
+          basePrice: data.segmentPrice || schedule.price,
+        }
+      });
+    }
 
     // 2. Update all selected seats status for the physical vehicle trip
     if (schedule.operatingTripId) {
@@ -312,6 +505,19 @@ async function validatePromoCodeById(id: string, totalAmount: number) {
   return { valid: true, discount };
 }
 
+export async function getBookingById(id: string) {
+  return prisma.booking.findUnique({
+    where: { id },
+    include: {
+      schedule: {
+        include: { route: true }
+      },
+      seats: true,
+      passengers: true
+    }
+  });
+}
+
 export async function getBookingByCode(code: string) {
   return prisma.booking.findUnique({
     where: { bookingCode: code },
@@ -323,6 +529,30 @@ export async function getBookingByCode(code: string) {
       },
       seats: true,
       passengers: true
+    }
+  });
+}
+
+export async function updateBooking(id: string, data: {
+  contactName: string;
+  contactEmail?: string;
+  contactPhone: string;
+  passengerNames: string[];
+  status: string;
+}) {
+  // First delete existing passengers
+  await prisma.passenger.deleteMany({ where: { bookingId: id } });
+
+  return prisma.booking.update({
+    where: { id },
+    data: {
+      contactName: data.contactName,
+      contactEmail: data.contactEmail || null,
+      contactPhone: data.contactPhone,
+      status: data.status as any,
+      passengers: {
+        create: data.passengerNames.map(name => ({ name }))
+      }
     }
   });
 }
@@ -424,5 +654,248 @@ export async function getCheckoutPromos() {
   });
 
   return promos.filter((p: any) => !p.usageLimit || p.usedCount < p.usageLimit);
+}
+
+// ========== RESCHEDULE, REFUND & CHANGE ROUTE ACTIONS ==========
+
+export async function rescheduleBooking(bookingId: string, newScheduleId: string) {
+  const booking = await prisma.booking.findUnique({
+    where: { id: bookingId },
+    include: { schedule: true, seats: true }
+  });
+
+  if (!booking) throw new Error("Booking tidak ditemukan");
+  if (booking.status !== 'CONFIRMED') throw new Error("Hanya booking yang sudah bayar yang dapat di-reschedule");
+
+  const newSchedule = await prisma.schedule.findUnique({
+    where: { id: newScheduleId },
+    include: { route: true }
+  });
+
+  if (!newSchedule) throw new Error("Jadwal baru tidak ditemukan");
+  if (newSchedule.departureTime < new Date()) throw new Error("Jadwal baru sudah berlalu");
+
+  return prisma.$transaction(async (tx: any) => {
+    // Release old seats
+    if (booking.schedule.operatingTripId) {
+      await tx.seat.updateMany({
+        where: {
+          operatingTripId: booking.schedule.operatingTripId,
+          bookingId: booking.id
+        },
+        data: { status: 'AVAILABLE', bookingId: null }
+      });
+    }
+
+    // Calculate new price
+    const pricePerSeat = newSchedule.price;
+    const passengerCount = booking.seats.length || 1;
+    const newTotalPrice = pricePerSeat * passengerCount;
+
+    // Update booking with new schedule
+    const updatedBooking = await tx.booking.update({
+      where: { id: bookingId },
+      data: {
+        scheduleId: newScheduleId,
+        totalPrice: newTotalPrice,
+        discountAmount: 0
+      },
+      include: {
+        schedule: { include: { route: true } },
+        seats: true,
+        passengers: true
+      }
+    });
+
+    // Book new seats if operating trip exists
+    if (newSchedule.operatingTripId) {
+      const availableSeats = await tx.seat.findMany({
+        where: {
+          operatingTripId: newSchedule.operatingTripId,
+          status: 'AVAILABLE'
+        },
+        take: passengerCount,
+        orderBy: { seatNumber: 'asc' }
+      });
+
+      if (availableSeats.length < passengerCount) {
+        throw new Error("Kursi tidak tersedia untuk jadwal baru");
+      }
+
+      for (const seat of availableSeats) {
+        await tx.seat.update({
+          where: { id: seat.id },
+          data: { status: 'BOOKED', bookingId: booking.id }
+        });
+      }
+    }
+
+    return updatedBooking;
+  });
+}
+
+export async function processRefund(bookingId: string, refundAmount: number, reason: string) {
+  const booking = await prisma.booking.findUnique({
+    where: { id: bookingId },
+    include: { schedule: true, seats: true }
+  });
+
+  if (!booking) throw new Error("Booking tidak ditemukan");
+  if (booking.status !== 'CONFIRMED') throw new Error("Hanya booking yang sudah bayar yang dapat di-refund");
+
+  return prisma.$transaction(async (tx: any) => {
+    // Release seats
+    if (booking.schedule.operatingTripId) {
+      await tx.seat.updateMany({
+        where: {
+          operatingTripId: booking.schedule.operatingTripId,
+          bookingId: booking.id
+        },
+        data: { status: 'AVAILABLE', bookingId: null }
+      });
+    }
+
+    // Update booking to CANCELLED with refund info
+    const updatedBooking = await tx.booking.update({
+      where: { id: bookingId },
+      data: {
+        status: 'CANCELLED',
+        // Store refund info in a simple way - you might want to create a separate Refund model
+        paymentProofUrl: `REFUND:${refundAmount}:${reason}:${new Date().toISOString()}`
+      },
+      include: {
+        schedule: { include: { route: true } },
+        seats: true,
+        passengers: true
+      }
+    });
+
+    return { success: true, booking: updatedBooking, refundAmount, reason };
+  });
+}
+
+export async function changeBookingRoute(bookingId: string, newRouteId: string, newScheduleId: string) {
+  const booking = await prisma.booking.findUnique({
+    where: { id: bookingId },
+    include: { schedule: true, seats: true, segment: true }
+  });
+
+  if (!booking) throw new Error("Booking tidak ditemukan");
+  if (booking.status !== 'CONFIRMED') throw new Error("Hanya booking yang sudah bayar yang dapat pindah rute");
+
+  const newSchedule = await prisma.schedule.findUnique({
+    where: { id: newScheduleId },
+    include: { route: { include: { stops: true } } }
+  });
+
+  if (!newSchedule) throw new Error("Jadwal baru tidak ditemukan");
+  if (newSchedule.routeId !== newRouteId) throw new Error("Jadwal tidak sesuai dengan rute");
+
+  return prisma.$transaction(async (tx: any) => {
+    // Release old seats
+    if (booking.schedule.operatingTripId) {
+      await tx.seat.updateMany({
+        where: {
+          operatingTripId: booking.schedule.operatingTripId,
+          bookingId: booking.id
+        },
+        data: { status: 'AVAILABLE', bookingId: null }
+      });
+    }
+
+    // Calculate new price
+    const pricePerSeat = newSchedule.price;
+    const passengerCount = booking.seats.length || 1;
+    const newTotalPrice = pricePerSeat * passengerCount;
+
+    // Delete old segment if exists
+    if (booking.segment) {
+      await tx.bookingSegment.delete({
+        where: { id: booking.segment.id }
+      });
+    }
+
+    // Update booking with new schedule and route
+    const updatedBooking = await tx.booking.update({
+      where: { id: bookingId },
+      data: {
+        scheduleId: newScheduleId,
+        totalPrice: newTotalPrice,
+        discountAmount: 0
+      },
+      include: {
+        schedule: { include: { route: true } },
+        seats: true,
+        passengers: true
+      }
+    });
+
+    // Book new seats if operating trip exists
+    if (newSchedule.operatingTripId) {
+      const availableSeats = await tx.seat.findMany({
+        where: {
+          operatingTripId: newSchedule.operatingTripId,
+          status: 'AVAILABLE'
+        },
+        take: passengerCount,
+        orderBy: { seatNumber: 'asc' }
+      });
+
+      if (availableSeats.length < passengerCount) {
+        throw new Error("Kursi tidak tersedia untuk rute baru");
+      }
+
+      for (const seat of availableSeats) {
+        await tx.seat.update({
+          where: { id: seat.id },
+          data: { status: 'BOOKED', bookingId: booking.id }
+        });
+      }
+    }
+
+    return updatedBooking;
+  });
+}
+
+// Get available schedules for reschedule (same route, future dates)
+export async function getAvailableSchedulesForReschedule(routeId: string, excludeScheduleId: string) {
+  const now = new Date();
+
+  return prisma.schedule.findMany({
+    where: {
+      routeId: routeId,
+      id: { not: excludeScheduleId },
+      departureTime: { gte: now },
+      isActive: true,
+      isDeleted: false
+    },
+    include: {
+      route: true,
+      operatingTrip: {
+        include: {
+          _count: {
+            select: {
+              seats: { where: { status: 'AVAILABLE' } }
+            }
+          }
+        }
+      }
+    },
+    orderBy: { departureTime: 'asc' }
+  });
+}
+
+// Get all active routes for change route feature
+export async function getAllActiveRoutes() {
+  return prisma.route.findMany({
+    where: { isDeleted: false },
+    include: {
+      stops: { orderBy: { sequence: 'asc' } }
+    },
+    orderBy: [
+      { origin: 'asc' },
+      { destination: 'asc' }
+    ]
+  });
 }
 

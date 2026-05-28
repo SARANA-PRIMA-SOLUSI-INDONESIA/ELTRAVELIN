@@ -11,6 +11,9 @@ interface SeatSelectionProps {
 export default async function SeatSelection({ searchParams }: SeatSelectionProps) {
   const resolvedParams = await searchParams;
   const scheduleId = resolvedParams.scheduleId as string;
+  const originStopId = resolvedParams.originStopId as string | undefined;
+  const destinationStopId = resolvedParams.destinationStopId as string | undefined;
+  const segmentPrice = resolvedParams.segmentPrice ? parseInt(resolvedParams.segmentPrice as string) : undefined;
 
   if (!scheduleId) return notFound();
 
@@ -52,7 +55,10 @@ export default async function SeatSelection({ searchParams }: SeatSelectionProps
         <SeatGrid 
           initialSeats={schedule.seats} 
           scheduleId={schedule.id}
-          price={schedule.price}
+          price={segmentPrice || schedule.price}
+          originStopId={originStopId}
+          destinationStopId={destinationStopId}
+          segmentPrice={segmentPrice}
         />
       </div>
     </div>

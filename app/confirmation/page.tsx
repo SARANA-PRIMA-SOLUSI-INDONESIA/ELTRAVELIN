@@ -176,6 +176,16 @@ export default async function Confirmation({ searchParams }: ConfirmationProps) 
           </div>
         </div>
 
+        {isConfirmed && (
+          <Link
+            href={`/invoice/${booking.bookingCode}`}
+            className="flex items-center gap-2 bg-navy-deep text-white px-6 py-3 rounded-xl font-bold hover:bg-navy-deep/90 transition-all shadow-lg shadow-navy-deep/20"
+          >
+            <i className="ri-file-text-line"></i>
+            <span>Lihat Invoice / Bukti Pembayaran</span>
+          </Link>
+        )}
+
         <Link 
           href="/" 
           className="text-gold-warm font-bold text-sm uppercase tracking-widest hover:opacity-80 transition-all"
