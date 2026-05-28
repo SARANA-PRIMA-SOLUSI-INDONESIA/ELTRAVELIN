@@ -1,7 +1,11 @@
 // Environment variable utilities with DEV/PROD separation
 // Usage: getEnv("DATABASE_URL") -> returns DATABASE_URL_DEV or DATABASE_URL_PROD based on NODE_ENV
 
-export const isProd = () => process.env.NODE_ENV === "production";
+// APP_ENV must be set manually:
+// - Vercel Production → APP_ENV=production
+// - Vercel Preview    → APP_ENV=development
+// - Local (.env.local) → APP_ENV=development (or omit, defaults to development)
+export const isProd = () => process.env.APP_ENV === "production";
 
 export function getEnv(key: string): string | undefined {
   const envKey = isProd() ? `${key}_PROD` : `${key}_DEV`;
