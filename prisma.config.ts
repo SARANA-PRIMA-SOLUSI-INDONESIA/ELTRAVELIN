@@ -3,6 +3,18 @@
 import "dotenv/config";
 import { defineConfig } from "prisma/config";
 
+// Environment-based database URL selection
+// DEV:  Uses DATABASE_URL_DEV  / DIRECT_URL_DEV
+// PROD: Uses DATABASE_URL_PROD / DIRECT_URL_PROD
+const isProd = process.env.NODE_ENV === "production";
+const databaseUrl = isProd
+  ? process.env["DATABASE_URL_PROD"] || process.env["DATABASE_URL"]
+  : process.env["DATABASE_URL_DEV"] || process.env["DATABASE_URL"];
+
+const directUrl = isProd
+  ? process.env["DIRECT_URL_PROD"] || process.env["DIRECT_URL"]
+  : process.env["DIRECT_URL_DEV"] || process.env["DIRECT_URL"];
+
 export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: {
@@ -10,6 +22,6 @@ export default defineConfig({
     seed: "tsx prisma/seed.ts",
   },
   datasource: {
-    url: process.env["DATABASE_URL"],
+    url: databaseUrl,
   },
 });

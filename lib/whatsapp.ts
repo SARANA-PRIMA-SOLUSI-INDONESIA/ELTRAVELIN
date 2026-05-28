@@ -1,3 +1,5 @@
+import { getAppUrl } from "./env";
+
 export async function sendWhatsAppMessage(to: string, message: string) {
   const apiKey = process.env.STARSENDER_API_KEY;
 
@@ -46,7 +48,7 @@ Halo ${booking.contactName}, pembayaran Anda telah kami terima. Berikut adalah d
 💺 *Nomor Kursi:* ${booking.seats.map((s: any) => s.seatNumber).join(', ')}
 
 Lihat E-Ticket lengkap Anda di sini:
-${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/confirmation?code=${booking.bookingCode}
+${getAppUrl()}/confirmation?code=${booking.bookingCode}
 
 Mohon hadir 30 menit sebelum keberangkatan. Terima kasih telah memilih ELTravel!`;
 
