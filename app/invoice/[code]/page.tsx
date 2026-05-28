@@ -77,8 +77,8 @@ export default async function InvoicePage({ params }: InvoiceProps) {
               <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Diterbitkan Oleh</h3>
               <p className="font-bold text-navy-deep">ELTRAVEL INDONESIA MAJU</p>
               <p className="text-sm text-gray-500 mt-1">PT Eltravel Indonesia Maju</p>
-              <p className="text-sm text-gray-500">Sumedang, Jawa Barat</p>
-              <p className="text-sm text-gray-500">Telepon: 0857-XXXX-XXXX</p>
+              <p className="text-sm text-gray-500">Jl. A. Yani No.835A, Padasuka, Kec. Cibeunying Kidul, Kota Bandung, Jawa Barat 40125</p>
+              <p className="text-sm text-gray-500">Telepon: 0811-221-286</p>
             </div>
             <div>
               <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Ditagihkan Kepada</h3>
@@ -130,7 +130,9 @@ export default async function InvoicePage({ params }: InvoiceProps) {
                 </div>
                 <div>
                   <p className="text-xs text-gray-400">Metode Pembayaran</p>
-                  <p className="font-medium text-gray-700">{booking.paymentMethod}</p>
+                  <p className="font-medium text-gray-700">
+                    {booking.paymentMethod === 'MOOTA' ? 'Transfer Bank' : booking.paymentMethod === 'POOL' ? 'Bayar di Pool' : booking.paymentMethod}
+                  </p>
                 </div>
               </div>
             </div>
