@@ -4,11 +4,25 @@ import { prisma } from "@/lib/prisma";
 import { syncSchedulesFromTemplates } from "@/lib/schedule-generator";
 import { revalidatePath } from "next/cache";
 
-// --- Route Actions ---
-
 export async function createRoute(origin: string, destination: string) {
+  const originClean = origin.trim();
+  const destClean = destination.trim();
+
+  const existing = await prisma.route.findUnique({
+    where: {
+      origin_destination: {
+        origin: originClean,
+        destination: destClean
+      }
+    }
+  });
+
+  if (existing) {
+    throw new Error("Rute dengan asal dan tujuan tersebut sudah terdaftar!");
+  }
+
   const route = await prisma.route.create({
-    data: { origin, destination }
+    data: { origin: originClean, destination: destClean }
   });
   revalidatePath("/admin/master");
   revalidatePath("/");
@@ -17,14 +31,19 @@ export async function createRoute(origin: string, destination: string) {
 }
 
 export async function deleteRoute(id: string) {
-  // Soft delete for reports and data integrity
-  await prisma.route.update({
-    where: { id },
-    data: { isDeleted: true }
-  });
-  revalidatePath("/admin/master");
-  revalidatePath("/");
-  revalidatePath("/routes");
+  try {
+    await prisma.route.delete({
+      where: { id }
+    });
+    revalidatePath("/admin/master");
+    revalidatePath("/");
+    revalidatePath("/routes");
+  } catch (error: any) {
+    if (error.code === 'P2003' || (error.message && error.message.includes("Foreign key constraint"))) {
+      throw new Error("Rute tidak dapat dihapus karena sudah digunakan oleh Jadwal Master atau Jadwal Harian. Silakan hapus jadwal-jadwal rute ini terlebih dahulu.");
+    }
+    throw error;
+  }
 }
 
 export async function updateRoute(id: string, origin: string, destination: string) {
@@ -111,14 +130,19 @@ export async function updateScheduleStatus(id: string, isActive: boolean) {
 }
 
 export async function deleteSchedule(id: string) {
-  // Soft delete for safety
-  await prisma.schedule.update({
-    where: { id },
-    data: { isDeleted: true }
-  });
-  revalidatePath("/admin/schedules");
-  revalidatePath("/");
-  revalidatePath("/routes");
+  try {
+    await prisma.schedule.delete({
+      where: { id }
+    });
+    revalidatePath("/admin/schedules");
+    revalidatePath("/");
+    revalidatePath("/routes");
+  } catch (error: any) {
+    if (error.code === 'P2003' || (error.message && error.message.includes("Foreign key constraint"))) {
+      throw new Error("Jadwal tidak dapat dihapus secara permanen karena sudah memiliki transaksi/booking aktif.");
+    }
+    throw error;
+  }
 }
 
 // --- RouteStop Actions ---
@@ -162,7 +186,7 @@ export async function createRouteStop(routeId: string, name: string, sequence: n
     revalidatePath("/admin/master");
     revalidatePath("/");
     revalidatePath("/routes");
-  } catch (e) {}
+  } catch (e) { }
   return result;
 }
 
@@ -190,7 +214,7 @@ export async function deleteRouteStop(id: string) {
     revalidatePath("/admin/master");
     revalidatePath("/");
     revalidatePath("/routes");
-  } catch (e) {}
+  } catch (e) { }
 }
 
 export async function reorderRouteStops(routeId: string, orderedIds: string[]) {
@@ -216,7 +240,22 @@ export async function reorderRouteStops(routeId: string, orderedIds: string[]) {
     revalidatePath("/admin/master");
     revalidatePath("/");
     revalidatePath("/routes");
-  } catch (e) {}
+  } catch (e) { }
+}
+
+export async function updateRouteStopStatus(id: string, isActive: boolean) {
+  const result = await prisma.routeStop.update({
+    where: { id },
+    data: { isActive }
+  });
+
+  try {
+    revalidatePath("/admin/master");
+    revalidatePath("/");
+    revalidatePath("/routes");
+  } catch (e) { }
+
+  return result;
 }
 
 export async function getRouteById(id: string) {
@@ -258,6 +297,57 @@ export async function updateTemplate(id: string, data: {
 export async function getTemplateById(id: string) {
   return prisma.scheduleTemplate.findUnique({
     where: { id },
-    include: { vehicle: true, route: true }
+    include: {
+      vehicle: true,
+      route: {
+        include: {
+          stops: {
+            orderBy: { sequence: "asc" }
+          }
+        }
+      }
+    }
   });
+}
+
+export async function getTemplateWithStops(templateId: string) {
+  return prisma.scheduleTemplate.findUnique({
+    where: { id: templateId },
+    include: {
+      vehicle: true,
+      route: {
+        include: {
+          stops: {
+            orderBy: { sequence: "asc" }
+          }
+        }
+      }
+    }
+  });
+}
+
+export async function updateTemplateStopTimes(templateId: string, stopTimesJson: string) {
+  // 1. Update the template
+  const template = await prisma.scheduleTemplate.update({
+    where: { id: templateId },
+    data: { stopTimesJson }
+  });
+
+  // 2. Update all future generated schedules from this template (WIB departureTime >= today)
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  await prisma.schedule.updateMany({
+    where: {
+      templateId,
+      departureTime: { gte: today }
+    },
+    data: { stopTimesJson }
+  });
+
+  revalidatePath("/admin/master");
+  revalidatePath("/admin/schedules");
+  revalidatePath("/");
+  revalidatePath("/routes");
+  return template;
 }

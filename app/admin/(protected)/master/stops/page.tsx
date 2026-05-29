@@ -1,6 +1,6 @@
 "use client";
 
-import { createRouteStop, deleteRouteStop, getRouteWithStops, reorderRouteStops } from "@/app/actions/admin-master";
+import { createRouteStop, deleteRouteStop, getRouteWithStops, reorderRouteStops, updateRouteStopStatus } from "@/app/actions/admin-master";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
@@ -13,10 +13,9 @@ function StopsManagerForm() {
   const [loading, setLoading] = useState(false);
   const [route, setRoute] = useState<any>(null);
   const [stops, setStops] = useState<any[]>([]);
-  
+
   // Form fields
   const [name, setName] = useState("");
-  const [stopTime, setStopTime] = useState("");
   const [price, setPrice] = useState<number>(0);
   const [insertSequence, setInsertSequence] = useState<number>(1);
 
@@ -45,9 +44,8 @@ function StopsManagerForm() {
 
     setLoading(true);
     try {
-      await createRouteStop(routeId, name, Number(insertSequence), stopTime || undefined, price);
+      await createRouteStop(routeId, name, Number(insertSequence), undefined, price);
       setName("");
-      setStopTime("");
       setPrice(0);
       await loadData();
     } catch (error) {
@@ -68,10 +66,19 @@ function StopsManagerForm() {
     }
   };
 
+  const handleToggleStatus = async (id: string, currentStatus: boolean) => {
+    try {
+      await updateRouteStopStatus(id, !currentStatus);
+      await loadData();
+    } catch (error) {
+      alert("Gagal memperbarui status titik singgah: " + (error as any).message);
+    }
+  };
+
   const handleMove = async (index: number, direction: "up" | "down") => {
     const newStops = [...stops];
     const targetIndex = direction === "up" ? index - 1 : index + 1;
-    
+
     if (targetIndex < 0 || targetIndex >= stops.length) return;
 
     // Swap stops
@@ -113,12 +120,12 @@ function StopsManagerForm() {
         {/* Left: Add Stop Form */}
         <div className="lg:col-span-5 bg-white p-8 rounded-[2rem] shadow-sm border border-outline-ghost flex flex-col gap-6">
           <h2 className="text-lg font-display font-bold text-navy-deep">Tambah / Sisipkan Titik</h2>
-          
+
           <form onSubmit={handleSubmit} className="flex flex-col gap-5">
             <div className="flex flex-col gap-2">
               <label className="text-xs font-bold text-navy-deep uppercase tracking-widest">Nama Titik / Pool</label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 placeholder="Contoh: Buah Batu / Cileunyi"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -129,8 +136,8 @@ function StopsManagerForm() {
 
             <div className="flex flex-col gap-2">
               <label className="text-xs font-bold text-navy-deep uppercase tracking-widest">Harga dari Titik Sebelumnya (Rp)</label>
-              <input 
-                type="number" 
+              <input
+                type="number"
                 min="0"
                 placeholder="0"
                 value={price}
@@ -143,18 +150,8 @@ function StopsManagerForm() {
             </div>
 
             <div className="flex flex-col gap-2">
-              <label className="text-xs font-bold text-navy-deep uppercase tracking-widest">Estimasi Jam Singgah (Opsional)</label>
-              <input 
-                type="time" 
-                value={stopTime}
-                onChange={(e) => setStopTime(e.target.value)}
-                className="bg-surface-low rounded-xl px-4 py-3.5 text-sm outline-none border-none focus:ring-2 focus:ring-gold-warm"
-              />
-            </div>
-
-            <div className="flex flex-col gap-2">
               <label className="text-xs font-bold text-navy-deep uppercase tracking-widest">Urutan Jalur (Sequence)</label>
-              <select 
+              <select
                 value={insertSequence}
                 onChange={(e) => setInsertSequence(Number(e.target.value))}
                 className="bg-surface-low rounded-xl px-4 py-3.5 text-sm outline-none border-none focus:ring-2 focus:ring-gold-warm cursor-pointer"
@@ -170,8 +167,8 @@ function StopsManagerForm() {
               </p>
             </div>
 
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               disabled={loading}
               className="btn-primary py-3.5 rounded-xl font-bold text-sm shadow-md mt-2 disabled:opacity-50"
             >
@@ -194,57 +191,72 @@ function StopsManagerForm() {
             </div>
           ) : (
             <div className="relative pl-10 border-l-2 border-surface-medium flex flex-col gap-6 ml-4">
-              {stops.map((stop, index) => (
-                <div key={stop.id} className="relative group">
-                  {/* Timeline Point Dot */}
-                  <div className="absolute -left-[51px] top-4 w-6 h-6 rounded-full bg-gold-soft border-4 border-white shadow-sm flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <div className="w-2 h-2 rounded-full bg-gold-warm"></div>
-                  </div>
+              {stops.map((stop, index) => {
+                const isActive = stop.isActive !== false;
 
-                  {/* Stop Box card */}
-                  <div className="bg-surface-low border border-transparent hover:border-gold-soft hover:shadow-ambient rounded-2xl p-5 flex items-center justify-between transition-all">
-                    <div className="flex flex-col gap-1">
-                      <span className="text-xs font-bold text-gold-warm uppercase tracking-wider">Titik Ke-{stop.sequence}</span>
-                      <h3 className="text-base font-display font-bold text-navy-deep uppercase">{stop.name}</h3>
-                      <span className="text-xs text-green-600 font-medium">
-                        Rp {(stop.price || 0).toLocaleString('id-ID')}
-                      </span>
-                      {stop.stopTime && (
-                        <span className="text-xs text-foreground/50 font-medium flex items-center gap-1.5 mt-0.5">
-                          <i className="ri-time-line text-xs"></i> Estimasi Jam: {stop.stopTime} WIB
+                return (
+                  <div key={stop.id} className="relative group">
+                    {/* Timeline Point Dot */}
+                    <div className="absolute -left-[51px] top-4 w-6 h-6 rounded-full bg-gold-soft border-4 border-white shadow-sm flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <div className={`w-2 h-2 rounded-full ${isActive ? 'bg-gold-warm' : 'bg-gray-400'}`}></div>
+                    </div>
+
+                    {/* Stop Box card */}
+                    <div className={`bg-surface-low border border-transparent hover:border-gold-soft hover:shadow-ambient rounded-2xl p-5 flex items-center justify-between transition-all ${!isActive ? 'opacity-60 grayscale-[40%] bg-surface-low/80 border-dashed border-outline-ghost' : ''}`}>
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-gold-warm uppercase tracking-wider">Titik Ke-{stop.sequence}</span>
+                          {!isActive && (
+                            <span className="bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider">Tersembunyi</span>
+                          )}
+                        </div>
+                        <h3 className="text-base font-display font-bold text-navy-deep uppercase">{stop.name}</h3>
+                        <span className="text-xs text-green-600 font-medium">
+                          Rp {(stop.price || 0).toLocaleString('id-ID')}
                         </span>
-                      )}
-                    </div>
+                      </div>
 
-                    {/* Action buttons */}
-                    <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
-                      <button 
-                        onClick={() => handleMove(index, "up")}
-                        disabled={index === 0}
-                        className="w-8 h-8 rounded-lg bg-white border border-outline-ghost text-navy-deep hover:bg-navy-deep hover:text-white disabled:opacity-35 transition-all flex items-center justify-center"
-                        title="Naikkan Urutan"
-                      >
-                        <i className="ri-arrow-up-line"></i>
-                      </button>
-                      <button 
-                        onClick={() => handleMove(index, "down")}
-                        disabled={index === stops.length - 1}
-                        className="w-8 h-8 rounded-lg bg-white border border-outline-ghost text-navy-deep hover:bg-navy-deep hover:text-white disabled:opacity-35 transition-all flex items-center justify-center"
-                        title="Turunkan Urutan"
-                      >
-                        <i className="ri-arrow-down-line"></i>
-                      </button>
-                      <button 
-                        onClick={() => handleDelete(stop.id)}
-                        className="w-8 h-8 rounded-lg bg-red-50 border border-red-100 text-red-500 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center ml-2"
-                        title="Hapus Titik"
-                      >
-                        <i className="ri-delete-bin-line"></i>
-                      </button>
+                      {/* Action buttons */}
+                      <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => handleToggleStatus(stop.id, stop.isActive)}
+                          className={`w-8 h-8 rounded-lg border transition-all flex items-center justify-center ${
+                            isActive
+                              ? "bg-blue-50 border-blue-100 text-blue-500 hover:bg-blue-500 hover:text-white"
+                              : "bg-gray-100 border-gray-200 text-gray-400 hover:bg-gray-500 hover:text-white"
+                          }`}
+                          title={isActive ? "Sembunyikan Titik" : "Tampilkan Titik"}
+                        >
+                          <i className={isActive ? "ri-eye-line text-sm" : "ri-eye-off-line text-sm"}></i>
+                        </button>
+                        <button
+                          onClick={() => handleMove(index, "up")}
+                          disabled={index === 0}
+                          className="w-8 h-8 rounded-lg bg-white border border-outline-ghost text-navy-deep hover:bg-navy-deep hover:text-white disabled:opacity-35 transition-all flex items-center justify-center ml-1"
+                          title="Naikkan Urutan"
+                        >
+                          <i className="ri-arrow-up-line"></i>
+                        </button>
+                        <button
+                          onClick={() => handleMove(index, "down")}
+                          disabled={index === stops.length - 1}
+                          className="w-8 h-8 rounded-lg bg-white border border-outline-ghost text-navy-deep hover:bg-navy-deep hover:text-white disabled:opacity-35 transition-all flex items-center justify-center"
+                          title="Turunkan Urutan"
+                        >
+                          <i className="ri-arrow-down-line"></i>
+                        </button>
+                        <button
+                          onClick={() => handleDelete(stop.id)}
+                          className="w-8 h-8 rounded-lg bg-red-50 border border-red-100 text-red-500 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center ml-2"
+                          title="Hapus Titik"
+                        >
+                          <i className="ri-delete-bin-line"></i>
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
@@ -276,7 +288,7 @@ function StopsManagerForm() {
                         for (let i = fromIdx + 1; i <= fromIdx + 1 + toIdx && i < stops.length; i++) {
                           segmentPrice += stops[i].price || 0;
                         }
-                        
+
                         return (
                           <tr key={`${fromStop.id}-${toStop.id}`} className="border-b border-surface-medium/50 last:border-0">
                             <td className="py-2 px-3 font-medium text-navy-deep">{fromStop.name}</td>

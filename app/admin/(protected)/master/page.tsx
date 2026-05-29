@@ -124,6 +124,16 @@ export default async function AdminMaster() {
                           <span className="font-bold text-navy-deep">{t.vehicleType} ({t.capacity} Kursi)</span>
                         </div>
                       </div>
+
+                      <div className="mt-2 pt-4 border-t border-outline-ghost flex">
+                        <Link
+                          href={`/admin/master/stops-template?templateId=${t.id}`}
+                          className="flex-grow text-center text-xs font-bold text-navy-deep bg-white py-2.5 rounded-xl border border-outline-ghost hover:bg-gold-soft hover:text-white transition-all flex items-center justify-center gap-1.5 shadow-sm"
+                        >
+                          <i className="ri-map-pin-time-line text-sm"></i>
+                          Atur Jam Singgah
+                        </Link>
+                      </div>
                     </div>
                   ))
                 )}

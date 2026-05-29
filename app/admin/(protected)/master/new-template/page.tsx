@@ -1,6 +1,6 @@
 "use client";
 
-import { createTemplate, getVehicles } from "@/app/actions/admin-master";
+import { createTemplate, getVehicles, getRouteWithStops } from "@/app/actions/admin-master";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, Suspense, useEffect } from "react";
 import Link from "next/link";
@@ -13,7 +13,7 @@ function NewTemplateForm() {
   const [loading, setLoading] = useState(false);
   const [departureTime, setDepartureTime] = useState("08:00");
   const [arrivalTime, setArrivalTime] = useState("11:30");
-  const [price, setPrice] = useState(175000);
+  const [price, setPrice] = useState(0);
   const [vehicleId, setVehicleId] = useState("");
   const [vehicles, setVehicles] = useState<any[]>([]);
 
@@ -23,6 +23,16 @@ function NewTemplateForm() {
       if (v.length > 0) setVehicleId(v[0].id);
     });
   }, []);
+
+  useEffect(() => {
+    if (!routeId) return;
+    getRouteWithStops(routeId).then((routeData: any) => {
+      if (routeData && routeData.stops) {
+        const sum = routeData.stops.reduce((acc: number, stop: any) => acc + (stop.price || 0), 0);
+        setPrice(sum);
+      }
+    });
+  }, [routeId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,13 +90,12 @@ function NewTemplateForm() {
             />
           </div>
           <div className="flex flex-col gap-2">
-            <label className="text-xs font-bold text-navy-deep uppercase tracking-widest">Harga Tiket (Rp)</label>
+            <label className="text-xs font-bold text-navy-deep uppercase tracking-widest">Harga Tiket (Otomatis dari Rute)</label>
             <input 
-              type="number" 
-              value={price}
-              onChange={(e) => setPrice(Number(e.target.value))}
-              className="bg-surface-low rounded-xl px-4 py-4 text-sm outline-none border-none focus:ring-2 focus:ring-gold-warm"
-              required
+              type="text" 
+              value={`Rp ${price.toLocaleString('id-ID')}`}
+              className="bg-surface-low text-foreground/45 rounded-xl px-4 py-4 text-sm outline-none border-none cursor-not-allowed font-bold"
+              disabled
             />
           </div>
           <div className="flex flex-col gap-2">

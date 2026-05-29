@@ -51,6 +51,7 @@ model Schedule {
   isActive        Boolean           @default(true)
   isDeleted       Boolean           @default(false)
   operatingTripId String?
+  stopTimesJson   String?
   bookings        Booking[]
   route           Route             @relation(fields: [routeId], references: [id])
   template        ScheduleTemplate? @relation(fields: [templateId], references: [id])
@@ -65,6 +66,7 @@ model ScheduleTemplate {
   price         Int
   vehicleId     String
   isActive      Boolean    @default(true)
+  stopTimesJson String?
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
   schedules     Schedule[]

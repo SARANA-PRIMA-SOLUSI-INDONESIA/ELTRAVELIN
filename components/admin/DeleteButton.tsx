@@ -2,11 +2,12 @@
 
 import { deleteRoute, deleteTemplate } from "@/app/actions/admin-master";
 import { deletePromo } from "@/app/actions/admin-promo";
+import { deleteVehicle } from "@/app/actions/admin-vehicle";
 import { useState } from "react";
 
 interface DeleteButtonProps {
   id: string;
-  type: 'route' | 'template' | 'promo';
+  type: 'route' | 'template' | 'promo' | 'vehicle';
 }
 
 export default function DeleteButton({ id, type }: DeleteButtonProps) {
@@ -17,6 +18,7 @@ export default function DeleteButton({ id, type }: DeleteButtonProps) {
     if (type === 'route') msg = "Hapus rute ini beserta seluruh jadwal masternya?";
     else if (type === 'template') msg = "Hapus template jadwal ini?";
     else if (type === 'promo') msg = "Hapus kode promo ini?";
+    else if (type === 'vehicle') msg = "Hapus armada ini?";
       
     if (!confirm(msg)) return;
 
@@ -28,9 +30,12 @@ export default function DeleteButton({ id, type }: DeleteButtonProps) {
         await deleteTemplate(id);
       } else if (type === 'promo') {
         await deletePromo(id);
+      } else if (type === 'vehicle') {
+        await deleteVehicle(id);
       }
     } catch (error) {
-      alert("Gagal menghapus: " + (error as any).message);
+      const msg = error instanceof Error ? error.message : "Terjadi kesalahan";
+      alert("Gagal menghapus: " + msg);
     } finally {
       setLoading(false);
     }

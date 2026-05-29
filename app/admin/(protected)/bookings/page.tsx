@@ -178,6 +178,12 @@ export default async function AdminBookings({ searchParams }: AdminBookingsProps
                         routeId={b.schedule.route.id}
                         totalPrice={b.totalPrice}
                         paymentMethod={b.paymentMethod}
+                        contactName={b.contactName}
+                        contactPhone={b.contactPhone}
+                        passengers={b.passengers || []}
+                        seatNumbers={b.seats?.map((s: any) => s.seatNumber) || []}
+                        origin={b.schedule.route.origin}
+                        destination={b.schedule.route.destination}
                       />
                     </td>
                   </tr>

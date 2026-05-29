@@ -32,15 +32,20 @@ export async function DELETE(request: Request, { params }: RouteParams) {
   try {
     const resolvedParams = await params;
     
-    // Soft delete
-    const schedule = await prisma.schedule.update({
+    // Physical delete
+    await prisma.schedule.delete({
       where: { id: resolvedParams.id },
-      data: { isDeleted: true, isActive: false },
     });
 
-    return NextResponse.json({ success: true, message: "Jadwal berhasil dihapus (soft delete)" });
-  } catch (error) {
+    return NextResponse.json({ success: true, message: "Jadwal berhasil dihapus secara permanen" });
+  } catch (error: any) {
     console.error("Delete schedule error:", error);
+    if (error.code === 'P2003' || (error.message && error.message.includes("Foreign key constraint"))) {
+      return NextResponse.json(
+        { error: "Jadwal tidak dapat dihapus secara permanen karena sudah memiliki transaksi/booking aktif." },
+        { status: 400 }
+      );
+    }
     return NextResponse.json({ error: "Gagal menghapus jadwal" }, { status: 500 });
   }
 }

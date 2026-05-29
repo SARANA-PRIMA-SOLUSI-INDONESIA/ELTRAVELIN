@@ -23,6 +23,7 @@ interface Schedule {
   price: number;
   departureTime: string | Date;
   arrivalTime: string | Date;
+  stopTimesJson?: string | null;
   _count: {
     seats: number;
   };
@@ -44,6 +45,26 @@ export default function ScheduleCard({ schedule, fromName, toName, segmentPrice 
 
   const routeDepartureDate = new Date(schedule.departureTime);
   const routeArrivalDate = new Date(schedule.arrivalTime);
+
+  // Parse template-specific stop times if available
+  const customStopTimes = (() => {
+    try {
+      if (schedule.stopTimesJson) {
+        return JSON.parse(schedule.stopTimesJson) as Record<string, string>;
+      }
+    } catch (e) {
+      console.error("Gagal parse stopTimesJson di ScheduleCard:", e);
+    }
+    return null;
+  })();
+
+  const getStopOverrideTime = (stop: Stop | undefined | null) => {
+    if (!stop) return null;
+    if (customStopTimes && customStopTimes[stop.id]) {
+      return customStopTimes[stop.id];
+    }
+    return stop.stopTime; // fallback to global stopTime
+  };
 
   // Find origin and destination stops from the selected points
   const originStop = schedule.route.stops?.find(s => s.name === fromName);
@@ -74,14 +95,16 @@ export default function ScheduleCard({ schedule, fromName, toName, segmentPrice 
     return dateCopy;
   };
 
+  const originStopTime = getStopOverrideTime(originStop);
   // Use origin stop time if available, otherwise route departure
-  const departureDate = originStop?.stopTime 
-    ? getStopTimeAsDate(originStop.stopTime, routeDepartureDate)
+  const departureDate = originStopTime 
+    ? getStopTimeAsDate(originStopTime, routeDepartureDate)
     : routeDepartureDate;
 
+  const destStopTime = getStopOverrideTime(destStop);
   // Use destination stop time if available, otherwise route arrival
-  const arrivalDate = destStop?.stopTime
-    ? getStopTimeAsDate(destStop.stopTime, routeDepartureDate)
+  const arrivalDate = destStopTime
+    ? getStopTimeAsDate(destStopTime, routeDepartureDate)
     : routeArrivalDate;
 
   // Helper to parse "+20 Menit" or "+1.5 Jam" or absolute "10:30" / "10.30" and format absolute stop time
@@ -153,11 +176,14 @@ export default function ScheduleCard({ schedule, fromName, toName, segmentPrice 
   });
 
   // Construct timeline items from selected origin to destination
-  const timelineItems = stopsInSegment.map(s => ({
-    name: s.name,
-    time: getStopAbsoluteTime(s.stopTime),
-    date: getStopAbsoluteDate(s.stopTime),
-  }));
+  const timelineItems = stopsInSegment.map(s => {
+    const sTime = getStopOverrideTime(s);
+    return {
+      name: s.name,
+      time: getStopAbsoluteTime(sTime),
+      date: getStopAbsoluteDate(sTime),
+    };
+  });
 
   return (
     <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden flex flex-col transition-all hover:shadow-md">

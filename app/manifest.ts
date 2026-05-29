@@ -1,9 +1,12 @@
 import { MetadataRoute } from 'next'
+import { isProd } from '@/lib/env'
 
 export default function manifest(): MetadataRoute.Manifest {
+  const appName = isProd() ? 'ELTravel.in' : 'ELTravel.in Dev'
+
   return {
-    name: 'EL Travel',
-    short_name: 'EL Travel',
+    name: appName,
+    short_name: appName,
     description: 'The Executive Transit Experience',
     start_url: '/',
     display: 'standalone',

@@ -7,7 +7,7 @@ import { useState, useEffect } from "react";
 export default function SearchHero({ routes = [] }: { routes: any[] }) {
   const router = useRouter();
   
-  // Collect all stops from all routes (flatten stops array)
+  // Collect all stops from all routes (flatten stops array, including inactive ones)
   const allStops = routes.flatMap((r: any) => 
     r.stops?.map((s: any) => ({
       ...s,
@@ -17,8 +17,9 @@ export default function SearchHero({ routes = [] }: { routes: any[] }) {
     })) || []
   );
   
-  // Get unique stop names across all routes
-  const uniqueStopNames = Array.from(new Set(allStops.map(s => s.name))).sort();
+  // Get unique stop names for "Titik Naik" (only active stops)
+  const activeStops = allStops.filter((s: { isActive?: boolean }) => s.isActive !== false);
+  const uniqueStopNames = Array.from(new Set(activeStops.map(s => s.name))).sort();
   
   const [originStop, setOriginStop] = useState("");
   const [destinationStop, setDestinationStop] = useState("");
