@@ -62,7 +62,7 @@ export default function PWAInstall() {
       </div>
       <div className="flex flex-col items-start">
         <span className="text-[10px] font-bold text-gold-warm uppercase tracking-widest leading-none mb-1">Dapatkan Aplikasi</span>
-        <span className="text-sm font-bold tracking-tight">Install EL Travel</span>
+        <span className="text-sm font-bold tracking-tight">Install ELTravel</span>
       </div>
       <div className="ml-2 w-6 h-6 rounded-full bg-white/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
         <i className="ri-close-line text-xs"></i>

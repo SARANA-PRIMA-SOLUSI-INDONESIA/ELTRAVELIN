@@ -107,6 +107,7 @@ export async function syncSchedulesFromTemplates(prismaInstance: PrismaClient, d
               vehicleType: template.vehicle.name,
               capacity: template.vehicle.capacity,
               operatingTripId: operatingTripId,
+              stopTimesJson: template.stopTimesJson,
             }
           });
         });

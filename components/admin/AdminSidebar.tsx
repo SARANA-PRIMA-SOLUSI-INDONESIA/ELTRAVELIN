@@ -11,6 +11,7 @@ export default function AdminSidebar() {
     { label: "Overview", icon: "ri-dashboard-3-line", href: "/admin" },
     { label: "Jadwal Harian", icon: "ri-calendar-event-line", href: "/admin/schedules" },
     { label: "Jadwal Master", icon: "ri-map-pin-2-line", href: "/admin/master" },
+    { label: "Armada", icon: "ri-bus-line", href: "/admin/vehicles" },
     { label: "Banner", icon: "ri-image-line", href: "/admin/master/banner" },
     { label: "Promo", icon: "ri-percent-line", href: "/admin/promos" },
     { label: "Pemesanan", icon: "ri-ticket-2-line", href: "/admin/bookings" },

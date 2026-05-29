@@ -28,7 +28,12 @@ function EditTemplateForm() {
       if (template) {
         setDepartureTime(template.departureTime);
         setArrivalTime(template.arrivalTime);
-        setPrice(template.price);
+        
+        // Calculate price automatically by summing stop prices
+        const stops = template.route.stops || [];
+        const sum = stops.reduce((acc: number, stop: any) => acc + (stop.price || 0), 0);
+        setPrice(sum);
+        
         setVehicleId(template.vehicleId);
         setRouteName(`${template.route.origin} → ${template.route.destination}`);
       }
@@ -102,13 +107,12 @@ function EditTemplateForm() {
             />
           </div>
           <div className="flex flex-col gap-2">
-            <label className="text-xs font-bold text-navy-deep uppercase tracking-widest">Harga Tiket (Rp)</label>
+            <label className="text-xs font-bold text-navy-deep uppercase tracking-widest">Harga Tiket (Otomatis dari Rute)</label>
             <input
-              type="number"
-              value={price}
-              onChange={(e) => setPrice(Number(e.target.value))}
-              className="bg-surface-low rounded-xl px-4 py-4 text-sm outline-none border-none focus:ring-2 focus:ring-gold-warm"
-              required
+              type="text"
+              value={`Rp ${price.toLocaleString('id-ID')}`}
+              className="bg-surface-low text-foreground/45 rounded-xl px-4 py-4 text-sm outline-none border-none cursor-not-allowed font-bold"
+              disabled
             />
           </div>
           <div className="flex flex-col gap-2">

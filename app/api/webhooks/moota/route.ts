@@ -34,8 +34,7 @@ export async function POST(request: Request) {
     const secret = process.env.MOOTA_WEBHOOK_SECRET;
 
     // Optional: Verify signature if secret is provided
-    // Note: Moota signature is usually a hash of the body + secret
-    // For now we'll just log it to ensure connection is secure
+
     console.log("Incoming Webhook Signature:", signature);
 
     // Moota sends an array of mutations
@@ -82,7 +81,8 @@ export async function POST(request: Request) {
                 route: true
               }
             },
-            seats: true
+            seats: true,
+            passengers: true
           }
         });
 
