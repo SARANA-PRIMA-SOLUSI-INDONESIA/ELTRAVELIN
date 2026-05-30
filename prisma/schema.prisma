@@ -16,8 +16,6 @@ model Route {
   schedules         Schedule[]
   scheduleTemplates ScheduleTemplate[]
   stops             RouteStop[]
-
-  @@unique([origin, destination])
 }
 
 model RouteStop {

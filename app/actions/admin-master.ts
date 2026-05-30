@@ -8,12 +8,11 @@ export async function createRoute(origin: string, destination: string) {
   const originClean = origin.trim();
   const destClean = destination.trim();
 
-  const existing = await prisma.route.findUnique({
+  const existing = await prisma.route.findFirst({
     where: {
-      origin_destination: {
-        origin: originClean,
-        destination: destClean
-      }
+      origin: originClean,
+      destination: destClean,
+      isDeleted: false
     }
   });
 
@@ -31,19 +30,39 @@ export async function createRoute(origin: string, destination: string) {
 }
 
 export async function deleteRoute(id: string) {
-  try {
-    await prisma.route.delete({
-      where: { id }
+  const route = await prisma.route.findUnique({ where: { id } });
+  if (!route) throw new Error("Rute tidak ditemukan.");
+
+  const schedules = await prisma.schedule.findMany({
+    where: { routeId: id },
+    select: { id: true }
+  });
+
+  if (schedules.length > 0) {
+    const activeBookings = await prisma.booking.count({
+      where: {
+        scheduleId: { in: schedules.map(s => s.id) },
+        status: { notIn: ['CANCELLED'] }
+      }
     });
-    revalidatePath("/admin/master");
-    revalidatePath("/");
-    revalidatePath("/routes");
-  } catch (error: any) {
-    if (error.code === 'P2003' || (error.message && error.message.includes("Foreign key constraint"))) {
-      throw new Error("Rute tidak dapat dihapus karena sudah digunakan oleh Jadwal Master atau Jadwal Harian. Silakan hapus jadwal-jadwal rute ini terlebih dahulu.");
+
+    if (activeBookings > 0) {
+      throw new Error(
+        `Rute tidak dapat dihapus karena masih memiliki ${activeBookings} booking aktif. ` +
+        `Batalkan atau selesaikan booking tersebut terlebih dahulu.`
+      );
     }
-    throw error;
   }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.scheduleTemplate.updateMany({ where: { routeId: id }, data: { isActive: false } });
+    await tx.route.update({ where: { id }, data: { isDeleted: true } });
+  });
+
+  revalidatePath("/admin/master");
+  revalidatePath("/admin/schedules");
+  revalidatePath("/");
+  revalidatePath("/routes");
 }
 
 export async function updateRoute(id: string, origin: string, destination: string) {
@@ -82,11 +101,34 @@ export async function createTemplate(data: {
 }
 
 export async function updateTemplateStatus(id: string, isActive: boolean) {
-  await prisma.scheduleTemplate.update({
-    where: { id },
-    data: { isActive }
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  await prisma.$transaction(async (tx) => {
+    await tx.scheduleTemplate.update({
+      where: { id },
+      data: { isActive }
+    });
+    if (!isActive) {
+      await tx.schedule.updateMany({
+        where: {
+          templateId: id,
+          departureTime: { gte: today }
+        },
+        data: { isDeleted: true }
+      });
+    } else {
+      await tx.schedule.updateMany({
+        where: {
+          templateId: id,
+          departureTime: { gte: today }
+        },
+        data: { isDeleted: false }
+      });
+    }
   });
   revalidatePath("/admin/master");
+  revalidatePath("/admin/schedules");
   revalidatePath("/");
   revalidatePath("/routes");
 }
@@ -101,8 +143,15 @@ export async function getVehicles() {
 }
 
 export async function deleteTemplate(id: string) {
-  await prisma.scheduleTemplate.delete({ where: { id } });
+  await prisma.$transaction(async (tx) => {
+    await tx.schedule.updateMany({
+      where: { templateId: id },
+      data: { isDeleted: true }
+    });
+    await tx.scheduleTemplate.delete({ where: { id } });
+  });
   revalidatePath("/admin/master");
+  revalidatePath("/admin/schedules");
   revalidatePath("/");
   revalidatePath("/routes");
 }
