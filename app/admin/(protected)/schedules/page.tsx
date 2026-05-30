@@ -17,6 +17,7 @@ async function SchedulesContent({ date }: { date: string }) {
   const endOfDay = new Date(selectedDate.setHours(23, 59, 59, 999));
 
   const routesData = await prisma.route.findMany({
+    where: { isDeleted: false },
     include: {
       schedules: {
         where: { 
