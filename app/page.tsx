@@ -58,6 +58,21 @@ export default async function Home() {
       {/* Promo Banner Slider */}
       <PromoBanner banners={banners} />
 
+      {/* Instagram Embed Section */}
+      <section className="px-6 md:px-12 lg:px-24">
+        <div className="max-w-7xl mx-auto flex flex-col items-center gap-10 md:gap-16">
+          <div className="flex flex-col items-center gap-4 text-center">
+            <span className="text-xs font-bold text-gold-warm uppercase tracking-widest">Ikuti Kami</span>
+            <h2 className="text-3xl md:text-5xl font-display font-bold text-navy-deep leading-tight">Postingan Terakhir Kami</h2>
+          </div>
+          <iframe
+            src="https://www.instagram.com/eltravel_in/embed/"
+            className="w-full rounded-3xl shadow-ambient border-0 h-[290px] md:h-[585px]"
+            scrolling="no"
+            title="El Travelin Instagram"
+          />
+        </div>
+      </section>
 
       {/* Popular Routes Section */}
       <section className="px-6 md:px-12 lg:px-24">
