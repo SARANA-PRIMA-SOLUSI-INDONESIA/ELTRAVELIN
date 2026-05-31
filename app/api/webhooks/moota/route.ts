@@ -14,7 +14,7 @@ export async function POST(request: Request) {
       clientIp = clientIp.replace("::ffff:", "");
     }
 
-    const MOOTA_IP = "103.236.201.178";
+    const MOOTA_IP = "128.199.173.138";
     const isLocalhost = clientIp === "127.0.0.1" || clientIp === "::1" || clientIp === "localhost" || clientIp === "::ffff:127.0.0.1";
     const isSandboxMode = process.env.MOOTA_SANDBOX_MODE === "true";
 
