@@ -20,32 +20,33 @@ export async function POST(request: Request) {
     const secret = process.env.MOOTA_WEBHOOK_SECRET;
 
     console.log("[MOOTA WEBHOOK] Received Signature:", signature);
-    console.log("[MOOTA WEBHOOK] Secret:", secret ? `${secret.substring(0, 4)}****` : "not set");
+    console.log("[MOOTA WEBHOOK] Secret full:", secret || "not set");
 
-    if (secret && signature) {
+    const trySecret = (label: string, sec: string) => {
+      if (!sec || !signature) return;
       const variants: Record<string, string> = {
-        "HMAC-SHA256(body)": crypto.createHmac("sha256", secret).update(bodyText).digest("hex"),
-        "HMAC-MD5(body)": crypto.createHmac("md5", secret).update(bodyText).digest("hex"),
-        "SHA256(body+secret)": crypto.createHash("sha256").update(bodyText + secret).digest("hex"),
-        "SHA256(secret+body)": crypto.createHash("sha256").update(secret + bodyText).digest("hex"),
-        "MD5(body+secret)": crypto.createHash("md5").update(bodyText + secret).digest("hex"),
-        "MD5(secret+body)": crypto.createHash("md5").update(secret + bodyText).digest("hex"),
+        "HMAC-SHA256": crypto.createHmac("sha256", sec).update(bodyText).digest("hex"),
+        "HMAC-MD5": crypto.createHmac("md5", sec).update(bodyText).digest("hex"),
+        "SHA256(body+secret)": crypto.createHash("sha256").update(bodyText + sec).digest("hex"),
+        "SHA256(secret+body)": crypto.createHash("sha256").update(sec + bodyText).digest("hex"),
+        "MD5(body+secret)": crypto.createHash("md5").update(bodyText + sec).digest("hex"),
+        "MD5(secret+body)": crypto.createHash("md5").update(sec + bodyText).digest("hex"),
         "SHA256(body)": crypto.createHash("sha256").update(bodyText).digest("hex"),
-        "secret_itself": secret,
+        "secret_itself": sec,
       };
 
-      console.log("[MOOTA WEBHOOK] Computed signatures:");
+      console.log(`[MOOTA WEBHOOK] Trying secret "${label}":`);
       for (const [algo, hash] of Object.entries(variants)) {
         console.log(`  ${algo}: ${hash}`);
+        if (hash === signature) {
+          console.log(`[MOOTA WEBHOOK] >>> MATCHED! Secret: ${label}, Algorithm: ${algo}`);
+        }
       }
+    };
 
-      const matchKey = Object.entries(variants).find(([, v]) => v === signature);
-      if (matchKey) {
-        console.log(`[MOOTA WEBHOOK] MATCHED: ${matchKey[0]}`);
-      } else {
-        console.warn("[MOOTA WEBHOOK] No signature match. Continuing anyway for debugging.");
-      }
-    }
+    trySecret("env.MOOTA_WEBHOOK_SECRET", secret || "");
+    trySecret("YoJ5uuGa", "YoJ5uuGa");
+    trySecret("lL0O1qjy", "lL0O1qjy");
 
     const mutations = JSON.parse(bodyText);
 
