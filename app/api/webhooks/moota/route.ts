@@ -2,8 +2,6 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { sendETicket } from "@/lib/mail";
 import { sendBookingSuccessMessage } from "@/lib/whatsapp";
-import crypto from "crypto";
-
 export async function POST(request: Request) {
   try {
     const forwardedFor = request.headers.get("x-forwarded-for");
@@ -13,39 +11,11 @@ export async function POST(request: Request) {
       clientIp = clientIp.replace("::ffff:", "");
     }
 
-    console.log("[MOOTA WEBHOOK] Request from IP:", clientIp);
-
     const bodyText = await request.text();
     const signature = request.headers.get("Signature");
     const secret = process.env.MOOTA_WEBHOOK_SECRET;
 
-    console.log("[MOOTA WEBHOOK] Received Signature:", signature);
-    console.log("[MOOTA WEBHOOK] Body raw (first 300):", bodyText.substring(0, 300));
-    console.log("[MOOTA WEBHOOK] Body hex (first 100 bytes):", Buffer.from(bodyText.substring(0, 100)).toString("hex"));
-
-    const parsed = JSON.parse(bodyText);
-    const compactBody = JSON.stringify(parsed);
-    const compactNoSpace = JSON.stringify(parsed).replace(/\s/g, "");
-    const prettyBody = JSON.stringify(parsed, null, 2);
-
-    if (secret && signature) {
-      const tests: Record<string, string> = {
-        "raw_body": crypto.createHmac("sha256", secret).update(bodyText).digest("hex"),
-        "compact_json": crypto.createHmac("sha256", secret).update(compactBody).digest("hex"),
-        "compact_no_space": crypto.createHmac("sha256", secret).update(compactNoSpace).digest("hex"),
-        "pretty_json": crypto.createHmac("sha256", secret).update(prettyBody).digest("hex"),
-        "compact_first_item": crypto.createHmac("sha256", secret).update(JSON.stringify(parsed[0])).digest("hex"),
-        "compact_no_space_first": crypto.createHmac("sha256", secret).update(JSON.stringify(parsed[0]).replace(/\s/g, "")).digest("hex"),
-      };
-
-      console.log("[MOOTA WEBHOOK] Signature tests:");
-      for (const [fmt, hash] of Object.entries(tests)) {
-        const match = hash === signature ? " <<< MATCH!" : "";
-        console.log(`  ${fmt}: ${hash}${match}`);
-      }
-    }
-
-    const mutations = parsed;
+    const mutations = JSON.parse(bodyText);
 
     // Moota sends an array of mutations
     if (!Array.isArray(mutations)) {
