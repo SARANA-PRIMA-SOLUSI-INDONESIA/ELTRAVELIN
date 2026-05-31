@@ -23,23 +23,27 @@ export async function POST(request: Request) {
     console.log("[MOOTA WEBHOOK] Secret:", secret ? `${secret.substring(0, 4)}****` : "not set");
 
     if (secret && signature) {
-      const hmacSha256 = crypto.createHmac("sha256", secret).update(bodyText).digest("hex");
-      const hmacMd5 = crypto.createHmac("md5", secret).update(bodyText).digest("hex");
-      const sha256 = crypto.createHash("sha256").update(bodyText + secret).digest("hex");
-      const md5 = crypto.createHash("md5").update(bodyText + secret).digest("hex");
-      const sha256Body = crypto.createHash("sha256").update(bodyText).digest("hex");
+      const variants: Record<string, string> = {
+        "HMAC-SHA256(body)": crypto.createHmac("sha256", secret).update(bodyText).digest("hex"),
+        "HMAC-MD5(body)": crypto.createHmac("md5", secret).update(bodyText).digest("hex"),
+        "SHA256(body+secret)": crypto.createHash("sha256").update(bodyText + secret).digest("hex"),
+        "SHA256(secret+body)": crypto.createHash("sha256").update(secret + bodyText).digest("hex"),
+        "MD5(body+secret)": crypto.createHash("md5").update(bodyText + secret).digest("hex"),
+        "MD5(secret+body)": crypto.createHash("md5").update(secret + bodyText).digest("hex"),
+        "SHA256(body)": crypto.createHash("sha256").update(bodyText).digest("hex"),
+        "secret_itself": secret,
+      };
 
       console.log("[MOOTA WEBHOOK] Computed signatures:");
-      console.log("  HMAC-SHA256:", hmacSha256);
-      console.log("  HMAC-MD5:", hmacMd5);
-      console.log("  SHA256(body+secret):", sha256);
-      console.log("  MD5(body+secret):", md5);
-      console.log("  SHA256(body):", sha256Body);
+      for (const [algo, hash] of Object.entries(variants)) {
+        console.log(`  ${algo}: ${hash}`);
+      }
 
-      const matches = [hmacSha256, hmacMd5, sha256, md5, sha256Body, secret].includes(signature);
-
-      if (!matches) {
-        console.warn("[MOOTA WEBHOOK] No signature match found. Continuing anyway for debugging.");
+      const matchKey = Object.entries(variants).find(([, v]) => v === signature);
+      if (matchKey) {
+        console.log(`[MOOTA WEBHOOK] MATCHED: ${matchKey[0]}`);
+      } else {
+        console.warn("[MOOTA WEBHOOK] No signature match. Continuing anyway for debugging.");
       }
     }
 
