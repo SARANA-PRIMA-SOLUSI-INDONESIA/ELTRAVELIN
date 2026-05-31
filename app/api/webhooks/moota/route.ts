@@ -2,7 +2,6 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { sendETicket } from "@/lib/mail";
 import { sendBookingSuccessMessage } from "@/lib/whatsapp";
-import crypto from "crypto";
 
 export async function POST(request: Request) {
   try {
@@ -13,41 +12,9 @@ export async function POST(request: Request) {
       clientIp = clientIp.replace("::ffff:", "");
     }
 
-    console.log("[MOOTA WEBHOOK] IP:", clientIp);
+    console.log("[MOOTA WEBHOOK] Request from IP:", clientIp);
 
     const bodyText = await request.text();
-    const signature = request.headers.get("Signature");
-    const secret = process.env.MOOTA_WEBHOOK_SECRET;
-
-    console.log("[MOOTA WEBHOOK] Received Signature:", signature);
-    console.log("[MOOTA WEBHOOK] Secret full:", secret || "not set");
-
-    const trySecret = (label: string, sec: string) => {
-      if (!sec || !signature) return;
-      const variants: Record<string, string> = {
-        "HMAC-SHA256": crypto.createHmac("sha256", sec).update(bodyText).digest("hex"),
-        "HMAC-MD5": crypto.createHmac("md5", sec).update(bodyText).digest("hex"),
-        "SHA256(body+secret)": crypto.createHash("sha256").update(bodyText + sec).digest("hex"),
-        "SHA256(secret+body)": crypto.createHash("sha256").update(sec + bodyText).digest("hex"),
-        "MD5(body+secret)": crypto.createHash("md5").update(bodyText + sec).digest("hex"),
-        "MD5(secret+body)": crypto.createHash("md5").update(sec + bodyText).digest("hex"),
-        "SHA256(body)": crypto.createHash("sha256").update(bodyText).digest("hex"),
-        "secret_itself": sec,
-      };
-
-      console.log(`[MOOTA WEBHOOK] Trying secret "${label}":`);
-      for (const [algo, hash] of Object.entries(variants)) {
-        console.log(`  ${algo}: ${hash}`);
-        if (hash === signature) {
-          console.log(`[MOOTA WEBHOOK] >>> MATCHED! Secret: ${label}, Algorithm: ${algo}`);
-        }
-      }
-    };
-
-    trySecret("env.MOOTA_WEBHOOK_SECRET", secret || "");
-    trySecret("YoJ5uuGa", "YoJ5uuGa");
-    trySecret("lL0O1qjy", "lL0O1qjy");
-
     const mutations = JSON.parse(bodyText);
 
     // Moota sends an array of mutations
