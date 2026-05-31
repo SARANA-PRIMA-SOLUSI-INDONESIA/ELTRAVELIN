@@ -2,40 +2,36 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { sendETicket } from "@/lib/mail";
 import { sendBookingSuccessMessage } from "@/lib/whatsapp";
+import crypto from "crypto";
 
 export async function POST(request: Request) {
   try {
-    // 1. IP Whitelisting for Security
     const forwardedFor = request.headers.get("x-forwarded-for");
     let clientIp = forwardedFor ? forwardedFor.split(",")[0] : "127.0.0.1";
 
-    // Clean up IPv6 mapped IPv4 address
     if (clientIp.includes("::ffff:")) {
       clientIp = clientIp.replace("::ffff:", "");
     }
 
-    const MOOTA_IP = "128.199.173.138";
-    const isLocalhost = clientIp === "127.0.0.1" || clientIp === "::1" || clientIp === "localhost" || clientIp === "::ffff:127.0.0.1";
-    const isSandboxMode = process.env.MOOTA_SANDBOX_MODE === "true";
-
-    // Allow sandbox mode for testing (Moota sandbox uses different IPs)
-    if (!isSandboxMode && clientIp !== MOOTA_IP && !isLocalhost) {
-      console.warn(`Blocked unauthorized IP: ${clientIp}`);
-      return NextResponse.json({ message: "Unauthorized IP" }, { status: 403 });
-    }
-
-    if (isSandboxMode) {
-      console.log("[SANDBOX MODE] Accepting webhook from:", clientIp);
-    }
+    console.log("[MOOTA WEBHOOK] IP:", clientIp);
 
     const bodyText = await request.text();
-    const mutations = JSON.parse(bodyText);
     const signature = request.headers.get("Signature");
     const secret = process.env.MOOTA_WEBHOOK_SECRET;
 
-    // Optional: Verify signature if secret is provided
+    if (secret) {
+      const expectedSignature = crypto
+        .createHmac("sha256", secret)
+        .update(bodyText)
+        .digest("hex");
 
-    console.log("Incoming Webhook Signature:", signature);
+      if (signature !== expectedSignature) {
+        console.warn("[MOOTA WEBHOOK] Invalid signature. Received:", signature, "Expected:", expectedSignature);
+        return NextResponse.json({ message: "Invalid signature" }, { status: 403 });
+      }
+    }
+
+    const mutations = JSON.parse(bodyText);
 
     // Moota sends an array of mutations
     if (!Array.isArray(mutations)) {
