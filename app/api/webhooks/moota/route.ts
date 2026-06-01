@@ -22,11 +22,12 @@ export async function POST(request: Request) {
 
     const expectedSignature = createHmac("sha256", secret).update(bodyText).digest("hex");
 
-    const sigBuffer = Buffer.from(signature, "hex");
-    const expectedBuffer = Buffer.from(expectedSignature, "hex");
+    console.log("[Moota Debug] Header Signature:", signature);
+    console.log("[Moota Debug] Expected Signature:", expectedSignature);
+    console.log("[Moota Debug] Body length:", bodyText.length);
 
-    if (sigBuffer.length !== expectedBuffer.length || !timingSafeEqual(sigBuffer, expectedBuffer)) {
-      console.error("Invalid Moota webhook signature");
+    if (signature !== expectedSignature) {
+      console.error("[Moota Debug] Signature mismatch!");
       return NextResponse.json({ message: "Invalid signature" }, { status: 401 });
     }
 
