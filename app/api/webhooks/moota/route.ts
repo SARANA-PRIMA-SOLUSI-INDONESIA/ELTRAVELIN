@@ -2,11 +2,11 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { sendETicket } from "@/lib/mail";
 import { sendBookingSuccessMessage } from "@/lib/whatsapp";
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHmac } from "node:crypto";
 
 export async function POST(request: Request) {
   try {
-    const bodyText = await request.text();
+    let bodyText = await request.text();
     const signature = request.headers.get("Signature");
     const secret = process.env.MOOTA_WEBHOOK_SECRET;
 
@@ -20,14 +20,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: "Missing signature" }, { status: 401 });
     }
 
+    // Strip BOM and normalize line endings
+    bodyText = bodyText.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+
     const expectedSignature = createHmac("sha256", secret).update(bodyText).digest("hex");
 
-    console.log("[Moota Debug] Header Signature:", signature);
-    console.log("[Moota Debug] Expected Signature:", expectedSignature);
-    console.log("[Moota Debug] Body length:", bodyText.length);
-
     if (signature !== expectedSignature) {
-      console.error("[Moota Debug] Signature mismatch!");
+      console.error("[Moota] Signature mismatch");
+      console.error("[Moota] Received:", signature);
+      console.error("[Moota] Expected:", expectedSignature);
+      console.error("[Moota] Secret:", secret);
       return NextResponse.json({ message: "Invalid signature" }, { status: 401 });
     }
 
