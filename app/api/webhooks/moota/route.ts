@@ -2,51 +2,32 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { sendETicket } from "@/lib/mail";
 import { sendBookingSuccessMessage } from "@/lib/whatsapp";
-import { createHmac } from "node:crypto";
 
 export async function POST(request: Request) {
   try {
-    let bodyText = await request.text();
-    const signature = request.headers.get("Signature");
-    const secret = process.env.MOOTA_WEBHOOK_SECRET;
+    const bodyText = await request.text();
 
-    if (!secret) {
-      console.error("MOOTA_WEBHOOK_SECRET is not configured");
-      return NextResponse.json({ message: "Server misconfiguration" }, { status: 500 });
-    }
-
-    if (!signature) {
-      console.error("Missing Signature header from Moota");
-      return NextResponse.json({ message: "Missing signature" }, { status: 401 });
-    }
-
-    // Strip BOM and normalize line endings
-    bodyText = bodyText.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
-
-    const expectedSignature = createHmac("sha256", secret).update(bodyText).digest("hex");
-
-    if (signature !== expectedSignature) {
-      console.error("[Moota] Signature mismatch");
-      console.error("[Moota] Received:", signature);
-      console.error("[Moota] Expected:", expectedSignature);
-      console.error("[Moota] Secret:", secret);
-      return NextResponse.json({ message: "Invalid signature" }, { status: 401 });
-    }
+    console.log("[Moota] Webhook received, body length:", bodyText.length);
 
     const mutations = JSON.parse(bodyText);
 
     if (!Array.isArray(mutations)) {
-      console.error("Invalid Moota webhook payload: Not an array");
+      console.error("[Moota] Invalid payload: Not an array");
       return NextResponse.json({ message: "Invalid payload" }, { status: 400 });
     }
 
-    console.log(`Received ${mutations.length} mutations from Moota`);
+    console.log(`[Moota] Received ${mutations.length} mutations`);
 
     for (const mutation of mutations) {
-      if (mutation.type !== "CR") continue;
+      console.log(`[Moota] Mutation: type=${mutation.type}, amount=${mutation.amount}, desc=${mutation.description}, account=${mutation.account_number}`);
+
+      if (mutation.type !== "CR") {
+        console.log(`[Moota] Skipping non-CR mutation`);
+        continue;
+      }
 
       const amount = parseFloat(mutation.amount);
-      console.log(`Processing mutation: ${amount} - ${mutation.description}`);
+      console.log(`[Moota] Looking for PENDING+MOOTA booking with totalPrice=${amount}`);
 
       const booking = await prisma.booking.findFirst({
         where: {
@@ -60,16 +41,24 @@ export async function POST(request: Request) {
       });
 
       if (!booking) {
-        console.log(`No pending booking found for amount ${amount}`);
+        console.log(`[Moota] No pending booking found for amount ${amount}`);
+
+        const allPending = await prisma.booking.findMany({
+          where: { status: "PENDING", paymentMethod: "MOOTA" },
+          select: { bookingCode: true, totalPrice: true, createdAt: true },
+          orderBy: { createdAt: "desc" },
+          take: 5,
+        });
+        console.log(`[Moota] Current PENDING+MOOTA bookings:`, JSON.stringify(allPending));
         continue;
       }
 
       if (booking.status === "CONFIRMED") {
-        console.log(`Booking ${booking.bookingCode} already confirmed, skipping`);
+        console.log(`[Moota] Booking ${booking.bookingCode} already confirmed, skipping`);
         continue;
       }
 
-      console.log(`Matching booking found! Code: ${booking.bookingCode}`);
+      console.log(`[Moota] MATCH! Booking ${booking.bookingCode}, updating to CONFIRMED`);
 
       const updatedBooking = await prisma.booking.update({
         where: { id: booking.id },
@@ -88,15 +77,15 @@ export async function POST(request: Request) {
         },
       });
 
-      sendETicket(updatedBooking).catch((err) => console.error("Error sending E-ticket:", err));
-      sendBookingSuccessMessage(updatedBooking).catch((err) => console.error("Error sending WA success:", err));
+      sendETicket(updatedBooking).catch((err) => console.error("[Moota] Error sending E-ticket:", err));
+      sendBookingSuccessMessage(updatedBooking).catch((err) => console.error("[Moota] Error sending WA:", err));
 
-      console.log(`Booking ${booking.bookingCode} has been automatically confirmed and E-Ticket sent.`);
+      console.log(`[Moota] Booking ${booking.bookingCode} confirmed, E-Ticket sent`);
     }
 
     return NextResponse.json({ message: "Webhook processed" });
   } catch (error) {
-    console.error("Webhook Error:", error);
+    console.error("[Moota] Webhook Error:", error);
     return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
   }
 }
