@@ -2,22 +2,36 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { sendETicket } from "@/lib/mail";
 import { sendBookingSuccessMessage } from "@/lib/whatsapp";
+import { createHmac, timingSafeEqual } from "node:crypto";
+
 export async function POST(request: Request) {
   try {
-    const forwardedFor = request.headers.get("x-forwarded-for");
-    let clientIp = forwardedFor ? forwardedFor.split(",")[0] : "127.0.0.1";
-
-    if (clientIp.includes("::ffff:")) {
-      clientIp = clientIp.replace("::ffff:", "");
-    }
-
     const bodyText = await request.text();
     const signature = request.headers.get("Signature");
     const secret = process.env.MOOTA_WEBHOOK_SECRET;
 
+    if (!secret) {
+      console.error("MOOTA_WEBHOOK_SECRET is not configured");
+      return NextResponse.json({ message: "Server misconfiguration" }, { status: 500 });
+    }
+
+    if (!signature) {
+      console.error("Missing Signature header from Moota");
+      return NextResponse.json({ message: "Missing signature" }, { status: 401 });
+    }
+
+    const expectedSignature = createHmac("sha256", secret).update(bodyText).digest("hex");
+
+    const sigBuffer = Buffer.from(signature, "hex");
+    const expectedBuffer = Buffer.from(expectedSignature, "hex");
+
+    if (sigBuffer.length !== expectedBuffer.length || !timingSafeEqual(sigBuffer, expectedBuffer)) {
+      console.error("Invalid Moota webhook signature");
+      return NextResponse.json({ message: "Invalid signature" }, { status: 401 });
+    }
+
     const mutations = JSON.parse(bodyText);
 
-    // Moota sends an array of mutations
     if (!Array.isArray(mutations)) {
       console.error("Invalid Moota webhook payload: Not an array");
       return NextResponse.json({ message: "Invalid payload" }, { status: 400 });
@@ -26,14 +40,11 @@ export async function POST(request: Request) {
     console.log(`Received ${mutations.length} mutations from Moota`);
 
     for (const mutation of mutations) {
-      // Only process "CR" (Credit/Incoming) mutations
       if (mutation.type !== "CR") continue;
 
       const amount = parseFloat(mutation.amount);
       console.log(`Processing mutation: ${amount} - ${mutation.description}`);
 
-      // Find a pending booking with the EXACT same total price
-      // This works because we added a 3-digit unique code
       const booking = await prisma.booking.findFirst({
         where: {
           totalPrice: amount,
@@ -41,39 +52,43 @@ export async function POST(request: Request) {
           paymentMethod: "MOOTA",
         },
         orderBy: {
-          createdAt: "desc", // Get the most recent one if duplicates exist (rare with unique code)
+          createdAt: "desc",
         },
       });
 
-      if (booking) {
-        console.log(`Matching booking found! Code: ${booking.bookingCode}`);
-
-        // Update booking status to CONFIRMED
-        const updatedBooking = await prisma.booking.update({
-          where: { id: booking.id },
-          data: {
-            status: "CONFIRMED",
-            settlementTime: new Date(),
-          },
-          include: {
-            schedule: {
-              include: {
-                route: true
-              }
-            },
-            seats: true,
-            passengers: true
-          }
-        });
-
-        // Send E-Ticket & WhatsApp notification asynchronously
-        sendETicket(updatedBooking).catch(err => console.error("Error sending E-ticket:", err));
-        sendBookingSuccessMessage(updatedBooking).catch(err => console.error("Error sending WA success:", err));
-
-        console.log(`Booking ${booking.bookingCode} has been automatically confirmed and E-Ticket sent.`);
-      } else {
+      if (!booking) {
         console.log(`No pending booking found for amount ${amount}`);
+        continue;
       }
+
+      if (booking.status === "CONFIRMED") {
+        console.log(`Booking ${booking.bookingCode} already confirmed, skipping`);
+        continue;
+      }
+
+      console.log(`Matching booking found! Code: ${booking.bookingCode}`);
+
+      const updatedBooking = await prisma.booking.update({
+        where: { id: booking.id },
+        data: {
+          status: "CONFIRMED",
+          settlementTime: new Date(),
+        },
+        include: {
+          schedule: {
+            include: {
+              route: true,
+            },
+          },
+          seats: true,
+          passengers: true,
+        },
+      });
+
+      sendETicket(updatedBooking).catch((err) => console.error("Error sending E-ticket:", err));
+      sendBookingSuccessMessage(updatedBooking).catch((err) => console.error("Error sending WA success:", err));
+
+      console.log(`Booking ${booking.bookingCode} has been automatically confirmed and E-Ticket sent.`);
     }
 
     return NextResponse.json({ message: "Webhook processed" });
