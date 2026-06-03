@@ -67,7 +67,7 @@ export default async function Home() {
           </div>
           <iframe
             src="https://www.instagram.com/eltravel_in/embed/"
-            className="w-full rounded-3xl shadow-ambient border-0 h-[290px] md:h-[585px]"
+            className="w-full rounded-3xl shadow-ambient border-0 h-[260px] md:h-[585px]"
             scrolling="no"
             title="El Travelin Instagram"
           />
