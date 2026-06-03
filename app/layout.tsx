@@ -3,6 +3,7 @@ import { Manrope, Inter } from "next/font/google";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import PWAInstall from "@/components/PWAInstall";
+import WhatsAppButton from "@/components/WhatsAppButton";
 import "./globals.css";
 
 const manrope = Manrope({
@@ -50,6 +51,7 @@ export default function RootLayout({
         <Navbar />
         <main className="flex-grow">{children}</main>
         <Footer />
+        <WhatsAppButton />
         <PWAInstall />
       </body>
     </html>
