@@ -109,10 +109,10 @@ export default async function Confirmation({ searchParams }: ConfirmationProps) 
                 <div className="flex flex-col gap-4">
                   <div className="flex items-center justify-between p-6 bg-white rounded-2xl border border-navy-deep/5">
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-navy-deep/5 rounded-xl flex items-center justify-center font-black text-navy-deep text-xs italic">BRI</div>
+                      <div className="w-12 h-12 bg-navy-deep/5 rounded-xl flex items-center justify-center font-black text-navy-deep text-xs italic">MANDIRI</div>
                       <div className="flex flex-col">
                         <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">No. Rekening</span>
-                        <span className="text-base font-black text-navy-deep tracking-wider">0389 0100 2533 562</span>
+                        <span className="text-base font-black text-navy-deep tracking-wider">1320-0320-90640</span>
                         <span className="text-[10px] font-bold text-gold-warm uppercase tracking-widest mt-1">a.n ELTRAVEL INDONESIA MAJU</span>
                       </div>
                     </div>
