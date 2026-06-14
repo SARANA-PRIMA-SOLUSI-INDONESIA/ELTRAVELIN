@@ -106,12 +106,10 @@ export default async function Home() {
             <h2 className="text-3xl md:text-5xl font-display font-bold text-navy-deep leading-tight">Kenyamanan di Setiap Detail</h2>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 w-full">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 w-full max-w-4xl mx-auto">
             {[
-              { title: "Kursi Premium", img: "/priority-1.png" },
-              { title: "Legroom Lega", img: "/priority-2.png" },
-              { title: "Keamanan ADAS", img: "/priority-3.png" },
-              { title: "Charging Port", img: "/priority-4.png" },
+              { title: "Kursi Premium", img: "/kursi.png" },
+              { title: "Seat Belt Safety", img: "/priority-3.png" },
               { title: "Titip Paket", img: "/priority-5.png" },
               { title: "Armada Listrik", img: "/priority-6.png" },
             ].map((f: any, i: number) => (
@@ -121,7 +119,7 @@ export default async function Home() {
                     src={f.img} 
                     alt={f.title} 
                     fill 
-                    sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 16vw"
+                    sizes="(max-width: 768px) 50vw, 25vw"
                     className="object-cover transition-transform duration-500 group-hover:scale-110" 
                   />
                 </div>
@@ -144,7 +142,7 @@ export default async function Home() {
 
           <div className="grid grid-cols-1 gap-16 md:gap-32">
             {[
-              { name: "Farizon SV (Supervan)", capacity: "16 Seats", img: "/farizon-sv.png", color: "tonal-section" },
+              { name: "Farizon SV (Supervan)", capacity: "16 Seats", img: "/hero3.png", color: "tonal-section" },
             ].map((fleet: any, i: number) => (
               <div key={i} className={`flex flex-col ${fleet.reverse ? 'lg:flex-row-reverse' : 'lg:flex-row'} items-center gap-8 md:gap-12 lg:gap-24`}>
                 <div className="w-full lg:w-3/5 relative aspect-video overflow-hidden rounded-3xl md:rounded-[3rem] shadow-ambient">

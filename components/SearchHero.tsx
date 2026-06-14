@@ -131,7 +131,7 @@ export default function SearchHero({ routes = [] }: { routes: any[] }) {
       <div className="absolute top-0 right-0 w-3/4 h-full lg:w-3/5 pointer-events-none opacity-40 lg:opacity-100 transition-opacity">
         <div className="relative w-full h-full">
           <Image 
-            src="/hero-luxury.png"
+            src="/hero2.png"
             alt="Luxury Bus Interior"
             fill
             sizes="(max-width: 1024px) 100vw, 60vw"
