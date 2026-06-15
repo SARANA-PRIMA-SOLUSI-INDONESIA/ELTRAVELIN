@@ -1248,3 +1248,28 @@ export async function getAvailableSeatsForSchedule(scheduleId: string) {
   return schedule.operatingTrip.seats;
 }
 
+export async function getScheduleManifest(scheduleId: string) {
+  const schedule = await prisma.schedule.findUnique({
+    where: { id: scheduleId },
+    include: {
+      route: {
+        include: { stops: { orderBy: { sequence: 'asc' } } },
+      },
+      operatingTrip: {
+        include: {
+          vehicle: true,
+          seats: {
+            orderBy: { seatNumber: 'asc' },
+            include: {
+              booking: {
+                include: { passengers: true },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+  return schedule;
+}
+

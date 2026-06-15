@@ -196,6 +196,7 @@ model Vehicle {
   id          String             @id @default(cuid())
   plateNumber String             @unique
   name        String
+  driverName  String?
   capacity    Int
   isActive    Boolean            @default(true)
   createdAt   DateTime           @default(now())

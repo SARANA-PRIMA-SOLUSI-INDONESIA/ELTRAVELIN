@@ -13,6 +13,7 @@ export async function createVehicle(data: {
   name: string;
   plateNumber: string;
   capacity: number;
+  driverName?: string;
 }) {
   const plateNormalized = data.plateNumber.trim().toUpperCase();
 
@@ -29,6 +30,7 @@ export async function createVehicle(data: {
     data: {
       name: data.name.trim(),
       plateNumber: plateNormalized,
+      driverName: data.driverName?.trim() || null,
       capacity: Math.round(data.capacity),
       isActive: true,
     },
@@ -82,6 +84,7 @@ export async function updateVehicle(
     name: string;
     plateNumber: string;
     capacity: number;
+    driverName?: string;
   }
 ) {
   const plateNormalized = data.plateNumber.trim().toUpperCase();
@@ -103,6 +106,7 @@ export async function updateVehicle(
     data: {
       name: data.name.trim(),
       plateNumber: plateNormalized,
+      driverName: data.driverName?.trim() || null,
       capacity: Math.round(data.capacity),
     },
   });

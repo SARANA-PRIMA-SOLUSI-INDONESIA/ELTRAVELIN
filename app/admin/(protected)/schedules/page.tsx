@@ -85,6 +85,13 @@ async function SchedulesContent({ date }: { date: string }) {
                       >
                         <i className="ri-layout-grid-line"></i>
                       </Link>
+                      <Link 
+                        href={`/admin/schedules/${s.id}/manifest`}
+                        className="w-10 h-10 rounded-xl bg-surface-low flex items-center justify-center text-navy-deep hover:bg-navy-deep hover:text-white transition-all"
+                        title="Cetak Manifes"
+                      >
+                        <i className="ri-file-text-line"></i>
+                      </Link>
                       <ScheduleActions scheduleId={s.id} />
                     </div>
                   </div>

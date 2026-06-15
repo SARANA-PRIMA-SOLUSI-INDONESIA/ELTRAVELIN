@@ -64,6 +64,10 @@ export default async function AdminVehicles() {
                   <span className="font-bold text-navy-deep truncate max-w-[180px]">{vehicle.name}</span>
                 </div>
                 <div className="flex justify-between text-sm">
+                  <span className="text-foreground/60">Driver</span>
+                  <span className="font-bold text-navy-deep truncate max-w-[180px]">{vehicle.driverName || "-"}</span>
+                </div>
+                <div className="flex justify-between text-sm">
                   <span className="text-foreground/60">Kapasitas Kursi</span>
                   <span className="font-bold text-navy-deep">{vehicle.capacity} Kursi</span>
                 </div>

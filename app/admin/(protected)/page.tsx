@@ -13,6 +13,25 @@ export default async function AdminDashboard() {
     where: { status: 'CONFIRMED' }
   });
 
+  // Fetch vehicles with today's trips
+  const today = new Date();
+  const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const endOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+
+  const vehicles = await prisma.vehicle.findMany({
+    orderBy: { name: 'asc' },
+    include: {
+      trips: {
+        where: {
+          date: {
+            gte: startOfToday,
+            lt: endOfToday,
+          },
+        },
+      },
+    },
+  });
+
   return (
     <div className="flex flex-col gap-10">
       <div className="flex items-start justify-between">
@@ -56,10 +75,54 @@ export default async function AdminDashboard() {
         <div className="bg-white p-10 rounded-[2.5rem] shadow-sm">
           <h3 className="text-xl font-display font-bold text-navy-deep mb-8">Status Armada</h3>
           <div className="flex flex-col gap-4">
-              <div className="flex items-center justify-between p-4 bg-surface-low rounded-2xl">
-                <span className="text-sm font-medium">Farizon SV (Supervan)</span>
-                <span className="bg-green-100 text-green-600 text-[10px] font-bold px-2 py-1 rounded-full uppercase">Ready</span>
-              </div>
+            {vehicles.length === 0 ? (
+              <p className="text-sm text-foreground/40 text-center py-10 italic">Belum ada armada terdaftar.</p>
+            ) : (
+              vehicles.map((vehicle) => {
+                const todayTrip = vehicle.trips[0];
+                let statusLabel: string;
+                let statusColor: string;
+
+                if (todayTrip) {
+                  switch (todayTrip.status) {
+                    case 'SCHEDULED':
+                      statusLabel = 'Terjadwal';
+                      statusColor = 'bg-yellow-100 text-yellow-700';
+                      break;
+                    case 'IN_TRANSIT':
+                      statusLabel = 'Dalam Perjalanan';
+                      statusColor = 'bg-blue-100 text-blue-700';
+                      break;
+                    case 'COMPLETED':
+                      statusLabel = 'Selesai';
+                      statusColor = 'bg-green-100 text-green-600';
+                      break;
+                    case 'CANCELLED':
+                      statusLabel = 'Dibatalkan';
+                      statusColor = 'bg-red-100 text-red-600';
+                      break;
+                    default:
+                      statusLabel = todayTrip.status;
+                      statusColor = 'bg-gray-100 text-gray-600';
+                  }
+                } else {
+                  statusLabel = vehicle.isActive ? 'Aktif' : 'Nonaktif';
+                  statusColor = vehicle.isActive ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600';
+                }
+
+                return (
+                  <div key={vehicle.id} className="flex items-center justify-between p-4 bg-surface-low rounded-2xl">
+                    <div className="flex flex-col">
+                      <span className="text-sm font-medium">{vehicle.name}</span>
+                      <span className="text-xs text-foreground/40">{vehicle.capacity} kursi</span>
+                    </div>
+                    <span className={`${statusColor} text-[10px] font-bold px-2 py-1 rounded-full uppercase`}>
+                      {statusLabel}
+                    </span>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
       </div>
