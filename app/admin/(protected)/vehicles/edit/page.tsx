@@ -10,6 +10,7 @@ interface VehicleData {
   name: string;
   plateNumber: string;
   capacity: number;
+  driverName?: string | null;
 }
 
 function EditVehicleForm() {
@@ -21,6 +22,7 @@ function EditVehicleForm() {
   const [fetching, setFetching] = useState(true);
   const [name, setName] = useState("");
   const [plateNumber, setPlateNumber] = useState("");
+  const [driverName, setDriverName] = useState("");
   const [capacity, setCapacity] = useState(15);
 
   useEffect(() => {
@@ -29,6 +31,7 @@ function EditVehicleForm() {
       if (vehicle) {
         setName(vehicle.name);
         setPlateNumber(vehicle.plateNumber);
+        setDriverName(vehicle.driverName || "");
         setCapacity(vehicle.capacity);
       } else {
         alert("Armada tidak ditemukan.");
@@ -51,6 +54,7 @@ function EditVehicleForm() {
         name,
         plateNumber,
         capacity: Number(capacity),
+        driverName,
       });
       router.push("/admin/vehicles");
     } catch (error) {
@@ -92,6 +96,17 @@ function EditVehicleForm() {
               onChange={(e) => setName(e.target.value)}
               className="bg-surface-low rounded-xl px-4 py-4 text-sm focus:ring-2 focus:ring-gold-warm outline-none border-none"
               required
+            />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label className="text-xs font-bold text-navy-deep uppercase tracking-widest">Nama Driver</label>
+            <input 
+              type="text" 
+              placeholder="Contoh: Ahmad Subarjo"
+              value={driverName}
+              onChange={(e) => setDriverName(e.target.value)}
+              className="bg-surface-low rounded-xl px-4 py-4 text-sm focus:ring-2 focus:ring-gold-warm outline-none border-none"
             />
           </div>
 

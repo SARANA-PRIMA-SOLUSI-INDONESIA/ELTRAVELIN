@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import SeatOccupancyManager from "@/components/admin/SeatOccupancyManager";
 
 interface PageProps {
@@ -42,7 +43,16 @@ export default async function AdminScheduleSeats({ params }: PageProps) {
            <i className="ri-arrow-right-s-line"></i>
            <span className="text-navy-deep">{schedule.departureTime.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' })}</span>
         </div>
-        <h1 className="text-4xl font-display font-bold text-navy-deep">Okupansi Kursi</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-4xl font-display font-bold text-navy-deep">Okupansi Kursi</h1>
+          <Link
+            href={`/admin/schedules/${resolvedParams.id}/manifest`}
+            className="flex items-center gap-2 bg-navy-deep text-white px-4 py-2 rounded-lg hover:bg-navy-deep/90 transition-colors text-sm font-medium"
+          >
+            <i className="ri-file-text-line"></i>
+            <span>Cetak Manifes</span>
+          </Link>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
