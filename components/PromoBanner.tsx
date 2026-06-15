@@ -30,24 +30,24 @@ export default function PromoBanner({ banners }: { banners: any[] }) {
   if (!banners || banners.length === 0) return null;
 
   return (
-    <section className="px-6 md:px-12 lg:px-24 -mt-10 md:-mt-20 relative z-20">
+    <section className="px-4 sm:px-6 md:px-12 lg:px-24 -mt-10 md:-mt-20 relative z-20">
       <div className="max-w-7xl mx-auto flex flex-col gap-6">
-        <div className="overflow-hidden rounded-[2rem] md:rounded-[3rem] shadow-2xl border-4 border-white relative group">
+        <div className="overflow-hidden rounded-2xl md:rounded-[2rem] shadow-2xl relative group">
           <div 
             ref={scrollRef}
-            className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar bg-surface-low"
+            className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar"
           >
             {banners.map((banner, index) => (
-              <div key={banner.id || index} className="min-w-full h-[250px] md:h-[380px] lg:h-[420px] relative snap-start">
+              <div key={banner.id || index} className="min-w-full snap-start flex justify-center">
                 <Image
                   src={banner.imageUrl || "/promo-banner.png"}
                   alt={banner.title || "Promo Banner"}
-                  fill
-                  sizes="100vw"
-                  className="object-cover"
+                  width={0}
+                  height={0}
+                  sizes="(max-width: 1280px) 100vw, 1280px"
+                  className="w-full h-auto max-w-full"
                   priority={index === 0}
                 />
-                <div className="absolute inset-0 bg-black/5"></div>
               </div>
             ))}
           </div>
