@@ -17,6 +17,7 @@ export default async function ManifestPage({ params }: ManifestProps) {
 
   const trip = schedule.operatingTrip;
   const vehicle = trip.vehicle;
+  if (!vehicle) return notFound();
   const route = schedule.route;
   const seats = trip.seats;
 
@@ -148,11 +149,12 @@ export default async function ManifestPage({ params }: ManifestProps) {
               </thead>
               <tbody>
                 {seats.map((seat, index) => {
-                  const isBooked = seat.status === 'BOOKED' && seat.booking;
+                  const booking = seat.booking;
+                  const isBooked = seat.status === 'BOOKED' && booking;
                   const passengerName = isBooked
-                    ? seat.booking.passengers[0]?.name || seat.booking.contactName
+                    ? booking.passengers[0]?.name || booking.contactName
                     : null;
-                  const passengerPhone = isBooked ? seat.booking.contactPhone : null;
+                  const passengerPhone = isBooked ? booking.contactPhone : null;
 
                   return (
                     <tr key={seat.id} className="border-b border-gray-100">
