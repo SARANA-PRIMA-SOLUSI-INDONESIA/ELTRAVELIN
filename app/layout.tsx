@@ -48,11 +48,11 @@ export default function RootLayout({
         <link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet" />
       </head>
       <body className="min-h-full flex flex-col font-body bg-background text-foreground selection:bg-gold-soft selection:text-navy-deep">
-        <Navbar />
+        <div className="print:hidden"><Navbar /></div>
         <main className="flex-grow">{children}</main>
-        <Footer />
-        <WhatsAppButton />
-        <PWAInstall />
+        <div className="print:hidden"><Footer /></div>
+        <div className="print:hidden"><WhatsAppButton /></div>
+        <div className="print:hidden"><PWAInstall /></div>
       </body>
     </html>
   );
