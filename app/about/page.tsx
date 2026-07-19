@@ -1,5 +1,11 @@
 import Image from "next/image";
 
+const team = [
+  { name: "Cristy Situmorang", role: "Komisaris", image: "/team-1.jpg" },
+  { name: "Chandra Limbong", role: "Founder & Director", image: "/team-2.jpg" },
+  { name: "Martinus Sitompul", role: "Komisaris", image: "/team-3.jpg" },
+];
+
 export default function About() {
   return (
     <div className="flex flex-col gap-24 pb-32">
@@ -52,19 +58,20 @@ export default function About() {
       <section className="px-6 md:px-12 lg:px-24 bg-surface-low py-32 rounded-[4rem] mx-6 md:mx-12">
         <div className="max-w-7xl mx-auto flex flex-col items-center gap-20">
           <div className="text-center flex flex-col gap-4 max-w-2xl">
-            <h2 className="text-4xl font-display font-bold text-navy-deep italic lowercase underline-offset-8 underline decoration-gold-warm decoration-2 ">Tim yang Profesional</h2>
-            <p className="text-foreground/60 font-body">Pengemudi kami bukan sekadar sopir, mereka adalah pramutamu profesional yang telah melewati pelatihan standar VIP Service untuk menjamin keamanan dan kenyamanan Anda.</p>
+            <h2 className="text-4xl font-display font-bold text-navy-deep italic lowercase underline-offset-8 underline decoration-gold-warm decoration-2 ">Tim Pendiri & Komisaris</h2>
+            <p className="text-foreground/60 font-body">Di balik EL Travel berdiri jajaran Komisaris, Founder & Director, serta Komisaris yang memegang visi dan arah perusahaan untuk menghadirkan layanan perjalanan premium yang aman dan nyaman bagi Anda.</p>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-12 w-full">
-            {[1, 2, 3].map((_: any, i: number) => (
+            {team.map((member, i) => (
               <div key={i} className="flex flex-col items-center text-center gap-6">
-                <div className="w-full aspect-[3/4] rounded-[2.5rem] bg-navy-deep/5 overflow-hidden filter grayscale hover:grayscale-0 transition-all duration-500">
-                  <div className="w-full h-full bg-navy-deep/10 flex items-center justify-center font-bold text-foreground/10 text-4xl">Tim EL</div>
+                <div className="relative w-full rounded-[2.5rem] bg-navy-deep/5 overflow-hidden transition-all duration-500">
+                  <div className="absolute inset-0 bg-navy-deep/10 flex items-center justify-center font-bold text-foreground/10 text-4xl">Tim EL</div>
+                  <Image src={member.image} alt={member.name} width={400} height={533} className="relative w-full h-auto" />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <span className="font-display font-bold text-navy-deep text-lg capitalize">Pratama Wijaya</span>
-                  <span className="text-[10px] font-bold text-foreground/40 uppercase tracking-widest">Executive Driver Specialist</span>
+                  <span className="font-display font-bold text-navy-deep text-lg capitalize">{member.name}</span>
+                  <span className="text-[10px] font-bold text-foreground/40 uppercase tracking-widest">{member.role}</span>
                 </div>
               </div>
             ))}
