@@ -1,7 +1,8 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { sendBookingSuccessMessage } from "@/lib/whatsapp";
+import { sendBookingSuccessMessage, sendAdminWhatsAppNotification } from "@/lib/whatsapp";
+import { sendAdminNotification } from "@/lib/mail";
 
 // Helper to get a Date object forced to Jakarta time
 function getJakartaDate(dateStr?: string, hour = 0, minute = 0, second = 0) {
@@ -617,14 +618,19 @@ export async function adminCreateBooking(data: {
     }
 
     // Send WhatsApp notification for admin bookings
-    sendBookingSuccessMessage({
+    const notificationData = {
       ...booking,
       schedule: {
         ...schedule,
         route: schedule.route
       },
-      seats: data.seatNumbers.map(num => ({ seatNumber: num }))
-    }).catch(err => console.error("Error sending admin WA success:", err));
+      seats: data.seatNumbers.map(num => ({ seatNumber: num })),
+      passengers: data.passengerNames.map(name => ({ name }))
+    };
+
+    sendBookingSuccessMessage(notificationData).catch(err => console.error("Error sending admin WA success:", err));
+    sendAdminWhatsAppNotification(notificationData).catch(err => console.error("Error sending admin WA:", err));
+    sendAdminNotification(notificationData).catch(err => console.error("Error sending admin email:", err));
 
     return booking;
   });

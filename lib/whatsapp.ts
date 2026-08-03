@@ -37,6 +37,40 @@ export async function sendWhatsAppMessage(to: string, message: string) {
   }
 }
 
+export async function sendAdminWhatsAppNotification(booking: any) {
+  const adminPhone = process.env.ADMIN_PHONE;
+  if (!adminPhone) return;
+
+  const rute = booking.schedule?.route
+    ? `${booking.schedule.route.origin} → ${booking.schedule.route.destination}`
+    : '-';
+  const departure = booking.schedule?.departureTime
+    ? new Date(booking.schedule.departureTime).toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'short', timeZone: 'Asia/Jakarta' })
+    : '-';
+  const seatList = (booking.seats || []).map((s: any) => s.seatNumber).join(', ') || '-';
+  const passengerList = (booking.passengers || []).map((p: any) => p.name).join(', ') || '-';
+
+  const message = `*🔔 BOOKING BARU MASUK!*
+
+Kode: *${booking.bookingCode}*
+Pemesan: *${booking.contactName}*
+📞 ${booking.contactPhone || '-'}
+📧 ${booking.contactEmail || '-'}
+
+📍 Rute: ${rute}
+⏰ Berangkat: ${departure}
+💺 Kursi: ${seatList}
+👤 Penumpang: ${passengerList}
+
+💰 Total: Rp ${(booking.totalPrice || 0).toLocaleString('id-ID')}
+💳 Metode: ${booking.paymentMethod || '-'}
+📌 Status: ${booking.status}
+
+Segera diperiksa di panel admin.`;
+
+  return sendWhatsAppMessage(adminPhone, message);
+}
+
 export async function sendBookingSuccessMessage(booking: any) {
   const message = `*PEMESANAN BERHASIL!* 🎉
 

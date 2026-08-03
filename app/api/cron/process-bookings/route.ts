@@ -22,7 +22,22 @@ export async function GET(request: Request) {
 
   if (!isAuthorized) {
     console.log("[CRON] Unauthorized Access Attempt");
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    console.log(`[CRON] authHeader: "${authHeader}", cronSecret: "${cronSecret}", urlKey: "${urlKey}", isLocal: ${isLocal}`);
+    // TEMPORARY: expose debug info to diagnose 401
+    return NextResponse.json({ 
+      error: "Unauthorized",
+      debug: {
+        hasSecret: !!cronSecret,
+        secretLength: cronSecret?.length,
+        hasAuthHeader: !!authHeader,
+        authHeaderLength: authHeader?.length,
+        authHeaderPrefix: authHeader?.substring(0, 20),
+        isLocal,
+        matchBearer: authHeader === `Bearer ${cronSecret}`,
+        matchBearerLower: authHeader === `bearer ${cronSecret}`,
+        matchUrlKey: urlKey === cronSecret,
+      }
+    }, { status: 401 });
   }
 
   const now = new Date();

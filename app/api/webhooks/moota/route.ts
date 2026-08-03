@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
-import { sendETicket } from "@/lib/mail";
-import { sendBookingSuccessMessage } from "@/lib/whatsapp";
+import { sendETicket, sendAdminNotification } from "@/lib/mail";
+import { sendBookingSuccessMessage, sendAdminWhatsAppNotification } from "@/lib/whatsapp";
 
 export async function POST(request: Request) {
   try {
@@ -79,6 +79,8 @@ export async function POST(request: Request) {
 
       sendETicket(updatedBooking).catch((err) => console.error("[Moota] Error sending E-ticket:", err));
       sendBookingSuccessMessage(updatedBooking).catch((err) => console.error("[Moota] Error sending WA:", err));
+      sendAdminNotification(updatedBooking).catch((err) => console.error("[Moota] Error sending admin email:", err));
+      sendAdminWhatsAppNotification(updatedBooking).catch((err) => console.error("[Moota] Error sending admin WA:", err));
 
       console.log(`[Moota] Booking ${booking.bookingCode} confirmed, E-Ticket sent`);
     }

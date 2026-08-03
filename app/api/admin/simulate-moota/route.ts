@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { sendETicket } from "@/lib/mail";
-import { sendBookingSuccessMessage } from "@/lib/whatsapp";
+import { sendETicket, sendAdminNotification } from "@/lib/mail";
+import { sendBookingSuccessMessage, sendAdminWhatsAppNotification } from "@/lib/whatsapp";
 
 export async function POST(request: Request) {
   try {
@@ -73,6 +73,8 @@ export async function POST(request: Request) {
     // Kirim notifikasi
     sendETicket(updatedBooking).catch(err => console.error("Error sending E-ticket:", err));
     sendBookingSuccessMessage(updatedBooking).catch(err => console.error("Error sending WA:", err));
+    sendAdminNotification(updatedBooking).catch(err => console.error("Error sending admin email:", err));
+    sendAdminWhatsAppNotification(updatedBooking).catch(err => console.error("Error sending admin WA:", err));
 
     return NextResponse.json({
       success: true,
