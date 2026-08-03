@@ -6,6 +6,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization');
+  const cronKeyHeader = request.headers.get('x-cron-key');
   const { searchParams } = new URL(request.url);
   const urlKey = searchParams.get('key');
   const cronSecret = process.env.CRON_SECRET?.trim();
@@ -18,26 +19,12 @@ export async function GET(request: Request) {
     !cronSecret ||
     authHeader === `Bearer ${cronSecret}` ||
     authHeader === `bearer ${cronSecret}` ||
+    cronKeyHeader === cronSecret ||
     urlKey === cronSecret;
 
   if (!isAuthorized) {
     console.log("[CRON] Unauthorized Access Attempt");
-    console.log(`[CRON] authHeader: "${authHeader}", cronSecret: "${cronSecret}", urlKey: "${urlKey}", isLocal: ${isLocal}`);
-    // TEMPORARY: expose debug info to diagnose 401
-    return NextResponse.json({ 
-      error: "Unauthorized",
-      debug: {
-        hasSecret: !!cronSecret,
-        secretLength: cronSecret?.length,
-        hasAuthHeader: !!authHeader,
-        authHeaderLength: authHeader?.length,
-        authHeaderPrefix: authHeader?.substring(0, 20),
-        isLocal,
-        matchBearer: authHeader === `Bearer ${cronSecret}`,
-        matchBearerLower: authHeader === `bearer ${cronSecret}`,
-        matchUrlKey: urlKey === cronSecret,
-      }
-    }, { status: 401 });
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const now = new Date();
