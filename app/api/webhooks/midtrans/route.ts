@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { prisma } from '@/lib/prisma';
-import { sendBookingSuccessMessage } from '@/lib/whatsapp';
+import { sendBookingSuccessMessage, sendAdminWhatsAppNotification } from '@/lib/whatsapp';
+import { sendETicket, sendAdminNotification } from '@/lib/mail';
 
 export async function POST(req: Request) {
   try {
@@ -51,12 +52,16 @@ export async function POST(req: Request) {
             route: true
           }
         },
-        seats: true
+        seats: true,
+        passengers: true
       }
     });
 
     if (bookingStatus === 'CONFIRMED') {
+      sendETicket(updatedBooking).catch(err => console.error("Error sending Midtrans E-ticket:", err));
       sendBookingSuccessMessage(updatedBooking).catch(err => console.error("Error sending Midtrans WA success:", err));
+      sendAdminNotification(updatedBooking).catch(err => console.error("Error sending Midtrans admin email:", err));
+      sendAdminWhatsAppNotification(updatedBooking).catch(err => console.error("Error sending Midtrans admin WA:", err));
     }
 
     console.log(`Booking ${order_id} updated to ${bookingStatus}`);

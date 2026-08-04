@@ -16,7 +16,8 @@ export default function AdminSidebar() {
     { label: "Promo", icon: "ri-percent-line", href: "/admin/promos" },
     { label: "Pemesanan", icon: "ri-ticket-2-line", href: "/admin/bookings" },
     { label: "Laporan", icon: "ri-bar-chart-box-line", href: "/admin/reports" },
-    { label: "Test WhatsApp", icon: "ri-whatsapp-line", href: "/admin/test-wa" },
+    { label: "Test WA", icon: "ri-whatsapp-line", href: "/admin/test-wa" },
+    { label: "Test Email", icon: "ri-mail-line", href: "/admin/test-mail" },
   ];
 
   const handleLogout = async () => {
