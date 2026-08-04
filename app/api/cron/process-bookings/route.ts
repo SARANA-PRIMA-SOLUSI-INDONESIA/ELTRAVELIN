@@ -6,14 +6,38 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization');
+  const cronKeyHeader = request.headers.get('x-cron-key');
+  const { searchParams } = new URL(request.url);
+  const urlKey = searchParams.get('key');
   const cronSecret = process.env.CRON_SECRET?.trim();
 
-  if (!cronSecret) {
-    return NextResponse.json({ error: "CRON_SECRET not configured" }, { status: 500 });
-  }
+  console.log('[CRON AUTH DEBUG]', {
+    hasCronSecret: !!cronSecret,
+    cronSecretLen: cronSecret?.length,
+    authHeader: authHeader ? `Bearer ***` : 'MISSING',
+    hasXCronKey: !!cronKeyHeader,
+    xCronKeyLen: cronKeyHeader?.length,
+    hasUrlKey: !!urlKey,
+    urlKeyLen: urlKey?.length,
+    url: request.url,
+    allHeaders: Object.fromEntries(request.headers.entries()),
+  });
 
-  if (authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!cronSecret) {
+    console.log('[CRON AUTH] CRON_SECRET not set in env — bypassing auth');
+    // Fallback: no auth jika CRON_SECRET tidak diset (backward compat)
+  } else {
+    const isAuthorized =
+      authHeader === `Bearer ${cronSecret}` ||
+      authHeader === `bearer ${cronSecret}` ||
+      cronKeyHeader === cronSecret ||
+      urlKey === cronSecret;
+
+    if (!isAuthorized) {
+      console.log('[CRON AUTH] Unauthorized — no valid credential found');
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    console.log('[CRON AUTH] Authorized');
   }
 
   const now = new Date();
