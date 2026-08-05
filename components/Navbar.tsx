@@ -9,7 +9,6 @@ const links = [
   { href: "/booking", label: "Pesan Tiket" },
   { href: "/routes", label: "Rute" },
   { href: "/fleet", label: "Armada" },
-  { href: "/about", label: "Tentang Kami" },
 ];
 
 export default function Navbar() {
