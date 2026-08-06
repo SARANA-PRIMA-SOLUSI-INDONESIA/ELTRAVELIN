@@ -12,9 +12,9 @@ interface SchedulesProps {
 }
 
 async function SchedulesContent({ date }: { date: string }) {
-  const selectedDate = new Date(date);
-  const startOfDay = new Date(selectedDate.setHours(0, 0, 0, 0));
-  const endOfDay = new Date(selectedDate.setHours(23, 59, 59, 999));
+  const selectedDate = date;
+  const startOfDay = new Date(`${selectedDate}T00:00:00+07:00`);
+  const endOfDay = new Date(`${selectedDate}T23:59:59+07:00`);
 
   const routesData = await prisma.route.findMany({
     where: { isDeleted: false },

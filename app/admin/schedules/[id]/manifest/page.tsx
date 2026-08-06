@@ -27,8 +27,9 @@ export default async function ManifestPage({ params }: ManifestProps) {
   const scheduleCode = `ET-${dateStr}-${String(schedule.id.slice(-3)).toUpperCase()}`;
 
   // Route stops
-  const originStop = route.stops[0]?.name || route.origin;
-  const destStop = route.stops[route.stops.length - 1]?.name || route.destination;
+  const allStops = route.stops && route.stops.length > 0
+    ? route.stops.map((s: any) => s.name).join(' → ')
+    : `${route.origin} → ${route.destination}`;
 
   // Format date/time
   const formattedDate = depDate.toLocaleDateString('id-ID', {
@@ -109,7 +110,7 @@ export default async function ManifestPage({ params }: ManifestProps) {
                 <tr>
                   <td className="py-1.5 text-gray-500">Rute</td>
                   <td className="py-1.5 font-medium text-navy-deep">
-                    : {route.origin} ({originStop}) → {route.destination} ({destStop})
+                    : {allStops}
                   </td>
                 </tr>
                 <tr>
@@ -141,10 +142,12 @@ export default async function ManifestPage({ params }: ManifestProps) {
               <thead>
                 <tr className="border-b-2 border-gray-300">
                   <th className="py-2 text-left font-bold text-gray-600 w-10">NO</th>
-                  <th className="py-2 text-left font-bold text-gray-600 w-24">NO. KURSI</th>
+                  <th className="py-2 text-left font-bold text-gray-600 w-16">NO. KURSI</th>
                   <th className="py-2 text-left font-bold text-gray-600">NAMA PENUMPANG</th>
-                  <th className="py-2 text-left font-bold text-gray-600 w-36">NO. TELEPON</th>
-                  <th className="py-2 text-left font-bold text-gray-600 w-36">STATUS TIKET</th>
+                  <th className="py-2 text-left font-bold text-gray-600">NAIK</th>
+                  <th className="py-2 text-left font-bold text-gray-600">TURUN</th>
+                  <th className="py-2 text-left font-bold text-gray-600 w-32">NO. TELEPON</th>
+                  <th className="py-2 text-left font-bold text-gray-600 w-28">STATUS TIKET</th>
                 </tr>
               </thead>
               <tbody>
@@ -159,9 +162,19 @@ export default async function ManifestPage({ params }: ManifestProps) {
                   return (
                     <tr key={seat.id} className="border-b border-gray-100">
                       <td className="py-2 text-gray-500">{index + 1}</td>
-                      <td className="py-2 font-medium text-gray-700">Kursi {seat.seatNumber}</td>
+                      <td className="py-2 font-medium text-gray-700">K{seat.seatNumber}</td>
                       <td className="py-2 font-medium text-navy-deep">
                         {isBooked ? passengerName : <span className="text-gray-400 italic">(KOSONG)</span>}
+                      </td>
+                      <td className="py-2 text-gray-600 text-[11px]">
+                        {isBooked && booking.segment?.originStop
+                          ? booking.segment.originStop.name
+                          : '-'}
+                      </td>
+                      <td className="py-2 text-gray-600 text-[11px]">
+                        {isBooked && booking.segment?.destinationStop
+                          ? booking.segment.destinationStop.name
+                          : '-'}
                       </td>
                       <td className="py-2 text-gray-500">
                         {isBooked ? maskPhone(passengerPhone!) : '-'}
