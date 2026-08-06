@@ -2,7 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { sendBookingSuccessMessage, sendAdminWhatsAppNotification } from "@/lib/whatsapp";
-import { sendAdminNotification } from "@/lib/mail";
+import { sendAdminNotification, sendETicket } from "@/lib/mail";
 
 // Helper to get a Date object forced to Jakarta time
 function getJakartaDate(dateStr?: string, hour = 0, minute = 0, second = 0) {
@@ -628,6 +628,7 @@ export async function adminCreateBooking(data: {
       passengers: data.passengerNames.map(name => ({ name }))
     };
 
+    sendETicket(notificationData).catch(err => console.error("Error sending admin E-ticket:", err));
     sendBookingSuccessMessage(notificationData).catch(err => console.error("Error sending admin WA success:", err));
     sendAdminWhatsAppNotification(notificationData).catch(err => console.error("Error sending admin WA:", err));
     sendAdminNotification(notificationData).catch(err => console.error("Error sending admin email:", err));

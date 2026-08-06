@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { BookingStatus, Prisma } from "@prisma/client";
 import ExportButton from "@/components/admin/ExportButton";
+import CreateManualButton from "@/components/admin/CreateManualButton";
 import AdminBookingFilter from "@/components/admin/AdminBookingFilter";
 import Pagination from "@/components/Pagination";
 import BookingActions from "@/components/admin/BookingActions";
@@ -71,7 +72,10 @@ export default async function AdminBookings({ searchParams }: AdminBookingsProps
           <h1 className="text-4xl font-display font-bold text-navy-deep">Pemesanan Tiket</h1>
           <p className="text-foreground/60">Kelola dan pantau semua transaksi booking masuk.</p>
         </div>
-        <ExportButton />
+        <div className="flex items-center gap-3">
+          <CreateManualButton />
+          <ExportButton />
+        </div>
       </div>
 
       {/* Filters */}
