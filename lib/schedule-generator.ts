@@ -60,7 +60,20 @@ export async function syncSchedulesFromTemplates(prismaInstance: PrismaClient, d
         }
       });
 
-      if (!existingSchedule) {
+      if (existingSchedule) {
+        console.log(`Updating existing schedule ${existingSchedule.id} price: ${template.price}`);
+        await prisma.schedule.update({
+          where: { id: existingSchedule.id },
+          data: {
+            price: template.price,
+            departureTime: departureWIB,
+            arrivalTime: arrival,
+            vehicleType: template.vehicle.name,
+            capacity: template.vehicle.capacity,
+            stopTimesJson: template.stopTimesJson,
+          }
+        });
+      } else {
         console.log(`Generating schedule for ${template.route.origin} -> ${template.route.destination} on ${departureWIB.toISOString()}`);
         
         await prisma.$transaction(async (tx: Prisma.TransactionClient) => {

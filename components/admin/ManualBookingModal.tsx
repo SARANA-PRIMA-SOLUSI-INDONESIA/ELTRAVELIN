@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { getSchedules, adminCreateBooking, getAvailableSeatsForSchedule } from "@/app/actions/booking";
 
@@ -24,6 +24,9 @@ export default function ManualBookingModal({ onClose }: { onClose: () => void })
   const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
   const [paymentMethod, setPaymentMethod] = useState("CASH");
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+
+  const [originStopId, setOriginStopId] = useState("");
+  const [destinationStopId, setDestinationStopId] = useState("");
 
   useEffect(() => {
     fetchSchedules();
@@ -57,13 +60,30 @@ export default function ManualBookingModal({ onClose }: { onClose: () => void })
   const handleSelectSchedule = (schedule: any) => {
     setSelectedSchedule(schedule);
     setSelectedSeats([]);
+    setOriginStopId("");
+    setDestinationStopId("");
     fetchSeats(schedule.id);
   };
+
+  const stops = useMemo(() => selectedSchedule?.route?.stops || [], [selectedSchedule]);
+
+  const segmentPrice = useMemo(() => {
+    if (!originStopId || !destinationStopId || stops.length === 0) return null;
+    const originIdx = stops.findIndex((s: any) => s.id === originStopId);
+    const destIdx = stops.findIndex((s: any) => s.id === destinationStopId);
+    if (originIdx === -1 || destIdx <= originIdx) return null;
+    return stops
+      .slice(originIdx + 1, destIdx + 1)
+      .reduce((sum: number, s: any) => sum + (s.price || 0), 0);
+  }, [originStopId, destinationStopId, stops]);
+
+  const effectivePrice = segmentPrice ?? selectedSchedule?.price ?? 0;
+  const validPassengers = passengers.filter((p) => p.trim());
 
   const toggleSeat = (seatNumber: string) => {
     if (selectedSeats.includes(seatNumber)) {
       setSelectedSeats(selectedSeats.filter((s) => s !== seatNumber));
-    } else if (selectedSeats.length < passengers.length) {
+    } else if (selectedSeats.length < validPassengers.length) {
       setSelectedSeats([...selectedSeats, seatNumber]);
     } else {
       setSelectedSeats([...selectedSeats.slice(0, -1), seatNumber]);
@@ -78,7 +98,6 @@ export default function ManualBookingModal({ onClose }: { onClose: () => void })
   const handleSubmit = async () => {
     if (!selectedSchedule) return setError("Pilih jadwal terlebih dahulu");
     if (!contactName.trim() || !contactPhone.trim()) return setError("Nama dan telepon pemesan wajib diisi");
-    const validPassengers = passengers.filter((p) => p.trim());
     if (validPassengers.length === 0) return setError("Minimal 1 penumpang");
     if (selectedSeats.length !== validPassengers.length) return setError("Jumlah kursi harus sama dengan jumlah penumpang");
 
@@ -93,6 +112,8 @@ export default function ManualBookingModal({ onClose }: { onClose: () => void })
         passengerNames: validPassengers,
         seatNumbers: selectedSeats,
         paymentMethod,
+        originStopId: originStopId || undefined,
+        destinationStopId: destinationStopId || undefined,
       });
       alert("Booking manual berhasil dibuat! Status CONFIRMED. Notifikasi sudah dikirim ke pelanggan.");
       onClose();
@@ -174,14 +195,71 @@ export default function ManualBookingModal({ onClose }: { onClose: () => void })
                             {" - "}
                             {arrival.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
                           </div>
+                          {s.route?.stops?.length > 0 && (
+                            <div className="text-[10px] text-gray-400 mt-0.5">
+                              {s.route.stops.map((st: any) => st.name).join(" → ")}
+                            </div>
+                          )}
                         </div>
-                        <div className="text-sm font-bold text-navy-deep">
-                          Rp {s.price?.toLocaleString("id-ID")}
+                        <div className="text-xs font-bold text-gray-400">
+                          {s.route?.stops?.length > 1 ? "Pilih titik ↓" : s.price > 0 ? `Rp ${s.price.toLocaleString("id-ID")}` : ""}
                         </div>
                       </div>
                     </button>
                   );
                 })}
+              </div>
+            )}
+
+            {stops.length > 1 && (
+              <div className="mt-4 p-4 bg-surface-low rounded-2xl space-y-3">
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Pilih Titik Naik/Turun</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] font-bold text-gray-400 uppercase mb-1 block">Titik Naik</label>
+                    <select
+                      value={originStopId}
+                      onChange={(e) => { setOriginStopId(e.target.value); setDestinationStopId(""); }}
+                      className="w-full px-3 py-2 rounded-lg border border-gray-200 text-xs font-medium focus:border-navy-deep outline-none"
+                    >
+                      <option value="">-- Pilih --</option>
+                      {stops.map((s: any) => (
+                        <option key={s.id} value={s.id}>{s.name} {s.price > 0 ? `(+${s.price.toLocaleString("id-ID")})` : ""}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-gray-400 uppercase mb-1 block">Titik Turun</label>
+                    <select
+                      value={destinationStopId}
+                      onChange={(e) => setDestinationStopId(e.target.value)}
+                      disabled={!originStopId}
+                      className="w-full px-3 py-2 rounded-lg border border-gray-200 text-xs font-medium focus:border-navy-deep outline-none disabled:opacity-40"
+                    >
+                      <option value="">-- Pilih --</option>
+                      {stops.filter((s: any, i: number) => {
+                        const originIdx = stops.findIndex((st: any) => st.id === originStopId);
+                        return i > originIdx;
+                      }).map((s: any) => {
+                        const originIdx = stops.findIndex((st: any) => st.id === originStopId);
+                        const destIdx = stops.findIndex((st: any) => st.id === s.id);
+                        const price = stops
+                          .slice(originIdx + 1, destIdx + 1)
+                          .reduce((sum: number, st: any) => sum + (st.price || 0), 0);
+                        return (
+                          <option key={s.id} value={s.id}>
+                            {s.name} — Rp {price.toLocaleString("id-ID")}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+                </div>
+                {segmentPrice !== null && (
+                  <p className="text-xs font-bold text-green-600 text-right">
+                    Harga per kursi: Rp {segmentPrice.toLocaleString("id-ID")}
+                  </p>
+                )}
               </div>
             )}
 
@@ -234,7 +312,7 @@ export default function ManualBookingModal({ onClose }: { onClose: () => void })
 
               <div>
                 <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">
-                  Kursi ({selectedSeats.length}/{passengers.length})
+                  Kursi ({selectedSeats.length}/{validPassengers.length})
                 </label>
                 {loadingSeats ? (
                   <div className="py-4 text-center text-gray-400"><i className="ri-loader-4-line animate-spin"></i></div>
@@ -245,7 +323,7 @@ export default function ManualBookingModal({ onClose }: { onClose: () => void })
                     {availableSeats.map((seat) => {
                       const num = String(seat.seatNumber);
                       const isSelected = selectedSeats.includes(num);
-                      const isFull = selectedSeats.length >= passengers.length;
+                      const isFull = selectedSeats.length >= validPassengers.length;
                       return (
                         <button
                           key={num}
@@ -286,9 +364,14 @@ export default function ManualBookingModal({ onClose }: { onClose: () => void })
                     <span className="font-bold">{new Date(selectedSchedule.departureTime).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}</span>
                   </div>
                   <div className="flex justify-between mt-1">
-                    <span className="text-xs text-gray-400">{passengers.filter((p) => p.trim()).length} x Rp {selectedSchedule.price?.toLocaleString("id-ID")}</span>
-                    <span className="font-bold text-navy-deep">Rp {((selectedSchedule.price || 0) * passengers.filter((p) => p.trim()).length).toLocaleString("id-ID")}</span>
+                    <span className="text-xs text-gray-400">{validPassengers.length} x Rp {effectivePrice.toLocaleString("id-ID")}</span>
+                    <span className="font-bold text-navy-deep">Rp {(effectivePrice * validPassengers.length).toLocaleString("id-ID")}</span>
                   </div>
+                  {originStopId && destinationStopId && (
+                    <p className="text-[10px] text-green-600 mt-1">
+                      Harga dari titik rute: {stops.find((s: any) => s.id === originStopId)?.name} → {stops.find((s: any) => s.id === destinationStopId)?.name}
+                    </p>
+                  )}
                 </div>
               )}
             </div>

@@ -567,15 +567,29 @@ export async function adminCreateBooking(data: {
   passengerNames: string[];
   seatNumbers: string[];
   paymentMethod: string;
+  originStopId?: string;
+  destinationStopId?: string;
 }) {
   const schedule = await prisma.schedule.findUnique({
     where: { id: data.scheduleId },
-    include: { route: true }
+    include: { route: { include: { stops: { orderBy: { sequence: 'asc' } } } } }
   });
 
   if (!schedule) throw new Error("Jadwal tidak ditemukan");
 
-  const totalPrice = schedule.price * data.seatNumbers.length;
+  let pricePerSeat = schedule.price;
+  if (data.originStopId && data.destinationStopId) {
+    const stops = schedule.route.stops;
+    const originIdx = stops.findIndex((s: any) => s.id === data.originStopId);
+    const destIdx = stops.findIndex((s: any) => s.id === data.destinationStopId);
+    if (originIdx !== -1 && destIdx > originIdx) {
+      pricePerSeat = stops
+        .slice(originIdx + 1, destIdx + 1)
+        .reduce((sum: number, s: any) => sum + (s.price || 0), 0);
+    }
+  }
+
+  const totalPrice = pricePerSeat * data.seatNumbers.length;
   const bookingCode = `ADM-${Math.floor(100000 + Math.random() * 900000)}-${data.seatNumbers[0]}`;
 
   return prisma.$transaction(async (tx: any) => {
@@ -598,6 +612,18 @@ export async function adminCreateBooking(data: {
         }
       },
     });
+
+    // Create BookingSegment if stop IDs provided
+    if (data.originStopId && data.destinationStopId) {
+      await tx.bookingSegment.create({
+        data: {
+          bookingId: booking.id,
+          originStopId: data.originStopId,
+          destinationStopId: data.destinationStopId,
+          basePrice: pricePerSeat,
+        }
+      });
+    }
 
     // 2. Update all selected seats status for the physical vehicle trip
     if (schedule.operatingTripId) {
@@ -1269,7 +1295,15 @@ export async function getScheduleManifest(scheduleId: string) {
             orderBy: { seatNumber: 'asc' },
             include: {
               booking: {
-                include: { passengers: true },
+                include: {
+                  passengers: true,
+                  segment: {
+                    include: {
+                      originStop: true,
+                      destinationStop: true,
+                    },
+                  },
+                },
               },
             },
           },
