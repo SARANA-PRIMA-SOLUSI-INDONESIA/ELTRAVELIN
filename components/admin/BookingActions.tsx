@@ -46,11 +46,14 @@ export default function BookingActions({
 
   // Show simulate button for PENDING + MOOTA bookings
   const isPendingMoota = status === 'PENDING' && paymentMethod === 'MOOTA';
-  
+
+  // Show confirm button for PENDING + POOL bookings
+  const isPendingPool = status === 'PENDING' && paymentMethod === 'POOL';
+
   // Show edit actions for CONFIRMED (paid) bookings
   const isConfirmed = status === 'CONFIRMED';
-  
-  if (!isPendingMoota && !isConfirmed) return null;
+
+  if (!isPendingMoota && !isPendingPool && !isConfirmed) return null;
 
   const handleSave = async (data: EditBookingData) => {
     if (!confirm("Apakah Anda yakin ingin menyimpan perubahan ini?")) return;
@@ -82,13 +85,39 @@ export default function BookingActions({
       const data = await res.json();
 
       if (res.ok) {
-        alert(`✅ Pembayaran berhasil disimulasikan!\nBooking ${data.booking.bookingCode} sekarang ${data.booking.status}`);
+        alert(`Pembayaran berhasil disimulasikan!\nBooking ${data.booking.bookingCode} sekarang ${data.booking.status}`);
         router.refresh();
       } else {
-        alert(`❌ Gagal: ${data.error}`);
+        alert(`Gagal: ${data.error}`);
       }
     } catch (err) {
       alert('Terjadi kesalahan saat simulasi');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleConfirmPool = async () => {
+    if (!confirm(`Konfirmasi pembayaran POOL untuk booking ${bookingCode}?\nPelanggan: ${contactName}\nTotal: Rp ${totalPrice.toLocaleString('id-ID')}\n\nBooking akan berubah menjadi CONFIRMED dan notifikasi dikirim ke pelanggan.`)) return;
+
+    setLoading(true);
+    try {
+      const res = await fetch('/api/admin/confirm-pool', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingCode })
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        alert(`Pembayaran POOL berhasil dikonfirmasi!\nBooking ${data.booking.bookingCode} sekarang CONFIRMED\nEmail & WhatsApp sudah dikirim ke pelanggan.`);
+        router.refresh();
+      } else {
+        alert(`Gagal: ${data.error}`);
+      }
+    } catch (err) {
+      alert('Terjadi kesalahan saat konfirmasi');
     } finally {
       setLoading(false);
     }
@@ -107,6 +136,19 @@ export default function BookingActions({
           >
             <i className="ri-money-dollar-circle-line mr-1"></i>
             Bayar
+          </button>
+        )}
+
+        {/* Confirm Pool Payment Button - Only for PENDING + POOL */}
+        {isPendingPool && (
+          <button
+            onClick={handleConfirmPool}
+            disabled={loading}
+            className="px-3 h-8 rounded-lg bg-gold-warm flex items-center justify-center text-white hover:bg-gold-warm/90 transition-all disabled:opacity-50 text-xs font-bold"
+            title="Konfirmasi Bayar POOL"
+          >
+            <i className="ri-check-double-line mr-1"></i>
+            Konfirmasi
           </button>
         )}
 
