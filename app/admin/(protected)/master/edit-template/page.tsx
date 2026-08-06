@@ -107,13 +107,16 @@ function EditTemplateForm() {
             />
           </div>
           <div className="flex flex-col gap-2">
-            <label className="text-xs font-bold text-navy-deep uppercase tracking-widest">Harga Tiket (Otomatis dari Rute)</label>
+            <label className="text-xs font-bold text-navy-deep uppercase tracking-widest">Harga Tiket (Auto dari Titik Rute)</label>
             <input
-              type="text"
-              value={`Rp ${price.toLocaleString('id-ID')}`}
-              className="bg-surface-low text-foreground/45 rounded-xl px-4 py-4 text-sm outline-none border-none cursor-not-allowed font-bold"
-              disabled
+              type="number"
+              min="0"
+              value={price}
+              onChange={(e) => setPrice(Number(e.target.value))}
+              className="bg-surface-low rounded-xl px-4 py-4 text-sm outline-none border-none focus:ring-2 focus:ring-gold-warm font-bold"
+              required
             />
+            <p className="text-[10px] text-foreground/40">Terisi otomatis dari jumlah harga titik rute, tapi tetap bisa diubah.</p>
           </div>
           <div className="flex flex-col gap-2">
             <label className="text-xs font-bold text-navy-deep uppercase tracking-widest">Pilih Armada Mobil</label>
