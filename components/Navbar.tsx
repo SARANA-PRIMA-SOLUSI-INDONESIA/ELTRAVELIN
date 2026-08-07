@@ -6,7 +6,7 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 
 const links = [
-  { href: "/booking", label: "Pesan Tiket" },
+  { href: "/", label: "Pesan Tiket" },
   { href: "/routes", label: "Rute" },
   { href: "/fleet", label: "Armada" },
 ];
@@ -44,12 +44,12 @@ export default function Navbar() {
         </div>
 
         <div className="flex items-center gap-3">
-          <button
+          <Link
+            href="/"
             className="hidden md:block btn-primary px-4 md:px-6 py-2 rounded-full text-xs md:text-sm font-bold shadow-sm"
-            suppressHydrationWarning
           >
             Cek Jadwal
-          </button>
+          </Link>
 
           <button
             type="button"
@@ -78,13 +78,13 @@ export default function Navbar() {
                 {link.label}
               </Link>
             ))}
-            <button
-              className="btn-primary px-4 py-3 rounded-full text-sm font-bold shadow-sm mt-1"
-              suppressHydrationWarning
+            <Link
+              href="/"
               onClick={() => setOpen(false)}
+              className="btn-primary px-4 py-3 rounded-full text-sm font-bold shadow-sm mt-1 text-center"
             >
               Cek Jadwal
-            </button>
+            </Link>
           </div>
         </div>
       )}

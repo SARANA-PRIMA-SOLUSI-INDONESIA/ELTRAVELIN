@@ -1,6 +1,7 @@
 import { getBookingByCode } from "@/app/actions/booking";
 import { notFound } from "next/navigation";
 import BookingWizard from "@/components/BookingWizard";
+import RefreshPaymentButton from "@/components/RefreshPaymentButton";
 import Link from "next/link";
 
 interface ConfirmationProps {
@@ -185,6 +186,8 @@ export default async function Confirmation({ searchParams }: ConfirmationProps) 
             <span>Lihat Invoice / Bukti Pembayaran</span>
           </Link>
         )}
+
+        {!isConfirmed && <RefreshPaymentButton />}
 
         <Link 
           href="/" 

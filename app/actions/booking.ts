@@ -1,7 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { sendBookingSuccessMessage, sendAdminWhatsAppNotification } from "@/lib/whatsapp";
+import { sendBookingSuccessMessage, sendAdminWhatsAppNotification, sendBookingPendingReminder } from "@/lib/whatsapp";
 import { sendAdminNotification, sendETicket } from "@/lib/mail";
 
 // Helper to get a Date object forced to Jakarta time
@@ -398,12 +398,10 @@ export async function createBooking(data: {
   if (!schedule) throw new Error("Jadwal tidak ditemukan");
   if (!data.contactEmail) throw new Error("Email wajib diisi");
 
-  // Prevent booking of schedules that have already departed
   if (schedule.departureTime < new Date()) {
     throw new Error("Jadwal sudah berangkat dan tidak dapat dipesan lagi.");
   }
 
-  // Use segment price if available, otherwise use schedule price
   const pricePerSeat = data.segmentPrice || schedule.price;
   const basePrice = pricePerSeat * data.seatNumbers.length;
   let discountAmount = 0;
@@ -415,13 +413,11 @@ export async function createBooking(data: {
     }
   }
 
-  // Generate unique code for Moota verification (random 3 digits)
   const uniqueCode = Math.floor(100 + Math.random() * 899);
   const totalPrice = (basePrice - discountAmount) + uniqueCode;
   const bookingCode = `EL-${Math.floor(100000 + Math.random() * 900000)}-${data.seatNumbers[0]}`;
 
-  return prisma.$transaction(async (tx: any) => {
-    // 1. Create the booking
+  const booking = await prisma.$transaction(async (tx: any) => {
     const booking = await tx.booking.create({
       data: {
         bookingCode,
@@ -443,7 +439,6 @@ export async function createBooking(data: {
       },
     });
 
-    // 1b. Create BookingSegment if stop IDs provided
     if (data.originStopId && data.destinationStopId) {
       await tx.bookingSegment.create({
         data: {
@@ -455,7 +450,6 @@ export async function createBooking(data: {
       });
     }
 
-    // 2. Update all selected seats status for the physical vehicle trip
     if (schedule.operatingTripId) {
       await Promise.all(data.seatNumbers.map(num => 
         tx.seat.update({
@@ -473,7 +467,6 @@ export async function createBooking(data: {
       ));
     }
 
-    // 3. Increment Promo usedCount if applicable
     if (data.promoCodeId) {
       await tx.promoCode.update({
         where: { id: data.promoCodeId },
@@ -483,6 +476,20 @@ export async function createBooking(data: {
 
     return booking;
   });
+
+  // Notifikasi admin — setiap booking baru langsung kirim WA & email ke admin
+  const notificationData = {
+    ...booking,
+    schedule,
+    seats: data.seatNumbers.map(n => ({ seatNumber: n })),
+    passengers: data.passengerNames.map(n => ({ name: n })),
+  };
+  sendAdminWhatsAppNotification(notificationData).catch(err => console.error("Admin WA notif error:", err));
+  sendBookingPendingReminder(notificationData).catch(err => console.error("Customer WA pending notif error:", err));
+  sendAdminWhatsAppNotification(notificationData).catch(err => console.error("Admin WA notif error:", err));
+  sendAdminNotification(notificationData).catch(err => console.error("Admin email notif error:", err));
+
+  return booking;
 }
 
 async function validatePromoCodeById(id: string, totalAmount: number) {
@@ -656,7 +663,7 @@ export async function adminCreateBooking(data: {
 
     sendETicket(notificationData).catch(err => console.error("Error sending admin E-ticket:", err));
     sendBookingSuccessMessage(notificationData).catch(err => console.error("Error sending admin WA success:", err));
-    sendAdminWhatsAppNotification(notificationData).catch(err => console.error("Error sending admin WA:", err));
+    sendAdminWhatsAppNotification(notificationData).catch(err => console.error("Admin WA notif error:", err));
     sendAdminNotification(notificationData).catch(err => console.error("Error sending admin email:", err));
 
     return booking;
@@ -1312,5 +1319,29 @@ export async function getScheduleManifest(scheduleId: string) {
     },
   });
   return schedule;
+}
+
+export async function adminDeleteBooking(bookingId: string) {
+  const booking = await prisma.booking.findUnique({
+    where: { id: bookingId },
+    include: { seats: true },
+  });
+
+  if (!booking) throw new Error("Booking tidak ditemukan");
+
+  return prisma.$transaction(async (tx) => {
+    // Free seats first (Seat.bookingId has no onDelete Cascade)
+    await tx.seat.updateMany({
+      where: { bookingId: booking.id },
+      data: { status: "AVAILABLE", bookingId: null },
+    });
+
+    // Hard delete: Passenger & BookingSegment cascade via schema
+    await tx.booking.delete({
+      where: { id: bookingId },
+    });
+
+    return { success: true, bookingCode: booking.bookingCode };
+  });
 }
 

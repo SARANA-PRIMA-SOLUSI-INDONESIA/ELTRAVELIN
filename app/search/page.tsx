@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getSchedulesWithStops } from "@/app/actions/booking";
+import { getGimmickMarkupSettings } from "@/app/actions/admin-settings";
 import BookingWizard from "@/components/BookingWizard";
 import ScheduleCard from "@/components/ScheduleCard";
 import SearchFilter from "@/components/SearchFilter";
@@ -23,12 +24,15 @@ export default async function SearchResults({ searchParams }: SearchProps) {
   const page = parseInt(resolvedParams.page as string || "1");
   const pageSize = 10;
 
-  const { data: departures, total } = await getSchedulesWithStops(originStop, destStop, date, {
-    timeFilter: times,
-    sortBy: sort,
-    page,
-    pageSize
-  });
+  const [{ data: departures, total }, gimmick] = await Promise.all([
+    getSchedulesWithStops(originStop, destStop, date, {
+      timeFilter: times,
+      sortBy: sort,
+      page,
+      pageSize,
+    }),
+    getGimmickMarkupSettings(),
+  ]);
 
   return (
     <div className="flex flex-col min-h-screen bg-[#F8F9FA]">
@@ -98,6 +102,8 @@ export default async function SearchResults({ searchParams }: SearchProps) {
                   fromName={originStop} 
                   toName={destStop}
                   segmentPrice={d.segmentPrice}
+                  gimmickMarkupPercent={gimmick.percent}
+                  gimmickMarkupEnabled={gimmick.enabled}
                 />
               ))}
               

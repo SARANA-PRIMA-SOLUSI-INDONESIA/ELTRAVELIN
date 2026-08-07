@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { editBooking, getAvailableSchedulesForReschedule, getAllActiveRoutes, getAvailableSeatsForSchedule, EditBookingData } from "@/app/actions/booking";
+import { editBooking, getAvailableSchedulesForReschedule, getAllActiveRoutes, getAvailableSeatsForSchedule, adminDeleteBooking, EditBookingData } from "@/app/actions/booking";
+import Link from "next/link";
 
 interface Passenger {
   id?: string;
@@ -52,8 +53,10 @@ export default function BookingActions({
 
   // Show edit actions for CONFIRMED (paid) bookings
   const isConfirmed = status === 'CONFIRMED';
+  const canDelete = true;
+  const canInvoice = isConfirmed;
 
-  if (!isPendingMoota && !isPendingPool && !isConfirmed) return null;
+  if (!isPendingMoota && !isPendingPool && !isConfirmed && !canDelete) return null;
 
   const handleSave = async (data: EditBookingData) => {
     if (!confirm("Apakah Anda yakin ingin menyimpan perubahan ini?")) return;
@@ -123,9 +126,24 @@ export default function BookingActions({
     }
   };
 
+  const handleDelete = async () => {
+    if (!confirm(`Hapus permanen booking ${bookingCode}?\nPelanggan: ${contactName}\n\nData akan dihapus dari database dan kursi dibebaskan. Tindakan ini tidak bisa dibatalkan.`)) return;
+
+    setLoading(true);
+    try {
+      await adminDeleteBooking(bookingId);
+      alert(`Booking ${bookingCode} berhasil dihapus.`);
+      router.refresh();
+    } catch (err: any) {
+      alert(err.message || "Gagal menghapus booking");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <>
-      <div className="flex items-center gap-1">
+      <div className="flex items-center justify-center gap-1 flex-wrap">
         {/* Simulate Moota Payment Button - Only for PENDING + MOOTA */}
         {isPendingMoota && (
           <button
@@ -162,6 +180,32 @@ export default function BookingActions({
           >
             <i className="ri-edit-line mr-1"></i>
             Edit
+          </button>
+        )}
+
+        {/* Invoice Button - Only for CONFIRMED */}
+        {canInvoice && (
+          <Link
+            href={`/invoice/${bookingCode}`}
+            target="_blank"
+            className="px-3 h-8 rounded-lg bg-blue-500 flex items-center justify-center text-white hover:bg-blue-600 transition-all text-xs font-bold"
+            title="Lihat Invoice"
+          >
+            <i className="ri-file-list-3-line mr-1"></i>
+            Invoice
+          </Link>
+        )}
+
+        {/* Delete Button - permanent remove from DB */}
+        {canDelete && (
+          <button
+            onClick={handleDelete}
+            disabled={loading}
+            className="px-3 h-8 rounded-lg bg-red-500 flex items-center justify-center text-white hover:bg-red-600 transition-all disabled:opacity-50 text-xs font-bold"
+            title="Hapus Permanen"
+          >
+            <i className="ri-delete-bin-line mr-1"></i>
+            Hapus
           </button>
         )}
       </div>
