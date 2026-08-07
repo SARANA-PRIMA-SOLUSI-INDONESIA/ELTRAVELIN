@@ -82,7 +82,9 @@ export async function createTemplate(data: {
   departureTime: string;
   arrivalTime: string;
   price: number;
-  vehicleId: string;
+  capacity: number;
+  vehicleId?: string;
+  dayOfWeek?: number;
 }) {
   const template = await prisma.scheduleTemplate.create({
     data: {
@@ -90,7 +92,9 @@ export async function createTemplate(data: {
       departureTime: data.departureTime,
       arrivalTime: data.arrivalTime,
       price: data.price,
-      vehicleId: data.vehicleId,
+      capacity: data.capacity,
+      vehicleId: data.vehicleId || null,
+      dayOfWeek: data.dayOfWeek ?? null,
       isActive: true
     }
   });
@@ -332,11 +336,20 @@ export async function updateTemplate(id: string, data: {
   departureTime: string;
   arrivalTime: string;
   price: number;
-  vehicleId: string;
+  capacity: number;
+  vehicleId?: string;
+  dayOfWeek?: number;
 }) {
   await prisma.scheduleTemplate.update({
     where: { id },
-    data
+    data: {
+      departureTime: data.departureTime,
+      arrivalTime: data.arrivalTime,
+      price: data.price,
+      capacity: data.capacity,
+      vehicleId: data.vehicleId || null,
+      dayOfWeek: data.dayOfWeek ?? null,
+    }
   });
   revalidatePath("/admin/master");
   revalidatePath("/");

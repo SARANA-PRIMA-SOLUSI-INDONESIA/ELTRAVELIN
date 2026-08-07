@@ -3,6 +3,7 @@ import { triggerSyncSchedules, deleteTemplate, updateTemplateStatus, deleteRoute
 import SyncButton from "@/components/admin/SyncButton";
 import TemplateToggle from "@/components/admin/TemplateToggle";
 import DeleteButton from "@/components/admin/DeleteButton";
+import ScrollToHash from "@/components/admin/ScrollToHash";
 import Link from "next/link";
 
 export const dynamic = 'force-dynamic';
@@ -17,6 +18,7 @@ export default async function AdminMaster() {
         }
       },
       scheduleTemplates: {
+        include: { vehicle: true },
         orderBy: {
           departureTime: 'asc'
         }
@@ -26,6 +28,7 @@ export default async function AdminMaster() {
 
   return (
     <div className="flex flex-col gap-10">
+      <ScrollToHash />
       <div className="flex flex-col md:flex-row justify-between items-end gap-6">
         <div className="flex flex-col gap-2">
           <h1 className="text-4xl font-display font-bold text-navy-deep">Jadwal Master</h1>
@@ -42,7 +45,11 @@ export default async function AdminMaster() {
 
       <div className="flex flex-col gap-12">
         {routes.map((route: any) => (
-          <div key={route.id} className="bg-white rounded-[2.5rem] shadow-sm border border-outline-ghost overflow-hidden">
+          <div
+            key={route.id}
+            id={`route-${route.id}`}
+            className="bg-white rounded-[2.5rem] shadow-sm border border-outline-ghost overflow-hidden scroll-mt-8"
+          >
             <div className="bg-surface-low px-8 py-6 flex flex-col sm:flex-row gap-4 sm:items-center justify-between border-b border-outline-ghost">
               <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-4">
@@ -100,7 +107,11 @@ export default async function AdminMaster() {
                       <div className="flex justify-between items-start">
                         <div className="flex flex-col">
                           <span className="text-2xl font-display font-bold text-navy-deep">{t.departureTime}</span>
-                          <span className="text-[10px] font-bold text-foreground/40 uppercase tracking-widest">Keberangkatan Rutin</span>
+                          <span className="text-[10px] font-bold text-foreground/40 uppercase tracking-widest">
+                            {t.dayOfWeek != null
+                              ? ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][t.dayOfWeek]
+                              : 'Setiap Hari'}
+                          </span>
                         </div>
                         <div className="flex gap-2">
                           <TemplateToggle id={t.id} initialStatus={t.isActive} />
@@ -121,7 +132,7 @@ export default async function AdminMaster() {
                         </div>
                         <div className="flex justify-between text-xs">
                           <span className="text-foreground/40">Armada</span>
-                          <span className="font-bold text-navy-deep">{t.vehicleType} ({t.capacity} Kursi)</span>
+                          <span className="font-bold text-navy-deep">{t.vehicle ? `${t.vehicle.name} (${t.capacity} Kursi)` : `${t.capacity} Kursi`}</span>
                         </div>
                       </div>
 

@@ -102,10 +102,12 @@ function StopsManagerForm() {
     );
   }
 
+  const backHref = routeId ? `/admin/master#route-${routeId}` : "/admin/master";
+
   return (
     <div className="flex flex-col gap-10 max-w-6xl">
       <div className="flex items-center gap-4">
-        <Link href="/admin/master" className="w-10 h-10 rounded-full bg-white border border-outline-ghost flex items-center justify-center text-navy-deep hover:bg-navy-deep hover:text-white transition-all">
+        <Link href={backHref} className="w-10 h-10 rounded-full bg-white border border-outline-ghost flex items-center justify-center text-navy-deep hover:bg-navy-deep hover:text-white transition-all">
           <i className="ri-arrow-left-line"></i>
         </Link>
         <div className="flex flex-col">

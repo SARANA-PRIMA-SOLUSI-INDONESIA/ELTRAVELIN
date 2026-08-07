@@ -38,9 +38,18 @@ interface ScheduleCardProps {
   fromName: string;
   toName: string;
   segmentPrice?: number;
+  gimmickMarkupPercent?: number;
+  gimmickMarkupEnabled?: boolean;
 }
 
-export default function ScheduleCard({ schedule, fromName, toName, segmentPrice }: ScheduleCardProps) {
+export default function ScheduleCard({
+  schedule,
+  fromName,
+  toName,
+  segmentPrice,
+  gimmickMarkupPercent = 10,
+  gimmickMarkupEnabled = true,
+}: ScheduleCardProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   const routeDepartureDate = new Date(schedule.departureTime);
@@ -246,9 +255,26 @@ export default function ScheduleCard({ schedule, fromName, toName, segmentPrice 
         {/* Right: Price & Select */}
         <div className="p-6 md:p-8 bg-[#FDFDFD] flex flex-row md:flex-col justify-between md:justify-center items-center md:items-end gap-4 md:min-w-[220px] border-t md:border-t-0 md:border-l border-gray-50">
           <div className="flex flex-col items-start md:items-end">
-            <span className="text-lg md:text-xl font-display font-bold text-navy-deep">
-              Rp {(segmentPrice || schedule.price).toLocaleString('id-ID')}
-            </span>
+            {(() => {
+              const realPrice = segmentPrice || schedule.price;
+              const showGimmick =
+                gimmickMarkupEnabled && gimmickMarkupPercent > 0;
+              const gimmickPrice = showGimmick
+                ? Math.round(realPrice * (1 + gimmickMarkupPercent / 100))
+                : null;
+              return (
+                <>
+                  {showGimmick && gimmickPrice != null && (
+                    <span className="text-sm md:text-base font-display font-medium text-foreground/35 line-through">
+                      Rp {gimmickPrice.toLocaleString("id-ID")}
+                    </span>
+                  )}
+                  <span className="text-lg md:text-xl font-display font-bold text-navy-deep">
+                    Rp {realPrice.toLocaleString("id-ID")}
+                  </span>
+                </>
+              );
+            })()}
             <span className="text-[10px] font-bold text-foreground/40 uppercase">/seat</span>
           </div>
           <Link 

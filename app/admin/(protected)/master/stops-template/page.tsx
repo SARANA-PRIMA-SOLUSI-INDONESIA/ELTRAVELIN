@@ -74,6 +74,10 @@ function StopsTemplateForm() {
       });
   }, [templateId, router]);
 
+  const backHref = template?.route?.id
+    ? `/admin/master#route-${template.route.id}`
+    : "/admin/master";
+
   const handleTimeChange = (stopId: string, value: string) => {
     setCustomStopTimes((prev) => ({
       ...prev,
@@ -96,7 +100,7 @@ function StopsTemplateForm() {
       });
 
       await updateTemplateStopTimes(templateId, JSON.stringify(cleanedStopTimes));
-      router.push("/admin/master");
+      router.push(backHref);
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Terjadi kesalahan";
       alert("Gagal menyimpan jam singgah kustom: " + msg);
@@ -118,7 +122,7 @@ function StopsTemplateForm() {
   return (
     <div className="flex flex-col gap-10 max-w-4xl">
       <div className="flex items-center gap-4">
-        <Link href="/admin/master" className="w-10 h-10 rounded-full bg-white border border-outline-ghost flex items-center justify-center text-navy-deep hover:bg-navy-deep hover:text-white transition-all">
+        <Link href={backHref} className="w-10 h-10 rounded-full bg-white border border-outline-ghost flex items-center justify-center text-navy-deep hover:bg-navy-deep hover:text-white transition-all">
           <i className="ri-arrow-left-line"></i>
         </Link>
         <div className="flex flex-col">
@@ -211,7 +215,7 @@ function StopsTemplateForm() {
 
           <div className="flex gap-4 mt-4">
             <Link
-              href="/admin/master"
+              href={backHref}
               className="flex-1 bg-surface-low rounded-xl py-4 font-bold text-sm text-navy-deep text-center border border-outline-ghost hover:bg-surface-medium transition-all"
             >
               Batal

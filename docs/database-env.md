@@ -168,3 +168,37 @@ import { getEnv, getAppUrl, isProd } from "@/lib/env";
 const dbUrl = getEnv("DATABASE_URL");              // DATABASE_URL_DEV / DATABASE_URL_PROD
 const appUrl = getAppUrl();                        // NEXT_PUBLIC_APP_URL_DEV / NEXT_PUBLIC_APP_URL_PROD
 const prod = isProd();                             // true jika NODE_ENV === "production"
+```
+
+---
+
+## Prisma Migrate (DEV vs PROD)
+
+Project memakai **Prisma Migrate** (bukan `db push`) setelah baseline `0_init`.
+
+### Workflow
+
+1. Ubah `prisma/schema.prisma`
+2. Di local (DEV):
+
+```bash
+npm run db:migrate
+# sama dengan: prisma migrate dev --name deskripsi_perubahan
+```
+
+3. Commit folder `prisma/migrations/`
+4. Apply ke production:
+
+```bash
+npm run db:deploy:prod
+# sama dengan: NODE_ENV=production prisma migrate deploy
+```
+
+### Status
+
+```bash
+npm run db:status        # DEV
+npm run db:status:prod   # PROD
+```
+
+> Jangan jalankan ulang `0_init` ke DB yang sudah ada. Baseline sudah di-mark applied di DEV (`u5971811_eltravelin`) dan PROD (`u5971811_eltravelin_prod`).

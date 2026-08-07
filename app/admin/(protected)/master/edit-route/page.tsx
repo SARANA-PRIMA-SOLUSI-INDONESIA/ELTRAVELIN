@@ -33,13 +33,15 @@ function EditRouteForm() {
     setLoading(true);
     try {
       await updateRoute(id, origin, destination);
-      router.push("/admin/master");
+      router.push(id ? `/admin/master#route-${id}` : "/admin/master");
     } catch (error) {
       alert("Gagal mengupdate rute: " + (error as any).message);
     } finally {
       setLoading(false);
     }
   };
+
+  const backHref = id ? `/admin/master#route-${id}` : "/admin/master";
 
   if (fetching) {
     return (
@@ -52,7 +54,7 @@ function EditRouteForm() {
   return (
     <div className="flex flex-col gap-10 max-w-2xl">
       <div className="flex items-center gap-4">
-        <Link href="/admin/master" className="w-10 h-10 rounded-full bg-white border border-outline-ghost flex items-center justify-center text-navy-deep hover:bg-navy-deep hover:text-white transition-all">
+        <Link href={backHref} className="w-10 h-10 rounded-full bg-white border border-outline-ghost flex items-center justify-center text-navy-deep hover:bg-navy-deep hover:text-white transition-all">
           <i className="ri-arrow-left-line"></i>
         </Link>
         <div className="flex flex-col">
@@ -89,7 +91,7 @@ function EditRouteForm() {
 
         <div className="flex gap-4">
           <Link
-            href="/admin/master"
+            href={backHref}
             className="flex-1 bg-surface-low rounded-xl py-4 font-bold text-sm text-navy-deep text-center border border-outline-ghost hover:bg-surface-medium transition-all"
           >
             Batal

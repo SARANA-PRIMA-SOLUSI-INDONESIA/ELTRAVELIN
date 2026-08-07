@@ -6,7 +6,13 @@
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:deploy:prod": "node scripts/with-prod-env.mjs migrate deploy",
+    "db:status": "prisma migrate status",
+    "db:status:prod": "node scripts/with-prod-env.mjs migrate status",
+    "db:generate": "prisma generate"
   },
   "dependencies": {
     "@prisma/adapter-mariadb": "^7.8.0",

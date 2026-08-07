@@ -11,15 +11,18 @@ export default async function ManifestPage({ params }: ManifestProps) {
   const { id } = await params;
   const schedule = await getScheduleManifest(id);
 
-  if (!schedule || !schedule.operatingTrip || !schedule.operatingTrip.vehicle) {
+  if (!schedule || !schedule.operatingTrip) {
     return notFound();
   }
 
   const trip = schedule.operatingTrip;
   const vehicle = trip.vehicle;
-  if (!vehicle) return notFound();
   const route = schedule.route;
   const seats = trip.seats;
+  const vehicleName = vehicle?.name || schedule.vehicleType || "Armada";
+  const plateNumber = vehicle?.plateNumber || "-";
+  const driverName = vehicle?.driverName || "-";
+  const capacity = vehicle?.capacity || schedule.capacity || seats.length;
 
   // Generate schedule code: ET-YYYYMMDD-XXX
   const depDate = new Date(schedule.departureTime);
@@ -122,12 +125,12 @@ export default async function ManifestPage({ params }: ManifestProps) {
                 <tr>
                   <td className="py-1.5 text-gray-500">Armada / NoPol</td>
                   <td className="py-1.5 font-medium text-navy-deep">
-                    : {vehicle.name} / {vehicle.plateNumber}
+                    : {vehicleName} / {plateNumber}
                   </td>
                 </tr>
                 <tr>
                   <td className="py-1.5 text-gray-500">Nama Driver</td>
-                  <td className="py-1.5 font-medium text-navy-deep">: {vehicle.driverName || "-"}</td>
+                  <td className="py-1.5 font-medium text-navy-deep">: {driverName}</td>
                 </tr>
               </tbody>
             </table>
@@ -136,7 +139,7 @@ export default async function ManifestPage({ params }: ManifestProps) {
           {/* Passenger Table */}
           <div className="p-8">
             <h2 className="text-sm font-bold uppercase tracking-widest text-gray-500 mb-4">
-              DAFTAR PENUMPANG (Kapasitas: {vehicle.capacity} Kursi)
+              DAFTAR PENUMPANG (Kapasitas: {capacity} Kursi)
             </h2>
             <table className="w-full text-sm border-collapse">
               <thead>
