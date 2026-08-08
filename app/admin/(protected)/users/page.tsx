@@ -2,13 +2,38 @@
 
 import { useState, useEffect } from "react";
 import { getAdmins, createAdmin, updateAdmin, deleteAdmin } from "@/app/actions/admin-users";
+import { AdminRole } from "@prisma/client";
+import { confirmAction, showSuccess } from "@/lib/swal";
 
 interface AdminUser {
   id: string;
   email: string;
   name: string | null;
+  role: AdminRole;
   createdAt: Date;
   updatedAt: Date;
+}
+
+const ROLE_OPTIONS: { value: AdminRole; label: string }[] = [
+  { value: "SUPER_ADMIN", label: "Super Admin" },
+  { value: "ADMIN", label: "Admin" },
+  { value: "CS", label: "Customer Service" },
+];
+
+const ROLE_LABELS: Record<string, string> = {
+  SUPER_ADMIN: "Super Admin",
+  ADMIN: "Admin",
+  CS: "Customer Service",
+};
+
+const ROLE_BADGE_STYLES: Record<string, string> = {
+  SUPER_ADMIN: "bg-navy-deep text-white",
+  ADMIN: "bg-gold-soft text-navy-deep",
+  CS: "bg-surface-medium text-foreground/60",
+};
+
+function getErrorMessage(err: unknown, fallback = "Terjadi kesalahan") {
+  return err instanceof Error ? err.message : fallback;
 }
 
 export default function AdminUsersPage() {
@@ -21,13 +46,14 @@ export default function AdminUsersPage() {
   const [formName, setFormName] = useState("");
   const [formEmail, setFormEmail] = useState("");
   const [formPassword, setFormPassword] = useState("");
+  const [formRole, setFormRole] = useState<AdminRole>("ADMIN");
 
   const fetchAdmins = async () => {
     try {
       const data = await getAdmins();
       setAdmins(data);
-    } catch (err: any) {
-      setError(err.message || "Gagal memuat data");
+    } catch (err) {
+      setError(getErrorMessage(err, "Gagal memuat data"));
     } finally {
       setLoading(false);
     }
@@ -41,6 +67,7 @@ export default function AdminUsersPage() {
     setFormName("");
     setFormEmail("");
     setFormPassword("");
+    setFormRole("ADMIN");
     setShowCreate(false);
     setEditingId(null);
     setError("");
@@ -50,11 +77,11 @@ export default function AdminUsersPage() {
     e.preventDefault();
     setError("");
     try {
-      await createAdmin({ email: formEmail, password: formPassword, name: formName });
+      await createAdmin({ email: formEmail, password: formPassword, name: formName, role: formRole });
       resetForm();
       fetchAdmins();
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(getErrorMessage(err));
     }
   };
 
@@ -63,22 +90,23 @@ export default function AdminUsersPage() {
     if (!editingId) return;
     setError("");
     try {
-      await updateAdmin(editingId, { name: formName, password: formPassword || undefined });
+      await updateAdmin(editingId, { name: formName, password: formPassword || undefined, role: formRole });
       resetForm();
       fetchAdmins();
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(getErrorMessage(err));
     }
   };
 
   const handleDelete = async (id: string, email: string) => {
-    if (!confirm(`Hapus admin "${email}"?`)) return;
+    if (!(await confirmAction({ title: "Hapus Admin", danger: true, text: `Hapus admin "${email}"?` }))) return;
     setError("");
     try {
       await deleteAdmin(id);
+      await showSuccess({ title: "Berhasil", text: "Admin `` berhasil dihapus." });
       fetchAdmins();
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(getErrorMessage(err));
     }
   };
 
@@ -87,6 +115,7 @@ export default function AdminUsersPage() {
     setFormName(admin.name || "");
     setFormEmail(admin.email);
     setFormPassword("");
+    setFormRole(admin.role || "ADMIN");
     setShowCreate(true);
     setError("");
   };
@@ -127,7 +156,7 @@ export default function AdminUsersPage() {
             {editingId ? "Edit Admin" : "Tambah Admin Baru"}
           </h3>
           <form onSubmit={editingId ? handleUpdate : handleCreate} className="flex flex-col gap-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="flex flex-col gap-1.5">
                 <label className="text-[11px] font-bold text-foreground/40 uppercase tracking-wider">Nama</label>
                 <input
@@ -164,6 +193,18 @@ export default function AdminUsersPage() {
                   className="px-4 py-3 rounded-xl border border-outline-ghost text-sm font-medium focus:outline-none focus:border-navy-deep"
                 />
               </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[11px] font-bold text-foreground/40 uppercase tracking-wider">Role</label>
+                <select
+                  value={formRole}
+                  onChange={(e) => setFormRole(e.target.value as AdminRole)}
+                  className="px-4 py-3 rounded-xl border border-outline-ghost text-sm font-medium focus:outline-none focus:border-navy-deep bg-white cursor-pointer"
+                >
+                  {ROLE_OPTIONS.map((r) => (
+                    <option key={r.value} value={r.value}>{r.label}</option>
+                  ))}
+                </select>
+              </div>
             </div>
             <div className="flex gap-3 justify-end">
               <button
@@ -196,6 +237,7 @@ export default function AdminUsersPage() {
               <tr className="bg-surface-low border-b border-outline-ghost">
                 <th className="px-4 py-6 text-[11px] font-bold text-navy-deep uppercase tracking-wider pl-8">Nama</th>
                 <th className="px-4 py-6 text-[11px] font-bold text-navy-deep uppercase tracking-wider">Email</th>
+                <th className="px-4 py-6 text-[11px] font-bold text-navy-deep uppercase tracking-wider">Role</th>
                 <th className="px-4 py-6 text-[11px] font-bold text-navy-deep uppercase tracking-wider">Dibuat</th>
                 <th className="px-4 py-6 text-[11px] font-bold text-navy-deep uppercase tracking-wider pr-8 text-center">Aksi</th>
               </tr>
@@ -203,7 +245,7 @@ export default function AdminUsersPage() {
             <tbody className="divide-y divide-outline-ghost">
               {admins.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-8 py-20 text-center text-sm text-foreground/40 italic">
+                  <td colSpan={5} className="px-8 py-20 text-center text-sm text-foreground/40 italic">
                     Belum ada admin terdaftar.
                   </td>
                 </tr>
@@ -215,6 +257,11 @@ export default function AdminUsersPage() {
                     </td>
                     <td className="px-4 py-6">
                       <span className="text-sm font-medium text-foreground/60">{admin.email}</span>
+                    </td>
+                    <td className="px-4 py-6">
+                      <span className={`inline-block px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${ROLE_BADGE_STYLES[admin.role] || "bg-surface-medium text-foreground/60"}`}>
+                        {ROLE_LABELS[admin.role] || admin.role}
+                      </span>
                     </td>
                     <td className="px-4 py-6">
                       <span className="text-xs font-medium text-foreground/40">

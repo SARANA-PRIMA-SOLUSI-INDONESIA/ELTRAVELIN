@@ -23,7 +23,7 @@ export async function POST(request: Request) {
 
     // Create session
     const expires = new Date(Date.now() + 2 * 60 * 60 * 1000); // 2 hours
-    const session = await encrypt({ adminId: admin.id, email: admin.email, expires });
+    const session = await encrypt({ adminId: admin.id, email: admin.email, role: admin.role, name: admin.name, expires });
 
     const response = NextResponse.json({ success: true });
     response.cookies.set("session", session, {

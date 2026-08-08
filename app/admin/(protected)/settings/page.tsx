@@ -1,5 +1,6 @@
 "use client";
 
+import { showSuccess, showError } from "@/lib/swal";
 import { useEffect, useState } from "react";
 import {
   getGimmickMarkupSettings,
@@ -28,9 +29,9 @@ export default function AdminSettingsPage() {
       const result = await updateGimmickMarkupSettings({ percent, enabled });
       setPercent(result.percent);
       setEnabled(result.enabled);
-      alert("Pengaturan berhasil disimpan.");
+      await showSuccess({ title: "Berhasil", text: "Pengaturan berhasil disimpan." });
     } catch (err: any) {
-      alert(err.message || "Gagal menyimpan pengaturan");
+      await showError({ title: "Gagal", text: err.message || "Gagal menyimpan pengaturan" });
     } finally {
       setSaving(false);
     }

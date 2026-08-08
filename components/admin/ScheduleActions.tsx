@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { confirmAction, showError, showInfo } from "@/lib/swal";
 
 export default function ScheduleActions({ scheduleId }: { scheduleId: string }) {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   const handleDelete = async () => {
-    if (!confirm("Apakah Anda yakin ingin menghapus jadwal ini?")) return;
+    if (!(await confirmAction({ title: "Hapus Jadwal", danger: true, text: "Apakah Anda yakin ingin menghapus jadwal ini?" }))) return;
 
     setLoading(true);
     try {
@@ -18,10 +19,10 @@ export default function ScheduleActions({ scheduleId }: { scheduleId: string }) 
       if (res.ok) {
         router.refresh();
       } else {
-        alert("Gagal menghapus jadwal");
+        await showError({ title: "Gagal", text: "Gagal menghapus jadwal" });
       }
-    } catch (err) {
-      alert("Terjadi kesalahan");
+    } catch {
+      await showError({ title: "Terjadi Kesalahan", text: "Terjadi kesalahan" });
     } finally {
       setLoading(false);
     }
@@ -30,7 +31,7 @@ export default function ScheduleActions({ scheduleId }: { scheduleId: string }) 
   return (
     <div className="flex items-center gap-2">
        <button 
-         onClick={() => alert("Fitur edit detail lengkap akan segera hadir")}
+         onClick={() => { showInfo({ title: "Info", text: "Fitur edit detail lengkap akan segera hadir" }); }}
          className="w-8 h-8 rounded-lg bg-surface-low flex items-center justify-center text-navy-deep hover:bg-gold-soft transition-all"
          title="Edit Jadwal"
        >

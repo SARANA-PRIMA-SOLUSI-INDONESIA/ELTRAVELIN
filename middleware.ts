@@ -1,6 +1,50 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { decrypt } from '@/lib/auth';
 
+const ROLE_ACCESS: Record<string, string[]> = {
+  SUPER_ADMIN: [
+    '/admin',
+    '/admin/schedules',
+    '/admin/master',
+    '/admin/vehicles',
+    '/admin/promos',
+    '/admin/bookings',
+    '/admin/reports',
+    '/admin/settings',
+    '/admin/users',
+    '/admin/test-wa',
+    '/admin/test-mail',
+    '/admin/confirm-pool',
+    '/admin/simulate-moota',
+  ],
+  ADMIN: [
+    '/admin',
+    '/admin/schedules',
+    '/admin/master/banner',
+    '/admin/bookings',
+    '/admin/reports',
+    '/admin/confirm-pool',
+    '/admin/simulate-moota',
+  ],
+  CS: [
+    '/admin',
+    '/admin/schedules',
+    '/admin/bookings',
+    '/admin/confirm-pool',
+    '/admin/simulate-moota',
+  ],
+};
+
+function canAccess(pathname: string, role: string): boolean {
+  const allowedPrefixes = ROLE_ACCESS[role] || ROLE_ACCESS.ADMIN;
+  return allowedPrefixes.some((prefix) => {
+    if (prefix === '/admin') {
+      return pathname === '/admin';
+    }
+    return pathname === prefix || pathname.startsWith(prefix + '/');
+  });
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -12,9 +56,12 @@ export async function middleware(request: NextRequest) {
     }
 
     try {
-      await decrypt(session);
+      const payload = await decrypt(session);
+      if (!canAccess(pathname, payload.role || 'ADMIN')) {
+        return NextResponse.redirect(new URL('/admin', request.url));
+      }
       return NextResponse.next();
-    } catch (error) {
+    } catch {
       return NextResponse.redirect(new URL('/admin/login', request.url));
     }
   }
@@ -27,9 +74,13 @@ export async function middleware(request: NextRequest) {
     }
 
     try {
-      await decrypt(session);
+      const payload = await decrypt(session);
+      const apiPath = pathname.replace('/api', '');
+      if (!canAccess(apiPath, payload.role || 'ADMIN')) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
       return NextResponse.next();
-    } catch (error) {
+    } catch {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
   }

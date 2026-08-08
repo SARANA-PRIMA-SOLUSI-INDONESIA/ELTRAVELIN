@@ -4,6 +4,8 @@ import { getTemplateWithStops, updateTemplateStopTimes } from "@/app/actions/adm
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
+import TimeInput from "@/components/admin/TimeInput";
+import { showError, showInfo } from "@/lib/swal";
 
 interface RouteStop {
   id: string;
@@ -49,7 +51,7 @@ function StopsTemplateForm() {
     if (!templateId) return;
 
     getTemplateWithStops(templateId)
-      .then((data: any) => {
+      .then(async (data: any) => {
         if (data) {
           setTemplate(data as ScheduleTemplate);
           
@@ -63,13 +65,13 @@ function StopsTemplateForm() {
             }
           }
         } else {
-          alert("Jadwal master tidak ditemukan.");
+          await showInfo({ title: "Info", text: "Jadwal master tidak ditemukan." });
           router.push("/admin/master");
         }
         setFetching(false);
       })
-      .catch((err) => {
-        alert("Gagal memuat data jadwal: " + err.message);
+      .catch(async (err) => {
+        await showError({ title: "Gagal", text: "Gagal memuat data jadwal: " + err.message });
         router.push("/admin/master");
       });
   }, [templateId, router]);
@@ -103,7 +105,7 @@ function StopsTemplateForm() {
       router.push(backHref);
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Terjadi kesalahan";
-      alert("Gagal menyimpan jam singgah kustom: " + msg);
+      await showError({ title: "Gagal", text: "Gagal menyimpan jam singgah kustom: " + msg });
     } finally {
       setLoading(false);
     }
@@ -185,11 +187,9 @@ function StopsTemplateForm() {
                             disabled
                           />
                         ) : (
-                          <input
-                            type="time"
+                          <TimeInput
                             value={currentVal}
-                            onChange={(e) => handleTimeChange(stop.id, e.target.value)}
-                            className="bg-white border border-outline-ghost rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-gold-warm outline-none cursor-pointer"
+                            onChange={(value) => handleTimeChange(stop.id, value)}
                           />
                         )}
                       </div>

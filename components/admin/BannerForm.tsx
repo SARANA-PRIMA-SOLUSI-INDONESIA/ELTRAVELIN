@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { updateBanner } from "@/app/actions/banner";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { showSuccess, showError } from "@/lib/swal";
 
 export default function BannerForm({ initialData }: { initialData: any }) {
   const router = useRouter();
@@ -40,14 +41,14 @@ export default function BannerForm({ initialData }: { initialData: any }) {
       const res = await updateBanner(formData);
       if (res && !res.success) {
         console.error("Update banner error:", res.error);
-        alert(`Gagal memperbarui banner: ${res.error}`);
+        await showError({ title: "Gagal", text: `Gagal memperbarui banner: ${res.error}` });
       } else {
         router.refresh();
-        alert("Banner berhasil diperbarui!");
+        await showSuccess({ title: "Berhasil", text: "Banner berhasil diperbarui!" });
       }
     } catch (error: any) {
       console.error(error);
-      alert(`Gagal memperbarui banner: ${error.message || error}`);
+      await showError({ title: "Gagal", text: `Gagal memperbarui banner: ${error.message || error}` });
     } finally {
       setLoading(false);
     }

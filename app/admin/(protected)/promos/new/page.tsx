@@ -4,6 +4,7 @@ import { createPromo } from "@/app/actions/admin-promo";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Link from "next/link";
+import { showError } from "@/lib/swal";
 
 export default function NewPromo() {
   const router = useRouter();
@@ -37,7 +38,7 @@ export default function NewPromo() {
       });
       router.push("/admin/promos");
     } catch (error) {
-      alert("Gagal membuat promo: " + (error as any).message);
+      await showError({ title: "Gagal", text: "Gagal membuat promo: " + (error as Error).message });
     } finally {
       setLoading(false);
     }

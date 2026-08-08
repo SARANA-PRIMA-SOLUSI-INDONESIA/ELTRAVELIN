@@ -4,6 +4,7 @@ import { getRouteById, updateRoute } from "@/app/actions/admin-master";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
+import { showError } from "@/lib/swal";
 
 function EditRouteForm() {
   const router = useRouter();
@@ -35,7 +36,7 @@ function EditRouteForm() {
       await updateRoute(id, origin, destination);
       router.push(id ? `/admin/master#route-${id}` : "/admin/master");
     } catch (error) {
-      alert("Gagal mengupdate rute: " + (error as any).message);
+      await showError({ title: "Gagal", text: "Gagal mengupdate rute: " + (error as Error).message });
     } finally {
       setLoading(false);
     }

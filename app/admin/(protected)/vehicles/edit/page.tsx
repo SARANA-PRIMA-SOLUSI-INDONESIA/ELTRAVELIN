@@ -4,6 +4,7 @@ import { getVehicleById, updateVehicle } from "@/app/actions/admin-vehicle";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
+import { showError, showInfo } from "@/lib/swal";
 
 interface VehicleData {
   id: string;
@@ -27,19 +28,19 @@ function EditVehicleForm() {
 
   useEffect(() => {
     if (!id) return;
-    getVehicleById(id).then((vehicle: VehicleData | null) => {
+    getVehicleById(id).then(async (vehicle: VehicleData | null) => {
       if (vehicle) {
         setName(vehicle.name);
         setPlateNumber(vehicle.plateNumber);
         setDriverName(vehicle.driverName || "");
         setCapacity(vehicle.capacity);
       } else {
-        alert("Armada tidak ditemukan.");
+        await showInfo({ title: "Info", text: "Armada tidak ditemukan." });
         router.push("/admin/vehicles");
       }
       setFetching(false);
-    }).catch(() => {
-      alert("Gagal memuat data armada.");
+    }).catch(async () => {
+      await showError({ title: "Gagal", text: "Gagal memuat data armada." });
       router.push("/admin/vehicles");
     });
   }, [id, router]);
@@ -59,7 +60,7 @@ function EditVehicleForm() {
       router.push("/admin/vehicles");
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Terjadi kesalahan";
-      alert("Gagal memperbarui armada: " + msg);
+      await showError({ title: "Gagal", text: "Gagal memperbarui armada: " + msg });
     } finally {
       setLoading(false);
     }

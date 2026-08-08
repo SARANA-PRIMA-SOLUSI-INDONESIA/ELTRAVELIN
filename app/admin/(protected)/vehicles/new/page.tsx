@@ -4,6 +4,7 @@ import { createVehicle } from "@/app/actions/admin-vehicle";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Link from "next/link";
+import { showError } from "@/lib/swal";
 
 export default function NewVehicle() {
   const router = useRouter();
@@ -27,7 +28,7 @@ export default function NewVehicle() {
       });
       router.push("/admin/vehicles");
     } catch (error) {
-      alert("Gagal menambahkan armada: " + (error as any).message);
+      await showError({ title: "Gagal", text: "Gagal menambahkan armada: " + (error as Error).message });
     } finally {
       setLoading(false);
     }

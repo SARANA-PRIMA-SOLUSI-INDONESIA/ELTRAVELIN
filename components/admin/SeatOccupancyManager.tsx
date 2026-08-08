@@ -4,6 +4,7 @@ import { useState } from "react";
 import SeatMap from "./SeatMap";
 import { adminCreateBooking } from "@/app/actions/booking";
 import { useRouter } from "next/navigation";
+import { showSuccess, showError, showInfo } from "@/lib/swal";
 
 export default function SeatOccupancyManager({ schedule, seats }: { schedule: any, seats: any[] }) {
   const router = useRouter();
@@ -16,19 +17,19 @@ export default function SeatOccupancyManager({ schedule, seats }: { schedule: an
   const [phone, setPhone] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("CASH");
 
-  const handleSeatClick = (seat: any) => {
+  const handleSeatClick = async (seat: any) => {
     if (seat.status === 'AVAILABLE') {
       setSelectedSeat(seat);
       setIsBooking(true);
     } else if (seat.status === 'BOOKED') {
       // Show details
-      alert(`Kursi ${seat.seatNumber} dipesan oleh: ${seat.booking?.contactName || 'N/A'}\nPhone: ${seat.booking?.contactPhone || 'N/A'}`);
+      await showInfo({ title: `Kursi ${seat.seatNumber}`, text: `Dipesan oleh: ${seat.booking?.contactName || 'N/A'} - Phone: ${seat.booking?.contactPhone || 'N/A'}` });
     }
   };
 
   const handleConfirmBooking = async () => {
     if (!name || !phone) {
-      alert("Nama dan HP wajib diisi");
+      await showInfo({ text: "Nama dan HP wajib diisi" });
       return;
     }
 
@@ -43,14 +44,14 @@ export default function SeatOccupancyManager({ schedule, seats }: { schedule: an
         paymentMethod: paymentMethod
       });
       
-      alert("Booking berhasil!");
+      await showSuccess({ title: "Berhasil", text: "Booking berhasil!" });
       setIsBooking(false);
       setSelectedSeat(null);
       setName("");
       setPhone("");
       router.refresh();
     } catch (error) {
-      alert("Gagal booking: " + (error as any).message);
+      await showError({ title: "Gagal", text: "Gagal booking: " + (error as Error).message });
     } finally {
       setLoading(false);
     }
