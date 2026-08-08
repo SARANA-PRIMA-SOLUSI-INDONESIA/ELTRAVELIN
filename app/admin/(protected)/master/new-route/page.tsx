@@ -4,6 +4,7 @@ import { createRoute } from "@/app/actions/admin-master";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Link from "next/link";
+import { showError } from "@/lib/swal";
 
 export default function NewRoute() {
   const router = useRouter();
@@ -20,7 +21,7 @@ export default function NewRoute() {
       await createRoute(origin, destination);
       router.push("/admin/master");
     } catch (error) {
-      alert("Gagal membuat rute: " + (error as any).message);
+      await showError({ title: "Gagal", text: "Gagal membuat rute: " + (error as Error).message });
     } finally {
       setLoading(false);
     }

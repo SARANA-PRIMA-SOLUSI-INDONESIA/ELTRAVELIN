@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createBooking, validatePromoCode } from "@/app/actions/booking";
+import { showError } from "@/lib/swal";
 
 interface CheckoutFormProps {
   scheduleId: string;
@@ -99,7 +100,7 @@ export default function CheckoutForm({ scheduleId, seatNumbers, basePrice, vehic
       router.push(`/payment?code=${booking.bookingCode}`);
     } catch (error) {
       console.error(error);
-      alert("Gagal melakukan pemesanan. Kursi mungkin sudah terisi.");
+      await showError({ title: "Gagal", text: "Gagal melakukan pemesanan. Kursi mungkin sudah terisi." });
     } finally {
       setLoading(false);
     }

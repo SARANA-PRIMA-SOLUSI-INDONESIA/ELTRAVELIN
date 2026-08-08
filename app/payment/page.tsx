@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { getBookingByCode, updatePaymentMethod } from "@/app/actions/booking";
 import BookingWizard from "@/components/BookingWizard";
 import Link from "next/link";
+import { showError } from "@/lib/swal";
 
 function PaymentContent() {
   const router = useRouter();
@@ -32,7 +33,7 @@ function PaymentContent() {
       router.push(`/confirmation?code=${code}`);
     } catch (error) {
       console.error(error);
-      alert("Gagal memproses pembayaran.");
+      await showError({ title: "Gagal", text: "Gagal memproses pembayaran." });
     } finally {
       setProcessing(false);
     }

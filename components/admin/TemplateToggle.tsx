@@ -2,6 +2,7 @@
 
 import { updateTemplateStatus } from "@/app/actions/admin-master";
 import { useState } from "react";
+import { showError } from "@/lib/swal";
 
 interface TemplateToggleProps {
   id: string;
@@ -18,8 +19,8 @@ export default function TemplateToggle({ id, initialStatus }: TemplateToggleProp
       const newStatus = !isActive;
       await updateTemplateStatus(id, newStatus);
       setIsActive(newStatus);
-    } catch (error) {
-      alert("Gagal update status");
+    } catch {
+      await showError({ title: "Gagal", text: "Gagal update status" });
     } finally {
       setLoading(false);
     }

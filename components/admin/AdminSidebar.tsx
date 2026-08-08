@@ -3,24 +3,44 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
-export default function AdminSidebar() {
+interface AdminSidebarProps {
+  role?: string;
+  name?: string | null;
+}
+
+const ALL_MENUS = [
+  { label: "Overview", icon: "ri-dashboard-3-line", href: "/admin" },
+  { label: "Jadwal Harian", icon: "ri-calendar-event-line", href: "/admin/schedules" },
+  { label: "Jadwal Master", icon: "ri-map-pin-2-line", href: "/admin/master" },
+  { label: "Armada", icon: "ri-bus-line", href: "/admin/vehicles" },
+  { label: "Banner", icon: "ri-image-line", href: "/admin/master/banner" },
+  { label: "Promo", icon: "ri-percent-line", href: "/admin/promos" },
+  { label: "Pemesanan", icon: "ri-ticket-2-line", href: "/admin/bookings" },
+  { label: "Laporan", icon: "ri-bar-chart-box-line", href: "/admin/reports" },
+  { label: "Pengaturan", icon: "ri-settings-3-line", href: "/admin/settings" },
+  { label: "Pengguna", icon: "ri-shield-user-line", href: "/admin/users" },
+  { label: "Test WA", icon: "ri-whatsapp-line", href: "/admin/test-wa" },
+  { label: "Test Email", icon: "ri-mail-line", href: "/admin/test-mail" },
+];
+
+const ROLE_MENU_HREFS: Record<string, string[]> = {
+  SUPER_ADMIN: ALL_MENUS.map((m) => m.href),
+  ADMIN: ["/admin", "/admin/schedules", "/admin/master/banner", "/admin/bookings", "/admin/reports"],
+  CS: ["/admin", "/admin/schedules", "/admin/bookings"],
+};
+
+const ROLE_LABELS: Record<string, string> = {
+  SUPER_ADMIN: "Super Admin",
+  ADMIN: "Admin",
+  CS: "Customer Service",
+};
+
+export default function AdminSidebar({ role = "ADMIN", name }: AdminSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
 
-  const menuItems = [
-    { label: "Overview", icon: "ri-dashboard-3-line", href: "/admin" },
-    { label: "Jadwal Harian", icon: "ri-calendar-event-line", href: "/admin/schedules" },
-    { label: "Jadwal Master", icon: "ri-map-pin-2-line", href: "/admin/master" },
-    { label: "Armada", icon: "ri-bus-line", href: "/admin/vehicles" },
-    { label: "Banner", icon: "ri-image-line", href: "/admin/master/banner" },
-    { label: "Promo", icon: "ri-percent-line", href: "/admin/promos" },
-    { label: "Pemesanan", icon: "ri-ticket-2-line", href: "/admin/bookings" },
-    { label: "Laporan", icon: "ri-bar-chart-box-line", href: "/admin/reports" },
-    { label: "Pengaturan", icon: "ri-settings-3-line", href: "/admin/settings" },
-    { label: "Pengguna", icon: "ri-shield-user-line", href: "/admin/users" },
-    { label: "Test WA", icon: "ri-whatsapp-line", href: "/admin/test-wa" },
-    { label: "Test Email", icon: "ri-mail-line", href: "/admin/test-mail" },
-  ];
+  const allowedHrefs = ROLE_MENU_HREFS[role] || ROLE_MENU_HREFS.ADMIN;
+  const menuItems = ALL_MENUS.filter((item) => allowedHrefs.includes(item.href));
 
   const handleLogout = async () => {
     // We'll implement logout via a simple cookie clearing or redirect
@@ -41,7 +61,7 @@ export default function AdminSidebar() {
       </div>
 
       <nav className="flex-1 p-6 flex flex-col gap-2">
-        {menuItems.map((item: any) => {
+        {menuItems.map((item) => {
           const isActive = item.href === "/admin"
             ? pathname === "/admin"
             : pathname.startsWith(item.href) && (pathname === item.href || pathname.charAt(item.href.length) === "/");
@@ -73,8 +93,8 @@ export default function AdminSidebar() {
             <i className="ri-user-settings-line text-navy-deep"></i>
           </div>
           <div className="flex flex-col truncate">
-            <span className="text-sm font-bold text-navy-deep truncate">Super Admin</span>
-            <span className="text-[10px] text-foreground/40 font-bold uppercase truncate">Online</span>
+            <span className="text-sm font-bold text-navy-deep truncate">{name || "Admin"}</span>
+            <span className="text-[10px] text-foreground/40 font-bold uppercase truncate">{ROLE_LABELS[role] || role}</span>
           </div>
         </div>
         <button

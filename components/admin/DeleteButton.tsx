@@ -4,6 +4,7 @@ import { deleteRoute, deleteTemplate } from "@/app/actions/admin-master";
 import { deletePromo } from "@/app/actions/admin-promo";
 import { deleteVehicle } from "@/app/actions/admin-vehicle";
 import { useState } from "react";
+import { confirmAction, showError } from "@/lib/swal";
 
 interface DeleteButtonProps {
   id: string;
@@ -20,7 +21,7 @@ export default function DeleteButton({ id, type }: DeleteButtonProps) {
     else if (type === 'promo') msg = "Hapus kode promo ini?";
     else if (type === 'vehicle') msg = "Hapus armada ini?";
       
-    if (!confirm(msg)) return;
+    if (!(await confirmAction({ title: "Konfirmasi Hapus", danger: true, text: msg }))) return;
 
     setLoading(true);
     try {
@@ -35,7 +36,7 @@ export default function DeleteButton({ id, type }: DeleteButtonProps) {
       }
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Terjadi kesalahan";
-      alert("Gagal menghapus: " + msg);
+      await showError({ title: "Gagal Menghapus", text: "Gagal menghapus: " + msg });
     } finally {
       setLoading(false);
     }

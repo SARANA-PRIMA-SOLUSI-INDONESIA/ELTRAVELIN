@@ -4,6 +4,7 @@ import { createRouteStop, deleteRouteStop, getRouteWithStops, reorderRouteStops,
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
+import { confirmAction, showError } from "@/lib/swal";
 
 function StopsManagerForm() {
   const router = useRouter();
@@ -49,20 +50,20 @@ function StopsManagerForm() {
       setPrice(0);
       await loadData();
     } catch (error) {
-      alert("Gagal menambahkan titik singgah: " + (error as any).message);
+      await showError({ title: "Gagal", text: "Gagal menambahkan titik singgah: " + (error as Error).message });
     } finally {
       setLoading(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Apakah Anda yakin ingin menghapus titik singgah ini?")) return;
+    if (!(await confirmAction({ title: "Hapus Titik", danger: true, text: "Apakah Anda yakin ingin menghapus titik singgah ini?" }))) return;
 
     try {
       await deleteRouteStop(id);
       await loadData();
     } catch (error) {
-      alert("Gagal menghapus titik singgah: " + (error as any).message);
+      await showError({ title: "Gagal", text: "Gagal menghapus titik singgah: " + (error as Error).message });
     }
   };
 
@@ -71,7 +72,7 @@ function StopsManagerForm() {
       await updateRouteStopStatus(id, !currentStatus);
       await loadData();
     } catch (error) {
-      alert("Gagal memperbarui status titik singgah: " + (error as any).message);
+      await showError({ title: "Gagal", text: "Gagal memperbarui status titik singgah: " + (error as Error).message });
     }
   };
 
@@ -90,7 +91,7 @@ function StopsManagerForm() {
       await reorderRouteStops(routeId, newStops.map(s => s.id));
       await loadData();
     } catch (error) {
-      alert("Gagal mengubah urutan: " + (error as any).message);
+      await showError({ title: "Gagal", text: "Gagal mengubah urutan: " + (error as Error).message });
     }
   };
 

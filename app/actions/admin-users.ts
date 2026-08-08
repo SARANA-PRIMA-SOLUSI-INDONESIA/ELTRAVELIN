@@ -3,10 +3,12 @@
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { getSession } from "@/lib/auth";
+import { AdminRole } from "@prisma/client";
 
 async function checkAuth() {
   const session = await getSession();
   if (!session) throw new Error("Unauthorized");
+  if (session.role !== "SUPER_ADMIN") throw new Error("Akses ditolak: hanya Super Admin");
   return session;
 }
 
@@ -17,6 +19,7 @@ export async function getAdmins() {
       id: true,
       email: true,
       name: true,
+      role: true,
       createdAt: true,
       updatedAt: true,
     },
@@ -25,7 +28,7 @@ export async function getAdmins() {
   return admins;
 }
 
-export async function createAdmin(data: { email: string; password: string; name: string }) {
+export async function createAdmin(data: { email: string; password: string; name: string; role: AdminRole }) {
   await checkAuth();
 
   const existing = await prisma.admin.findUnique({ where: { email: data.email } });
@@ -38,21 +41,23 @@ export async function createAdmin(data: { email: string; password: string; name:
       email: data.email,
       passwordHash,
       name: data.name,
+      role: data.role,
     },
   });
 
   return { success: true };
 }
 
-export async function updateAdmin(id: string, data: { name?: string; password?: string }) {
-  const session = await checkAuth();
+export async function updateAdmin(id: string, data: { name?: string; password?: string; role?: AdminRole }) {
+  await checkAuth();
 
   const admin = await prisma.admin.findUnique({ where: { id } });
   if (!admin) throw new Error("Admin tidak ditemukan");
 
-  const updateData: Record<string, string> = {};
+  const updateData: { name?: string; passwordHash?: string; role?: AdminRole } = {};
   if (data.name !== undefined) updateData.name = data.name;
   if (data.password) updateData.passwordHash = await bcrypt.hash(data.password, 10);
+  if (data.role !== undefined) updateData.role = data.role;
 
   if (Object.keys(updateData).length === 0) throw new Error("Tidak ada data yang diubah");
 
@@ -65,7 +70,7 @@ export async function updateAdmin(id: string, data: { name?: string; password?: 
 }
 
 export async function deleteAdmin(id: string) {
-  const session = await checkAuth();
+  await checkAuth();
 
   const count = await prisma.admin.count();
   if (count <= 1) throw new Error("Tidak dapat menghapus admin terakhir");

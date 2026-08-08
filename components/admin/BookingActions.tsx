@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { editBooking, getAvailableSchedulesForReschedule, getAllActiveRoutes, getAvailableSeatsForSchedule, adminDeleteBooking, EditBookingData } from "@/app/actions/booking";
 import Link from "next/link";
+import { confirmAction, showSuccess, showError, showInfo } from "@/lib/swal";
 
 interface Passenger {
   id?: string;
@@ -59,23 +60,23 @@ export default function BookingActions({
   if (!isPendingMoota && !isPendingPool && !isConfirmed && !canDelete) return null;
 
   const handleSave = async (data: EditBookingData) => {
-    if (!confirm("Apakah Anda yakin ingin menyimpan perubahan ini?")) return;
+    if (!(await confirmAction({ title: "Simpan Perubahan", text: "Apakah Anda yakin ingin menyimpan perubahan ini?" }))) return;
 
     setLoading(true);
     try {
       const result = await editBooking(data);
-      alert(`Booking berhasil diupdate! (${result.type})`);
+      await showSuccess({ title: "Berhasil", text: `Booking berhasil diupdate! (${result.type})` });
       setShowEditModal(false);
       router.refresh();
     } catch (err: any) {
-      alert(err.message || "Gagal mengupdate booking");
+      await showError({ title: "Gagal", text: err.message || "Gagal mengupdate booking" });
     } finally {
       setLoading(false);
     }
   };
 
   const handleSimulateMoota = async () => {
-    if (!confirm(`Simulasikan pembayaran MOOTA untuk booking ${bookingCode}?\nTotal: Rp ${totalPrice.toLocaleString('id-ID')}`)) return;
+    if (!(await confirmAction({ title: "Simulasi Pembayaran", text: `Simulasikan pembayaran MOOTA untuk booking ${bookingCode}? Total: Rp ${totalPrice.toLocaleString('id-ID')}` }))) return;
 
     setLoading(true);
     try {
@@ -88,20 +89,20 @@ export default function BookingActions({
       const data = await res.json();
 
       if (res.ok) {
-        alert(`Pembayaran berhasil disimulasikan!\nBooking ${data.booking.bookingCode} sekarang ${data.booking.status}`);
+        await showSuccess({ title: "Berhasil", text: `Pembayaran berhasil disimulasikan! Booking ${data.booking.bookingCode} sekarang ${data.booking.status}` });
         router.refresh();
       } else {
-        alert(`Gagal: ${data.error}`);
+        await showError({ title: "Gagal", text: `Gagal: ${data.error}` });
       }
-    } catch (err) {
-      alert('Terjadi kesalahan saat simulasi');
+    } catch {
+      await showError({ title: "Terjadi Kesalahan", text: "Terjadi kesalahan saat simulasi" });
     } finally {
       setLoading(false);
     }
   };
 
   const handleConfirmPool = async () => {
-    if (!confirm(`Konfirmasi pembayaran POOL untuk booking ${bookingCode}?\nPelanggan: ${contactName}\nTotal: Rp ${totalPrice.toLocaleString('id-ID')}\n\nBooking akan berubah menjadi CONFIRMED dan notifikasi dikirim ke pelanggan.`)) return;
+    if (!(await confirmAction({ title: "Konfirmasi Pembayaran", text: `Konfirmasi pembayaran POOL untuk booking ${bookingCode}? Pelanggan: ${contactName} Total: Rp ${totalPrice.toLocaleString('id-ID')} Booking akan berubah menjadi CONFIRMED dan notifikasi dikirim ke pelanggan.` }))) return;
 
     setLoading(true);
     try {
@@ -114,28 +115,28 @@ export default function BookingActions({
       const data = await res.json();
 
       if (res.ok) {
-        alert(`Pembayaran POOL berhasil dikonfirmasi!\nBooking ${data.booking.bookingCode} sekarang CONFIRMED\nEmail & WhatsApp sudah dikirim ke pelanggan.`);
+        await showSuccess({ title: "Berhasil", text: `Pembayaran POOL berhasil dikonfirmasi! Booking ${data.booking.bookingCode} sekarang CONFIRMED. Email & WhatsApp sudah dikirim ke pelanggan.` });
         router.refresh();
       } else {
-        alert(`Gagal: ${data.error}`);
+        await showError({ title: "Gagal", text: `Gagal: ${data.error}` });
       }
-    } catch (err) {
-      alert('Terjadi kesalahan saat konfirmasi');
+    } catch {
+      await showError({ title: "Terjadi Kesalahan", text: "Terjadi kesalahan saat konfirmasi" });
     } finally {
       setLoading(false);
     }
   };
 
   const handleDelete = async () => {
-    if (!confirm(`Hapus permanen booking ${bookingCode}?\nPelanggan: ${contactName}\n\nData akan dihapus dari database dan kursi dibebaskan. Tindakan ini tidak bisa dibatalkan.`)) return;
+    if (!(await confirmAction({ title: "Hapus Booking", danger: true, text: `Hapus permanen booking ${bookingCode}? Pelanggan: ${contactName} Data akan dihapus dari database dan kursi dibebaskan. Tindakan ini tidak bisa dibatalkan.` }))) return;
 
     setLoading(true);
     try {
       await adminDeleteBooking(bookingId);
-      alert(`Booking ${bookingCode} berhasil dihapus.`);
+      await showSuccess({ title: "Berhasil", text: `Booking ${bookingCode} berhasil dihapus.` });
       router.refresh();
     } catch (err: any) {
-      alert(err.message || "Gagal menghapus booking");
+      await showError({ title: "Gagal", text: err.message || "Gagal menghapus booking" });
     } finally {
       setLoading(false);
     }
@@ -382,7 +383,7 @@ function EditBookingModal({
   };
 
   // Handle save based on active tab
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const data: EditBookingData = {
       bookingId,
       action: activeTab === 'data' ? 'EDIT_DATA' :
@@ -396,19 +397,19 @@ function EditBookingModal({
       data.passengers = passengers.filter(p => p.name.trim());
       if (selectedSeatNumbers.length > 0) data.seatNumbers = selectedSeatNumbers;
     } else if (activeTab === 'reschedule') {
-      if (!selectedScheduleId) return alert('Pilih jadwal baru');
+      if (!selectedScheduleId) { await showInfo({ text: 'Pilih jadwal baru' }); return; }
       data.newScheduleId = selectedScheduleId;
       data.passengers = passengers.filter(p => p.name.trim());
       if (selectedSeatNumbers.length > 0) data.seatNumbers = selectedSeatNumbers;
     } else if (activeTab === 'changeRoute') {
-      if (!selectedRouteId || !selectedScheduleId) return alert('Pilih rute dan jadwal baru');
+      if (!selectedRouteId || !selectedScheduleId) { await showInfo({ text: 'Pilih rute dan jadwal baru' }); return; }
       data.newRouteId = selectedRouteId;
       data.newScheduleId = selectedScheduleId;
       data.passengers = passengers.filter(p => p.name.trim());
       if (selectedSeatNumbers.length > 0) data.seatNumbers = selectedSeatNumbers;
     } else if (activeTab === 'refund') {
-      if (!refundReason.trim()) return alert('Alasan refund wajib diisi');
-      if (refundAmount <= 0 || refundAmount > totalPrice) return alert('Jumlah refund tidak valid');
+      if (!refundReason.trim()) { await showInfo({ text: 'Alasan refund wajib diisi' }); return; }
+      if (refundAmount <= 0 || refundAmount > totalPrice) { await showInfo({ text: 'Jumlah refund tidak valid' }); return; }
       data.refundAmount = refundAmount;
       data.refundReason = refundReason;
     }

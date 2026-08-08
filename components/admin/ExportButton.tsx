@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { exportBookingsToExcel } from "@/app/actions/export";
+import { showError } from "@/lib/swal";
 
 export default function ExportButton() {
   const [loading, setLoading] = useState(false);
@@ -25,7 +26,7 @@ export default function ExportButton() {
       window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error("Export failed:", error);
-      alert("Gagal mengunduh Excel.");
+      await showError({ title: "Gagal", text: "Gagal mengunduh Excel." });
     } finally {
       setLoading(false);
     }

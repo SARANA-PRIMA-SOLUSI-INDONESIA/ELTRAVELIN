@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
+import { showInfo } from "@/lib/swal";
 
 export default function SearchHero({ routes = [] }: { routes: any[] }) {
   const router = useRouter();
@@ -52,11 +53,11 @@ export default function SearchHero({ routes = [] }: { routes: any[] }) {
 
   const handleSearch = () => {
     if (!originStop || !destinationStop) {
-      alert("Pilih titik asal dan tujuan terlebih dahulu");
+      showInfo({ text: "Pilih titik asal dan tujuan terlebih dahulu" });
       return;
     }
     if (originStop === destinationStop) {
-      alert("Titik asal dan tujuan tidak boleh sama");
+      showInfo({ text: "Titik asal dan tujuan tidak boleh sama" });
       return;
     }
     router.push(`/search?originStop=${encodeURIComponent(originStop)}&destStop=${encodeURIComponent(destinationStop)}&date=${date}`);

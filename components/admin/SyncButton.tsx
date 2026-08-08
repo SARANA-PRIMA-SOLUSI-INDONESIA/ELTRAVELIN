@@ -2,19 +2,20 @@
 
 import { triggerSyncSchedules } from "@/app/actions/admin-master";
 import { useState } from "react";
+import { confirmAction, showSuccess, showError } from "@/lib/swal";
 
 export default function SyncButton() {
   const [loading, setLoading] = useState(false);
 
   const handleSync = async () => {
-    if (!confirm("Generate jadwal baru untuk 7 hari ke depan?")) return;
+    if (!(await confirmAction({ title: "Sinkronkan Jadwal", text: "Generate jadwal baru untuk 7 hari ke depan?" }))) return;
     
     setLoading(true);
     try {
       await triggerSyncSchedules(7);
-      alert("Jadwal berhasil disinkronkan!");
+      await showSuccess({ title: "Berhasil", text: "Jadwal berhasil disinkronkan!" });
     } catch (error) {
-      alert("Gagal sinkronisasi: " + (error as any).message);
+      await showError({ title: "Gagal Sinkronisasi", text: "Gagal sinkronisasi: " + (error as Error).message });
     } finally {
       setLoading(false);
     }

@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { getSchedules, adminCreateBooking, getAvailableSeatsForSchedule } from "@/app/actions/booking";
+import { showSuccess } from "@/lib/swal";
 
 export default function ManualBookingModal({ onClose }: { onClose: () => void }) {
   const router = useRouter();
@@ -115,7 +116,7 @@ export default function ManualBookingModal({ onClose }: { onClose: () => void })
         originStopId: originStopId || undefined,
         destinationStopId: destinationStopId || undefined,
       });
-      alert("Booking manual berhasil dibuat! Status CONFIRMED. Notifikasi sudah dikirim ke pelanggan.");
+      await showSuccess({ title: "Berhasil", text: "Booking manual berhasil dibuat! Status CONFIRMED. Notifikasi sudah dikirim ke pelanggan." });
       onClose();
       router.refresh();
     } catch (err: any) {

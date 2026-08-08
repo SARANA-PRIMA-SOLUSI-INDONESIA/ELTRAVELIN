@@ -2,6 +2,7 @@
 
 import { updateVehicleStatus } from "@/app/actions/admin-vehicle";
 import { useState } from "react";
+import { showError } from "@/lib/swal";
 
 interface VehicleToggleProps {
   id: string;
@@ -19,7 +20,7 @@ export default function VehicleToggle({ id, initialStatus }: VehicleToggleProps)
       await updateVehicleStatus(id, newStatus);
       setIsActive(newStatus);
     } catch {
-      alert("Gagal memperbarui status keaktifan armada.");
+      await showError({ title: "Gagal", text: "Gagal memperbarui status keaktifan armada." });
     } finally {
       setLoading(false);
     }

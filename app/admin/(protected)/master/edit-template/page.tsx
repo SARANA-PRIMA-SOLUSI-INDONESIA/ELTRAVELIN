@@ -1,10 +1,11 @@
-﻿"use client";
+"use client";
 
 import { getTemplateById, updateTemplate, getVehicles } from "@/app/actions/admin-master";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import TimeInput from "@/components/admin/TimeInput";
+import { showError } from "@/lib/swal";
 
 const DAYS = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
 
@@ -53,7 +54,7 @@ function EditTemplateForm() {
     try {
       await updateTemplate(id, { departureTime, arrivalTime, price: Number(price), capacity: Number(capacity), vehicleId: vehicleId || undefined, dayOfWeek: selectedDay ?? undefined });
       router.push(backHref);
-    } catch (error) { alert("Gagal: " + (error as any).message); } finally { setLoading(false); }
+    } catch (error) { await showError({ title: "Gagal", text: "Gagal: " + (error as Error).message }); } finally { setLoading(false); }
   };
 
   if (fetching) return (<div className="flex items-center justify-center p-24"><p className="text-sm text-foreground/40">Memuat...</p></div>);

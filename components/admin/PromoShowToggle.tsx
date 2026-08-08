@@ -2,6 +2,7 @@
 
 import { updatePromoShowStatus } from "@/app/actions/admin-promo";
 import { useState } from "react";
+import { showError } from "@/lib/swal";
 
 interface PromoShowToggleProps {
   id: string;
@@ -18,8 +19,8 @@ export default function PromoShowToggle({ id, initialStatus }: PromoShowTogglePr
       const newStatus = !showOnCheckout;
       await updatePromoShowStatus(id, newStatus);
       setShowOnCheckout(newStatus);
-    } catch (error) {
-      alert("Gagal update status visibilitas checkout");
+    } catch {
+      await showError({ title: "Gagal", text: "Gagal update status visibilitas checkout" });
     } finally {
       setLoading(false);
     }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { showError } from "@/lib/swal";
 
 export default function PriceEdit({ scheduleId, initialPrice }: { scheduleId: string, initialPrice: number }) {
   const [isEditing, setIsEditing] = useState(false);
@@ -18,10 +19,10 @@ export default function PriceEdit({ scheduleId, initialPrice }: { scheduleId: st
       if (res.ok) {
         setIsEditing(false);
       } else {
-        alert("Gagal mengupdate harga");
+        await showError({ title: "Gagal", text: "Gagal mengupdate harga" });
       }
-    } catch (err) {
-      alert("Terjadi kesalahan");
+    } catch {
+      await showError({ title: "Terjadi Kesalahan", text: "Terjadi kesalahan" });
     } finally {
       setLoading(false);
     }
