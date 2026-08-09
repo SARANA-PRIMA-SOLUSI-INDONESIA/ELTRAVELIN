@@ -14,10 +14,12 @@ interface CheckoutFormProps {
   availablePromos?: any[];
   originStopId?: string;
   destinationStopId?: string;
+  originStopName?: string;
+  destinationStopName?: string;
   segmentPrice?: number;
 }
 
-export default function CheckoutForm({ scheduleId, seatNumbers, basePrice, vehicleType, departureTime, availablePromos = [], originStopId, destinationStopId, segmentPrice }: CheckoutFormProps) {
+export default function CheckoutForm({ scheduleId, seatNumbers, basePrice, vehicleType, departureTime, availablePromos = [], originStopId, destinationStopId, originStopName, destinationStopName, segmentPrice }: CheckoutFormProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [promoLoading, setPromoLoading] = useState(false);
@@ -94,6 +96,8 @@ export default function CheckoutForm({ scheduleId, seatNumbers, basePrice, vehic
         promoCodeId: appliedPromo?.id,
         originStopId,
         destinationStopId,
+        originStopName,
+        destinationStopName,
         segmentPrice,
       });
 

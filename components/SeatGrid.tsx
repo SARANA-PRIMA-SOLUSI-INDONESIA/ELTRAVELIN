@@ -15,10 +15,12 @@ interface SeatGridProps {
   price: number;
   originStopId?: string;
   destinationStopId?: string;
+  originStopName?: string;
+  destinationStopName?: string;
   segmentPrice?: number;
 }
 
-export default function SeatGrid({ initialSeats, scheduleId, price, originStopId, destinationStopId, segmentPrice }: SeatGridProps) {
+export default function SeatGrid({ initialSeats, scheduleId, price, originStopId, destinationStopId, originStopName, destinationStopName, segmentPrice }: SeatGridProps) {
   const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
 
   const handleSeatClick = (seat: Seat) => {
@@ -144,7 +146,7 @@ export default function SeatGrid({ initialSeats, scheduleId, price, originStopId
 
         {selectedSeats.length > 0 ? (
           <Link 
-            href={`/checkout?scheduleId=${scheduleId}&seats=${selectedSeats.join(',')}${originStopId ? `&originStopId=${originStopId}` : ''}${destinationStopId ? `&destinationStopId=${destinationStopId}` : ''}${segmentPrice ? `&segmentPrice=${segmentPrice}` : ''}`} 
+            href={`/checkout?scheduleId=${scheduleId}&seats=${selectedSeats.join(',')}${originStopName ? `&originStop=${encodeURIComponent(originStopName)}` : ''}${destinationStopName ? `&destinationStop=${encodeURIComponent(destinationStopName)}` : ''}${originStopId ? `&originStopId=${originStopId}` : ''}${destinationStopId ? `&destinationStopId=${destinationStopId}` : ''}${segmentPrice ? `&segmentPrice=${segmentPrice}` : ''}`} 
             className="btn-primary w-full py-4 rounded-xl text-center font-bold text-sm shadow-md mt-4"
           >
             Lanjutkan ke Pemesanan
