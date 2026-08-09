@@ -181,10 +181,10 @@ export async function getSchedulesWithStops(
     }
   });
 
-  // Filter routes where destination stop exists and comes after origin (origin must be active, destination can be inactive)
+  // Filter routes where both selected stops are active and destination comes after origin.
   const validRoutes = routesWithStops.filter(route => {
     const originIndex = route.stops.findIndex(s => s.name.toLowerCase().includes(originStop.toLowerCase()) && s.isActive !== false);
-    const destIndex = route.stops.findIndex(s => s.name.toLowerCase().includes(destStop.toLowerCase()));
+    const destIndex = route.stops.findIndex(s => s.name.toLowerCase().includes(destStop.toLowerCase()) && s.isActive !== false);
     return originIndex !== -1 && destIndex !== -1 && destIndex > originIndex;
   });
 
@@ -269,19 +269,20 @@ export async function getSchedulesWithStops(
   // Calculate segment price for each schedule
   const schedulesWithSegmentPrice = schedules.map((schedule: any) => {
     const route = schedule.route;
-    const originIndex = route.stops.findIndex((s: any) => s.name.toLowerCase().includes(originStop.toLowerCase()));
-    const destIndex = route.stops.findIndex((s: any) => s.name.toLowerCase().includes(destStop.toLowerCase()));
+    const activeStops = route.stops.filter((s: any) => s.isActive !== false);
+    const originIndex = activeStops.findIndex((s: any) => s.name.toLowerCase().includes(originStop.toLowerCase()));
+    const destIndex = activeStops.findIndex((s: any) => s.name.toLowerCase().includes(destStop.toLowerCase()));
     
     // Sum prices from stops AFTER origin up to destination (inclusive)
     // Price at each stop represents cost FROM previous stop TO this stop
     let segmentPrice = 0;
-    for (let i = originIndex + 1; i <= destIndex && i < route.stops.length; i++) {
-      segmentPrice += route.stops[i].price || 0;
+    for (let i = originIndex + 1; i <= destIndex && i < activeStops.length; i++) {
+      segmentPrice += activeStops[i].price || 0;
     }
     
     // If segment price is 0, fall back to schedule price divided by number of stops
     if (segmentPrice === 0) {
-      const totalStops = route.stops.length;
+      const totalStops = activeStops.length;
       const segmentStops = destIndex - originIndex + 1;
       segmentPrice = Math.round((schedule.price / totalStops) * segmentStops);
     }
@@ -392,7 +393,7 @@ export async function createBooking(data: {
 }) {
   const schedule = await prisma.schedule.findUnique({
     where: { id: data.scheduleId },
-    include: { route: true }
+    include: { route: { include: { stops: { orderBy: { sequence: 'asc' } } } } }
   });
 
   if (!schedule) throw new Error("Jadwal tidak ditemukan");
@@ -402,7 +403,21 @@ export async function createBooking(data: {
     throw new Error("Jadwal sudah berangkat dan tidak dapat dipesan lagi.");
   }
 
-  const pricePerSeat = data.segmentPrice || schedule.price;
+  let pricePerSeat = schedule.price;
+  if (data.originStopId && data.destinationStopId) {
+    const activeStops = schedule.route.stops.filter((stop: any) => stop.isActive !== false);
+    const originIndex = activeStops.findIndex((stop: any) => stop.id === data.originStopId);
+    const destinationIndex = activeStops.findIndex((stop: any) => stop.id === data.destinationStopId);
+
+    if (originIndex === -1 || destinationIndex <= originIndex) {
+      throw new Error("Titik perjalanan tidak valid atau sudah dinonaktifkan.");
+    }
+
+    pricePerSeat = activeStops
+      .slice(originIndex + 1, destinationIndex + 1)
+      .reduce((sum: number, stop: any) => sum + (stop.price || 0), 0);
+  }
+
   const basePrice = pricePerSeat * data.seatNumbers.length;
   let discountAmount = 0;
 
@@ -445,7 +460,7 @@ export async function createBooking(data: {
           bookingId: booking.id,
           originStopId: data.originStopId,
           destinationStopId: data.destinationStopId,
-          basePrice: data.segmentPrice || schedule.price,
+          basePrice: pricePerSeat,
         }
       });
     }
@@ -586,7 +601,7 @@ export async function adminCreateBooking(data: {
 
   let pricePerSeat = schedule.price;
   if (data.originStopId && data.destinationStopId) {
-    const stops = schedule.route.stops;
+    const stops = schedule.route.stops.filter((stop: any) => stop.isActive !== false);
     const originIdx = stops.findIndex((s: any) => s.id === data.originStopId);
     const destIdx = stops.findIndex((s: any) => s.id === data.destinationStopId);
     if (originIdx !== -1 && destIdx > originIdx) {
