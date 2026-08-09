@@ -8,6 +8,7 @@ interface Stop {
   name: string;
   sequence: number;
   stopTime?: string | null;
+  isActive?: boolean;
 }
 
 interface Route {
@@ -75,9 +76,12 @@ export default function ScheduleCard({
     return stop.stopTime; // fallback to global stopTime
   };
 
+  // Customer-facing routes must only contain active stops.
+  const activeStops = (schedule.route.stops || []).filter(s => s.isActive !== false);
+
   // Find origin and destination stops from the selected points
-  const originStop = schedule.route.stops?.find(s => s.name === fromName);
-  const destStop = schedule.route.stops?.find(s => s.name === toName);
+  const originStop = activeStops.find(s => s.name === fromName);
+  const destStop = activeStops.find(s => s.name === toName);
 
   // Calculate actual departure time from origin stop
   const getStopTimeAsDate = (stopTime?: string | null, baseDate: Date = routeDepartureDate) => {
@@ -177,10 +181,10 @@ export default function ScheduleCard({
   };
 
   // Filter stops to show only between fromName and toName (inclusive)
-  const stopsInSegment = (schedule.route.stops || []).filter(s => {
+  const stopsInSegment = activeStops.filter(s => {
     // Find sequence of fromName and toName
-    const fromSeq = schedule.route.stops?.find(st => st.name === fromName)?.sequence ?? 0;
-    const toSeq = schedule.route.stops?.find(st => st.name === toName)?.sequence ?? 999;
+    const fromSeq = activeStops.find(st => st.name === fromName)?.sequence ?? 0;
+    const toSeq = activeStops.find(st => st.name === toName)?.sequence ?? 999;
     return s.sequence >= fromSeq && s.sequence <= toSeq;
   });
 
