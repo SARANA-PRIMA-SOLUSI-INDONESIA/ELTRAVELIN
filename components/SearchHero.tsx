@@ -33,17 +33,17 @@ export default function SearchHero({ routes = [] }: { routes: any[] }) {
     }
   }, [uniqueStopNames, originStop]);
 
-  // Get valid destinations based on selected origin (same route, higher sequence)
+  // Get valid destinations based on selected origin (same route, higher sequence, active stops only)
   const validDestinations = (() => {
     if (!originStop) return [];
     
     // Find all stops that share a route with originStop and have higher sequence
-    const originStops = allStops.filter(s => s.name === originStop);
+    const originStops = activeStops.filter(s => s.name === originStop);
     const possibleDestinations = new Set<string>();
     
     for (const origin of originStops) {
       // Find all stops on same route with higher sequence
-      const routeStops = allStops.filter(s => s.routeId === origin.routeId);
+      const routeStops = activeStops.filter(s => s.routeId === origin.routeId);
       const destStops = routeStops.filter(s => s.sequence > origin.sequence);
       destStops.forEach(s => possibleDestinations.add(s.name));
     }
