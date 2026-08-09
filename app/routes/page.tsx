@@ -5,6 +5,10 @@ export const dynamic = 'force-dynamic';
 
 export default async function Routes() {
   const dbRoutes = await prisma.route.findMany({
+    where: {
+      isDeleted: false,
+      scheduleTemplates: { some: { isActive: true } },
+    },
     include: {
       schedules: {
         where: {
