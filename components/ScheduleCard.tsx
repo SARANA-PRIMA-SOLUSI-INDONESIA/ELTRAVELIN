@@ -282,7 +282,7 @@ export default function ScheduleCard({
             <span className="text-[10px] font-bold text-foreground/40 uppercase">/seat</span>
           </div>
           <Link 
-            href={`/seat-selection?scheduleId=${schedule.id}${schedule.originStopId ? `&originStopId=${schedule.originStopId}` : ''}${schedule.destinationStopId ? `&destinationStopId=${schedule.destinationStopId}` : ''}${segmentPrice ? `&segmentPrice=${segmentPrice}` : ''}`}
+            href={`/seat-selection?scheduleId=${schedule.id}&originStop=${encodeURIComponent(fromName)}&destinationStop=${encodeURIComponent(toName)}${schedule.originStopId ? `&originStopId=${schedule.originStopId}` : ''}${schedule.destinationStopId ? `&destinationStopId=${schedule.destinationStopId}` : ''}${segmentPrice ? `&segmentPrice=${segmentPrice}` : ''}`}
             className="bg-[#EFEFEF] hover:bg-gold-warm hover:text-white text-navy-deep font-bold py-2.5 md:py-3 px-6 md:px-8 rounded-xl text-center transition-all shadow-sm text-sm md:text-base w-auto md:w-full"
           >
             Select

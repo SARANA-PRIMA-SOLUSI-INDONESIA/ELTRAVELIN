@@ -14,6 +14,8 @@ export default async function Checkout({ searchParams }: CheckoutProps) {
   const seatsParam = resolvedParams.seats as string;
   const originStopId = resolvedParams.originStopId as string | undefined;
   const destinationStopId = resolvedParams.destinationStopId as string | undefined;
+  const originStopName = resolvedParams.originStop as string | undefined;
+  const destinationStopName = resolvedParams.destinationStop as string | undefined;
   const segmentPrice = resolvedParams.segmentPrice ? parseInt(resolvedParams.segmentPrice as string) : undefined;
 
   if (!scheduleId || !seatsParam) return notFound();
@@ -70,6 +72,8 @@ export default async function Checkout({ searchParams }: CheckoutProps) {
           availablePromos={availablePromos}
           originStopId={originStopId}
           destinationStopId={destinationStopId}
+          originStopName={originStopName}
+          destinationStopName={destinationStopName}
           segmentPrice={segmentPrice}
         />
       </div>

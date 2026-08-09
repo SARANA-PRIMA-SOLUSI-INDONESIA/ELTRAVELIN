@@ -13,6 +13,8 @@ export default async function SeatSelection({ searchParams }: SeatSelectionProps
   const scheduleId = resolvedParams.scheduleId as string;
   const originStopId = resolvedParams.originStopId as string | undefined;
   const destinationStopId = resolvedParams.destinationStopId as string | undefined;
+  const originStopName = resolvedParams.originStop as string | undefined;
+  const destinationStopName = resolvedParams.destinationStop as string | undefined;
   const segmentPrice = resolvedParams.segmentPrice ? parseInt(resolvedParams.segmentPrice as string) : undefined;
 
   if (!scheduleId) return notFound();
@@ -56,8 +58,10 @@ export default async function SeatSelection({ searchParams }: SeatSelectionProps
           initialSeats={schedule.seats} 
           scheduleId={schedule.id}
           price={segmentPrice || schedule.price}
-          originStopId={originStopId}
-          destinationStopId={destinationStopId}
+           originStopId={originStopId}
+           destinationStopId={destinationStopId}
+           originStopName={originStopName}
+           destinationStopName={destinationStopName}
           segmentPrice={segmentPrice}
         />
       </div>

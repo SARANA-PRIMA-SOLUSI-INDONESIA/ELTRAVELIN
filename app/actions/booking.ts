@@ -290,10 +290,10 @@ export async function getSchedulesWithStops(
     return {
       ...schedule,
       segmentPrice,
-      originStopId: route.stops[originIndex]?.id,
-      destinationStopId: route.stops[destIndex]?.id,
-      originStopSequence: route.stops[originIndex]?.sequence,
-      destStopSequence: route.stops[destIndex]?.sequence,
+      originStopId: activeStops[originIndex]?.id,
+      destinationStopId: activeStops[destIndex]?.id,
+      originStopSequence: activeStops[originIndex]?.sequence,
+      destStopSequence: activeStops[destIndex]?.sequence,
       _count: {
         seats: schedule.operatingTrip?._count?.seats || 0
       }
@@ -389,6 +389,8 @@ export async function createBooking(data: {
   paymentMethod?: string;
   originStopId?: string;
   destinationStopId?: string;
+  originStopName?: string;
+  destinationStopName?: string;
   segmentPrice?: number;
 }) {
   const schedule = await prisma.schedule.findUnique({
@@ -404,15 +406,23 @@ export async function createBooking(data: {
   }
 
   let pricePerSeat = schedule.price;
-  if (data.originStopId && data.destinationStopId) {
+  let resolvedOriginStopId: string | undefined;
+  let resolvedDestinationStopId: string | undefined;
+  if ((data.originStopName && data.destinationStopName) || (data.originStopId && data.destinationStopId)) {
     const activeStops = schedule.route.stops.filter((stop: any) => stop.isActive !== false);
-    const originIndex = activeStops.findIndex((stop: any) => stop.id === data.originStopId);
-    const destinationIndex = activeStops.findIndex((stop: any) => stop.id === data.destinationStopId);
+    const originIndex = data.originStopName
+      ? activeStops.findIndex((stop: any) => stop.name === data.originStopName)
+      : activeStops.findIndex((stop: any) => stop.id === data.originStopId);
+    const destinationIndex = data.destinationStopName
+      ? activeStops.findIndex((stop: any) => stop.name === data.destinationStopName)
+      : activeStops.findIndex((stop: any) => stop.id === data.destinationStopId);
 
     if (originIndex === -1 || destinationIndex <= originIndex) {
       throw new Error("Titik perjalanan tidak valid atau sudah dinonaktifkan.");
     }
 
+    resolvedOriginStopId = activeStops[originIndex].id;
+    resolvedDestinationStopId = activeStops[destinationIndex].id;
     pricePerSeat = activeStops
       .slice(originIndex + 1, destinationIndex + 1)
       .reduce((sum: number, stop: any) => sum + (stop.price || 0), 0);
@@ -454,12 +464,12 @@ export async function createBooking(data: {
       },
     });
 
-    if (data.originStopId && data.destinationStopId) {
+    if (resolvedOriginStopId && resolvedDestinationStopId) {
       await tx.bookingSegment.create({
         data: {
           bookingId: booking.id,
-          originStopId: data.originStopId,
-          destinationStopId: data.destinationStopId,
+          originStopId: resolvedOriginStopId,
+          destinationStopId: resolvedDestinationStopId,
           basePrice: pricePerSeat,
         }
       });
