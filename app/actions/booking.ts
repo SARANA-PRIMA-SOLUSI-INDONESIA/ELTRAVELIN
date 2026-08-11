@@ -83,7 +83,7 @@ export async function getSchedules(
       include: {
         route: {
           include: {
-            stops: { orderBy: { sequence: 'asc' } }
+            stops: { where: { isDeleted: false }, orderBy: { sequence: 'asc' } }
           }
         },
         operatingTrip: {
@@ -169,6 +169,7 @@ export async function getSchedulesWithStops(
       isDeleted: false,
       stops: {
         some: {
+          isDeleted: false,
           name: { contains: originStop },
           isActive: true
         }
@@ -176,6 +177,7 @@ export async function getSchedulesWithStops(
     },
     include: {
       stops: {
+        where: { isDeleted: false },
         orderBy: { sequence: 'asc' }
       }
     }
@@ -230,6 +232,7 @@ export async function getSchedulesWithStops(
         route: {
           include: {
             stops: {
+              where: { isDeleted: false },
               orderBy: { sequence: 'asc' }
             }
           }
@@ -395,7 +398,7 @@ export async function createBooking(data: {
 }) {
   const schedule = await prisma.schedule.findUnique({
     where: { id: data.scheduleId },
-    include: { route: { include: { stops: { orderBy: { sequence: 'asc' } } } } }
+    include: { route: { include: { stops: { where: { isDeleted: false }, orderBy: { sequence: 'asc' } } } } }
   });
 
   if (!schedule) throw new Error("Jadwal tidak ditemukan");
@@ -604,7 +607,7 @@ export async function adminCreateBooking(data: {
 }) {
   const schedule = await prisma.schedule.findUnique({
     where: { id: data.scheduleId },
-    include: { route: { include: { stops: { orderBy: { sequence: 'asc' } } } } }
+    include: { route: { include: { stops: { where: { isDeleted: false }, orderBy: { sequence: 'asc' } } } } }
   });
 
   if (!schedule) throw new Error("Jadwal tidak ditemukan");
@@ -956,7 +959,7 @@ export async function getAllActiveRoutes() {
   return prisma.route.findMany({
     where: { isDeleted: false },
     include: {
-      stops: { orderBy: { sequence: 'asc' } }
+      stops: { where: { isDeleted: false }, orderBy: { sequence: 'asc' } }
     },
     orderBy: [
       { origin: 'asc' },
@@ -1318,7 +1321,7 @@ export async function getScheduleManifest(scheduleId: string) {
     where: { id: scheduleId },
     include: {
       route: {
-        include: { stops: { orderBy: { sequence: 'asc' } } },
+        include: { stops: { where: { isDeleted: false }, orderBy: { sequence: 'asc' } } },
       },
       operatingTrip: {
         include: {
