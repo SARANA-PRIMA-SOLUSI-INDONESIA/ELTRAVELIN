@@ -47,7 +47,13 @@ export default async function AdminBookings({ searchParams }: AdminBookingsProps
           include: { route: true }
         },
         seats: true,
-        passengers: true
+        passengers: true,
+        segment: {
+          include: {
+            originStop: true,
+            destinationStop: true,
+          },
+        },
       },
       orderBy: { createdAt: 'desc' },
       skip,
@@ -100,7 +106,7 @@ export default async function AdminBookings({ searchParams }: AdminBookingsProps
                 <th className="px-4 py-6 text-[11px] font-bold text-navy-deep uppercase tracking-wider whitespace-nowrap">Kode</th>
                 <th className="px-4 py-6 text-[11px] font-bold text-navy-deep uppercase tracking-wider whitespace-nowrap">Pemesan</th>
                 <th className="px-4 py-6 text-[11px] font-bold text-navy-deep uppercase tracking-wider whitespace-nowrap">Telepon</th>
-                <th className="px-4 py-6 text-[11px] font-bold text-navy-deep uppercase tracking-wider whitespace-nowrap">Penumpang</th>
+                <th className="px-4 py-6 text-[11px] font-bold text-navy-deep uppercase tracking-wider whitespace-nowrap text-center">Penumpang</th>
                 <th className="px-4 py-6 text-[11px] font-bold text-navy-deep uppercase tracking-wider whitespace-nowrap text-center">Kursi</th>
                 <th className="px-4 py-6 text-[11px] font-bold text-navy-deep uppercase tracking-wider whitespace-nowrap text-center">Jam</th>
                 <th className="px-4 py-6 text-[11px] font-bold text-navy-deep uppercase tracking-wider whitespace-nowrap">Rute</th>
@@ -139,9 +145,20 @@ export default async function AdminBookings({ searchParams }: AdminBookingsProps
                       </span>
                     </td>
                     <td className="px-4 py-6 text-center">
-                      <span className="text-base font-bold text-navy-deep bg-surface-medium px-3 py-1.5 rounded-xl border border-outline-ghost">
-                        {b.seats?.length > 0 ? b.seats.map((s: any) => s.seatNumber).sort((a: any, b: any) => a - b).join(', ') : '-'}
-                      </span>
+                      <div className="flex flex-wrap justify-center gap-1 max-w-[140px] mx-auto">
+                        {b.seats?.length > 0 ? (
+                          b.seats
+                            .map((s: any) => s.seatNumber)
+                            .sort((a: any, b: any) => a - b)
+                            .map((num: string) => (
+                              <span key={num} className="min-w-[30px] px-1.5 py-1 text-xs font-bold text-navy-deep bg-surface-medium rounded-lg border border-outline-ghost">
+                                {num}
+                              </span>
+                            ))
+                        ) : (
+                          <span className="text-sm font-medium text-foreground/40">-</span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-6 text-center">
                       <div className="flex flex-col items-center">
@@ -155,9 +172,9 @@ export default async function AdminBookings({ searchParams }: AdminBookingsProps
                     </td>
                     <td className="px-4 py-6">
                       <div className="flex flex-col">
-                        <span className="text-xs font-bold text-navy-deep leading-tight">{b.schedule.route.origin}</span>
+                        <span className="text-xs font-bold text-navy-deep leading-tight">{b.segment?.originStop?.name || b.schedule.route.origin}</span>
                         <i className="ri-arrow-down-line text-[10px] text-gold-warm my-0.5"></i>
-                        <span className="text-xs font-bold text-navy-deep leading-tight">{b.schedule.route.destination}</span>
+                        <span className="text-xs font-bold text-navy-deep leading-tight">{b.segment?.destinationStop?.name || b.schedule.route.destination}</span>
                       </div>
                     </td>
                     <td className="px-4 py-6">

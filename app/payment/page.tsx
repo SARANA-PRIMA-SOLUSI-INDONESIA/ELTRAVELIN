@@ -142,7 +142,7 @@ function PaymentContent() {
                 </div>
                 <div className="flex justify-between items-center text-sm pt-4 border-t border-gray-50">
                   <span className="text-gray-400 font-medium uppercase tracking-widest text-[10px]">Total Bayar</span>
-                  <span className="text-xl font-display font-bold text-navy-deep">Rp {((booking?.totalPrice ?? ((bookingDraft?.segmentPrice ?? 0) * (bookingDraft?.seatNumbers?.length || 0)))).toLocaleString('id-ID')}</span>
+                  <span className="text-xl font-display font-bold text-navy-deep">Rp {((booking?.totalPrice ?? (bookingDraft?.totalPrice ?? (bookingDraft?.segmentPrice ?? 0) * (bookingDraft?.seatNumbers?.length || 0)))).toLocaleString('id-ID')}</span>
                 </div>
               </div>
             </div>

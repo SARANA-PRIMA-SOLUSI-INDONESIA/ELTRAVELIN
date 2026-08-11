@@ -103,6 +103,7 @@ export default function CheckoutForm({ scheduleId, seatNumbers, basePrice, vehic
         originStopName,
         destinationStopName,
         segmentPrice,
+        totalPrice: finalPrice,
       };
 
       sessionStorage.setItem("eltravelin_booking_draft", JSON.stringify(bookingDraft));

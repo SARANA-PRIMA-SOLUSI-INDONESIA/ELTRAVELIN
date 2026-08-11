@@ -22,7 +22,13 @@ export async function POST(request: Request) {
         include: {
           schedule: { include: { route: true } },
           seats: true,
-          passengers: true
+          passengers: true,
+          segment: {
+            include: {
+              originStop: true,
+              destinationStop: true,
+            },
+          },
         }
       });
     } else {
@@ -37,7 +43,13 @@ export async function POST(request: Request) {
         include: {
           schedule: { include: { route: true } },
           seats: true,
-          passengers: true
+          passengers: true,
+          segment: {
+            include: {
+              originStop: true,
+              destinationStop: true,
+            },
+          },
         }
       });
     }
@@ -66,7 +78,13 @@ export async function POST(request: Request) {
       include: {
         schedule: { include: { route: true } },
         seats: true,
-        passengers: true
+        passengers: true,
+        segment: {
+          include: {
+            originStop: true,
+            destinationStop: true,
+          },
+        },
       }
     });
 

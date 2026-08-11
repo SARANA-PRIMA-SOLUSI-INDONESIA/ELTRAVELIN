@@ -81,17 +81,24 @@ export async function createTemplate(data: {
   routeId: string;
   departureTime: string;
   arrivalTime: string;
-  price: number;
   capacity: number;
   vehicleId?: string;
   dayOfWeek?: number;
 }) {
+  // Harga diambil otomatis dari total harga semua titik singgah (non-deleted) rute,
+  // termasuk titik hidden — konsisten dengan kalkulasi harga segment.
+  const routeStops = await prisma.routeStop.findMany({
+    where: { routeId: data.routeId, isDeleted: false },
+    orderBy: { sequence: 'asc' }
+  });
+  const price = routeStops.reduce((sum, s) => sum + (s.price || 0), 0);
+
   const template = await prisma.scheduleTemplate.create({
     data: {
       routeId: data.routeId,
       departureTime: data.departureTime,
       arrivalTime: data.arrivalTime,
-      price: data.price,
+      price,
       capacity: data.capacity,
       vehicleId: data.vehicleId || null,
       dayOfWeek: data.dayOfWeek ?? null,
@@ -218,6 +225,7 @@ export async function createRouteStop(routeId: string, name: string, sequence: n
 
     // 2. Shift each stop one-by-one in descending order
     for (const stop of stopsToShift) {
+      if (stop.sequence === null) continue;
       await tx.routeStop.update({
         where: { id: stop.id },
         data: { sequence: stop.sequence + 1 }
@@ -253,7 +261,11 @@ export async function deleteRouteStop(id: string) {
       if (!stop) return { success: false as const, error: "Titik singgah tidak ditemukan." };
 
       // Soft delete: stop hilang dari UI baru, tetapi tetap ada untuk histori BookingSegment.
-      await tx.routeStop.update({ where: { id }, data: { isActive: false, isDeleted: true } });
+      // Sequence dinull-kan agar tidak bentrok dengan unique index (routeId, sequence, isDeleted).
+      await tx.routeStop.update({
+        where: { id },
+        data: { isActive: false, isDeleted: true, sequence: null }
+      });
 
       return { success: true as const };
     });
@@ -338,17 +350,25 @@ export async function getRouteWithStops(id: string) {
 export async function updateTemplate(id: string, data: {
   departureTime: string;
   arrivalTime: string;
-  price: number;
   capacity: number;
   vehicleId?: string;
   dayOfWeek?: number;
 }) {
+  const existing = await prisma.scheduleTemplate.findUnique({
+    where: { id },
+    include: { route: { include: { stops: { where: { isDeleted: false }, orderBy: { sequence: 'asc' } } } } }
+  });
+  if (!existing) throw new Error("Template tidak ditemukan");
+
+  // Harga otomatis = total harga semua titik singgah (non-deleted) rute, termasuk hidden.
+  const price = existing.route.stops.reduce((sum, s) => sum + (s.price || 0), 0);
+
   await prisma.scheduleTemplate.update({
     where: { id },
     data: {
       departureTime: data.departureTime,
       arrivalTime: data.arrivalTime,
-      price: data.price,
+      price,
       capacity: data.capacity,
       vehicleId: data.vehicleId || null,
       dayOfWeek: data.dayOfWeek ?? null,

@@ -288,15 +288,18 @@ function StopsManagerForm() {
                   </thead>
                   <tbody>
                     {activeStops.map((fromStop, fromIdx) => {
-                      // Calculate cumulative prices to all subsequent stops
-                      return activeStops.slice(fromIdx + 1).map((toStop, toIdx) => {
-                        // Price is stored AT the destination stop (cost FROM previous TO this)
-                        // So price from A to B = price at B
-                        // Price from A to C = price at B + price at C
+                      // Calculate cumulative prices to all subsequent stops.
+                      // Price at each stop = cost FROM previous stop TO this stop, so
+                      // segment price from A to B = sum of prices of ALL non-deleted stops
+                      // between A and B (inclusive of B) — including hidden stops (isActive=false).
+                      return activeStops.slice(fromIdx + 1).map((toStop) => {
+                        const originIdx = stops.findIndex((s) => s.id === fromStop.id);
+                        const destIdx = stops.findIndex((s) => s.id === toStop.id);
                         let segmentPrice = 0;
-                        for (let i = fromIdx + 1; i <= fromIdx + 1 + toIdx && i < activeStops.length; i++) {
-                          segmentPrice += activeStops[i].price || 0;
+                        for (let i = originIdx + 1; i <= destIdx && i < stops.length; i++) {
+                          segmentPrice += stops[i].price || 0;
                         }
+                        const viaCount = destIdx - originIdx - 1;
 
                         return (
                           <tr key={`${fromStop.id}-${toStop.id}`} className="border-b border-surface-medium/50 last:border-0">
@@ -306,7 +309,7 @@ function StopsManagerForm() {
                               Rp {segmentPrice.toLocaleString('id-ID')}
                             </td>
                             <td className="py-2 px-3 text-right text-xs text-foreground/40">
-                              {toIdx === 0 ? `Harga di titik tujuan` : `+${toIdx} titik di tengah`}
+                              {viaCount === 0 ? `Harga di titik tujuan` : `+${viaCount} titik di tengah`}
                             </td>
                           </tr>
                         );
