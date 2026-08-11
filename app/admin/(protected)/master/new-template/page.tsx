@@ -28,7 +28,9 @@ function NewTemplateForm() {
     if (!routeId) return;
     getRouteWithStops(routeId).then((routeData: any) => {
       if (routeData && routeData.stops) {
-        const sum = routeData.stops.reduce((acc: number, stop: any) => acc + (stop.price || 0), 0);
+        const sum = routeData.stops
+          .filter((stop: any) => stop.isActive !== false)
+          .reduce((acc: number, stop: any) => acc + (stop.price || 0), 0);
         setPrice(sum);
       }
     });

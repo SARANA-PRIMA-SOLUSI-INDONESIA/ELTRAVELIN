@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { getBookingByCode, updatePaymentMethod } from "@/app/actions/booking";
+import { createBooking, getBookingByCode, updatePaymentMethod } from "@/app/actions/booking";
 import BookingWizard from "@/components/BookingWizard";
 import Link from "next/link";
 import { showError } from "@/lib/swal";
@@ -13,6 +13,7 @@ function PaymentContent() {
   const code = searchParams.get("code");
 
   const [booking, setBooking] = useState<any>(null);
+  const [bookingDraft, setBookingDraft] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [paymentMethod, setPaymentMethod] = useState<'MOOTA' | 'POOL'>('MOOTA');
   const [processing, setProcessing] = useState(false);
@@ -23,14 +24,38 @@ function PaymentContent() {
         setBooking(res);
         setLoading(false);
       });
+      return;
+    }
+
+    try {
+      const draft = sessionStorage.getItem("eltravelin_booking_draft");
+      setBookingDraft(draft ? JSON.parse(draft) : null);
+    } catch (error) {
+      console.error("Gagal membaca draft booking:", error);
+    } finally {
+      setLoading(false);
     }
   }, [code]);
 
   const handlePayment = async () => {
     setProcessing(true);
     try {
-      await updatePaymentMethod(code!, paymentMethod);
-      router.push(`/confirmation?code=${code}`);
+      if (booking) {
+        await updatePaymentMethod(booking.bookingCode, paymentMethod);
+        router.push(`/confirmation?code=${booking.bookingCode}`);
+        return;
+      }
+
+      if (!bookingDraft) {
+        throw new Error("Data booking tidak ditemukan");
+      }
+
+      const createdBooking = await createBooking({
+        ...bookingDraft,
+        paymentMethod,
+      });
+      sessionStorage.removeItem("eltravelin_booking_draft");
+      router.push(`/confirmation?code=${createdBooking.bookingCode}`);
     } catch (error) {
       console.error(error);
       await showError({ title: "Gagal", text: "Gagal memproses pembayaran." });
@@ -40,7 +65,7 @@ function PaymentContent() {
   };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center font-display font-bold text-navy-deep">Memuat Data Booking...</div>;
-  if (!booking) return <div className="min-h-screen flex items-center justify-center font-display font-bold text-red-500">Booking tidak ditemukan</div>;
+  if (!booking && !bookingDraft) return <div className="min-h-screen flex items-center justify-center font-display font-bold text-red-500">Data booking tidak ditemukan</div>;
 
   return (
     <div className="flex flex-col min-h-screen bg-[#F8F9FA]">
@@ -113,11 +138,11 @@ function PaymentContent() {
               <div className="flex flex-col gap-4">
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-gray-400 font-medium uppercase tracking-widest text-[10px]">Kode Booking</span>
-                  <span className="text-navy-deep font-bold">#{booking.bookingCode}</span>
+                  <span className="text-navy-deep font-bold">{booking ? `#${booking.bookingCode}` : "Belum dibuat"}</span>
                 </div>
                 <div className="flex justify-between items-center text-sm pt-4 border-t border-gray-50">
                   <span className="text-gray-400 font-medium uppercase tracking-widest text-[10px]">Total Bayar</span>
-                  <span className="text-xl font-display font-bold text-navy-deep">Rp {booking.totalPrice.toLocaleString('id-ID')}</span>
+                  <span className="text-xl font-display font-bold text-navy-deep">Rp {((booking?.totalPrice ?? ((bookingDraft?.segmentPrice ?? 0) * (bookingDraft?.seatNumbers?.length || 0)))).toLocaleString('id-ID')}</span>
                 </div>
               </div>
             </div>

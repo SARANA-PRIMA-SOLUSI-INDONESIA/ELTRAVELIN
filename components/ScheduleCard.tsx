@@ -260,7 +260,7 @@ export default function ScheduleCard({
         <div className="p-6 md:p-8 bg-[#FDFDFD] flex flex-row md:flex-col justify-between md:justify-center items-center md:items-end gap-4 md:min-w-[220px] border-t md:border-t-0 md:border-l border-gray-50">
           <div className="flex flex-col items-start md:items-end">
             {(() => {
-              const realPrice = segmentPrice || schedule.price;
+              const realPrice = segmentPrice ?? schedule.price;
               const showGimmick =
                 gimmickMarkupEnabled && gimmickMarkupPercent > 0;
               const gimmickPrice = showGimmick
@@ -282,7 +282,7 @@ export default function ScheduleCard({
             <span className="text-[10px] font-bold text-foreground/40 uppercase">/seat</span>
           </div>
           <Link 
-            href={`/seat-selection?scheduleId=${schedule.id}&originStop=${encodeURIComponent(fromName)}&destinationStop=${encodeURIComponent(toName)}${schedule.originStopId ? `&originStopId=${schedule.originStopId}` : ''}${schedule.destinationStopId ? `&destinationStopId=${schedule.destinationStopId}` : ''}${segmentPrice ? `&segmentPrice=${segmentPrice}` : ''}`}
+            href={`/seat-selection?scheduleId=${schedule.id}&originStop=${encodeURIComponent(fromName)}&destinationStop=${encodeURIComponent(toName)}${schedule.originStopId ? `&originStopId=${schedule.originStopId}` : ''}${schedule.destinationStopId ? `&destinationStopId=${schedule.destinationStopId}` : ''}${segmentPrice !== undefined ? `&segmentPrice=${segmentPrice}` : ''}`}
             className="bg-[#EFEFEF] hover:bg-gold-warm hover:text-white text-navy-deep font-bold py-2.5 md:py-3 px-6 md:px-8 rounded-xl text-center transition-all shadow-sm text-sm md:text-base w-auto md:w-full"
           >
             Select

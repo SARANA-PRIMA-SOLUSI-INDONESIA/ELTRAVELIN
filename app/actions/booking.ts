@@ -283,13 +283,6 @@ export async function getSchedulesWithStops(
       segmentPrice += activeStops[i].price || 0;
     }
     
-    // If segment price is 0, fall back to schedule price divided by number of stops
-    if (segmentPrice === 0) {
-      const totalStops = activeStops.length;
-      const segmentStops = destIndex - originIndex + 1;
-      segmentPrice = Math.round((schedule.price / totalStops) * segmentStops);
-    }
-
     return {
       ...schedule,
       segmentPrice,
@@ -347,7 +340,7 @@ export async function updatePaymentMethod(bookingCode: string, paymentMethod: st
   });
 }
 
-export async function validatePromoCode(code: string, totalAmount: number) {
+export async function validatePromoCode(code: string, totalAmount: number, seatCount = 1) {
   const promo = await prisma.promoCode.findUnique({
     where: { code: code.toUpperCase(), isActive: true }
   }) as any;
@@ -372,10 +365,13 @@ export async function validatePromoCode(code: string, totalAmount: number) {
 
   let discount = 0;
   if (promo.discountType === 'FIXED') {
-    discount = promo.discountValue;
+    discount = promo.discountValue * seatCount;
   } else {
     discount = (totalAmount * promo.discountValue) / 100;
-    if (promo.maxDiscount) discount = Math.min(discount, promo.maxDiscount);
+  }
+
+  if (promo.maxDiscount && promo.maxDiscount > 0) {
+    discount = Math.min(discount, promo.maxDiscount);
   }
 
   return { valid: true, discount, promoId: promo.id };
@@ -435,7 +431,11 @@ export async function createBooking(data: {
   let discountAmount = 0;
 
   if (data.promoCodeId) {
-    const promoVal = await validatePromoCodeById(data.promoCodeId, basePrice);
+    const promoVal = await validatePromoCodeById(
+      data.promoCodeId,
+      basePrice,
+      data.seatNumbers.length
+    );
     if (promoVal.valid) {
       discountAmount = promoVal.discount;
     }
@@ -514,13 +514,12 @@ export async function createBooking(data: {
   };
   sendAdminWhatsAppNotification(notificationData).catch(err => console.error("Admin WA notif error:", err));
   sendBookingPendingReminder(notificationData).catch(err => console.error("Customer WA pending notif error:", err));
-  sendAdminWhatsAppNotification(notificationData).catch(err => console.error("Admin WA notif error:", err));
   sendAdminNotification(notificationData).catch(err => console.error("Admin email notif error:", err));
 
   return booking;
 }
 
-async function validatePromoCodeById(id: string, totalAmount: number) {
+async function validatePromoCodeById(id: string, totalAmount: number, seatCount = 1) {
   const promo = await prisma.promoCode.findUnique({ where: { id, isActive: true } }) as any;
   if (!promo) return { valid: false, discount: 0 };
   
@@ -534,10 +533,13 @@ async function validatePromoCodeById(id: string, totalAmount: number) {
 
   let discount = 0;
   if (promo.discountType === 'FIXED') {
-    discount = promo.discountValue;
+    discount = promo.discountValue * seatCount;
   } else {
     discount = (totalAmount * promo.discountValue) / 100;
-    if (promo.maxDiscount) discount = Math.min(discount, promo.maxDiscount);
+  }
+
+  if (promo.maxDiscount && promo.maxDiscount > 0) {
+    discount = Math.min(discount, promo.maxDiscount);
   }
   return { valid: true, discount };
 }
