@@ -32,7 +32,9 @@ function EditTemplateForm() {
         setDepartureTime(template.departureTime);
         setArrivalTime(template.arrivalTime);
         const stops = template.route.stops || [];
-        const sum = stops.reduce((acc: number, stop: any) => acc + (stop.price || 0), 0);
+        const sum = stops
+          .filter((stop: any) => stop.isActive !== false)
+          .reduce((acc: number, stop: any) => acc + (stop.price || 0), 0);
         setPrice(sum);
         setCapacity(template.capacity || 15);
         setVehicleId(template.vehicleId || "");

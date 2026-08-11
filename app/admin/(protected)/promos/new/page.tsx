@@ -112,7 +112,6 @@ export default function NewPromo() {
                 onChange={(e) => setMaxDiscount(e.target.value ? Number(e.target.value) : undefined)}
                 placeholder="Opsional"
                 className="bg-surface-low rounded-xl px-4 py-4 text-sm focus:ring-2 focus:ring-gold-warm outline-none border-none"
-                disabled={discountType === 'FIXED'}
               />
             </div>
           </div>

@@ -67,16 +67,20 @@ export default function ManualBookingModal({ onClose }: { onClose: () => void })
   };
 
   const stops = useMemo(() => selectedSchedule?.route?.stops || [], [selectedSchedule]);
+  const activeStops = useMemo(
+    () => stops.filter((stop: any) => stop.isActive !== false),
+    [stops]
+  );
 
   const segmentPrice = useMemo(() => {
-    if (!originStopId || !destinationStopId || stops.length === 0) return null;
-    const originIdx = stops.findIndex((s: any) => s.id === originStopId);
-    const destIdx = stops.findIndex((s: any) => s.id === destinationStopId);
+    if (!originStopId || !destinationStopId || activeStops.length === 0) return null;
+    const originIdx = activeStops.findIndex((s: any) => s.id === originStopId);
+    const destIdx = activeStops.findIndex((s: any) => s.id === destinationStopId);
     if (originIdx === -1 || destIdx <= originIdx) return null;
-    return stops
+    return activeStops
       .slice(originIdx + 1, destIdx + 1)
       .reduce((sum: number, s: any) => sum + (s.price || 0), 0);
-  }, [originStopId, destinationStopId, stops]);
+  }, [originStopId, destinationStopId, activeStops]);
 
   const effectivePrice = segmentPrice ?? selectedSchedule?.price ?? 0;
   const validPassengers = passengers.filter((p) => p.trim());
@@ -212,7 +216,7 @@ export default function ManualBookingModal({ onClose }: { onClose: () => void })
               </div>
             )}
 
-            {stops.length > 1 && (
+            {activeStops.length > 1 && (
               <div className="mt-4 p-4 bg-surface-low rounded-2xl space-y-3">
                 <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Pilih Titik Naik/Turun</p>
                 <div className="grid grid-cols-2 gap-3">
@@ -224,7 +228,7 @@ export default function ManualBookingModal({ onClose }: { onClose: () => void })
                       className="w-full px-3 py-2 rounded-lg border border-gray-200 text-xs font-medium focus:border-navy-deep outline-none"
                     >
                       <option value="">-- Pilih --</option>
-                      {stops.map((s: any) => (
+                      {activeStops.map((s: any) => (
                         <option key={s.id} value={s.id}>{s.name} {s.price > 0 ? `(+${s.price.toLocaleString("id-ID")})` : ""}</option>
                       ))}
                     </select>
@@ -238,13 +242,13 @@ export default function ManualBookingModal({ onClose }: { onClose: () => void })
                       className="w-full px-3 py-2 rounded-lg border border-gray-200 text-xs font-medium focus:border-navy-deep outline-none disabled:opacity-40"
                     >
                       <option value="">-- Pilih --</option>
-                      {stops.filter((s: any, i: number) => {
-                        const originIdx = stops.findIndex((st: any) => st.id === originStopId);
+                      {activeStops.filter((s: any, i: number) => {
+                        const originIdx = activeStops.findIndex((st: any) => st.id === originStopId);
                         return i > originIdx;
                       }).map((s: any) => {
-                        const originIdx = stops.findIndex((st: any) => st.id === originStopId);
-                        const destIdx = stops.findIndex((st: any) => st.id === s.id);
-                        const price = stops
+                        const originIdx = activeStops.findIndex((st: any) => st.id === originStopId);
+                        const destIdx = activeStops.findIndex((st: any) => st.id === s.id);
+                        const price = activeStops
                           .slice(originIdx + 1, destIdx + 1)
                           .reduce((sum: number, st: any) => sum + (st.price || 0), 0);
                         return (

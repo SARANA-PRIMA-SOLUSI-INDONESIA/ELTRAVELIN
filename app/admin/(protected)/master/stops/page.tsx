@@ -20,6 +20,8 @@ function StopsManagerForm() {
   const [price, setPrice] = useState<number>(0);
   const [insertSequence, setInsertSequence] = useState<number>(1);
 
+  const activeStops = stops.filter((stop) => stop.isActive !== false);
+
   // Load route and stops
   const loadData = async () => {
     if (!routeId) return;
@@ -268,7 +270,7 @@ function StopsManagerForm() {
           )}
 
           {/* Price Preview Table */}
-          {stops.length >= 2 && (
+          {activeStops.length >= 2 && (
             <div className="mt-10 pt-8 border-t border-surface-medium">
               <h3 className="text-sm font-display font-bold text-navy-deep mb-4 flex items-center gap-2">
                 <i className="ri-money-dollar-circle-line text-gold-warm"></i>
@@ -285,15 +287,15 @@ function StopsManagerForm() {
                     </tr>
                   </thead>
                   <tbody>
-                    {stops.map((fromStop, fromIdx) => {
+                    {activeStops.map((fromStop, fromIdx) => {
                       // Calculate cumulative prices to all subsequent stops
-                      return stops.slice(fromIdx + 1).map((toStop, toIdx) => {
+                      return activeStops.slice(fromIdx + 1).map((toStop, toIdx) => {
                         // Price is stored AT the destination stop (cost FROM previous TO this)
                         // So price from A to B = price at B
                         // Price from A to C = price at B + price at C
                         let segmentPrice = 0;
-                        for (let i = fromIdx + 1; i <= fromIdx + 1 + toIdx && i < stops.length; i++) {
-                          segmentPrice += stops[i].price || 0;
+                        for (let i = fromIdx + 1; i <= fromIdx + 1 + toIdx && i < activeStops.length; i++) {
+                          segmentPrice += activeStops[i].price || 0;
                         }
 
                         return (

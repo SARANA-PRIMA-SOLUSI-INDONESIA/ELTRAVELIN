@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createBooking, validatePromoCode } from "@/app/actions/booking";
+import { validatePromoCode } from "@/app/actions/booking";
 import { showError } from "@/lib/swal";
 
 interface CheckoutFormProps {
@@ -53,7 +53,11 @@ export default function CheckoutForm({ scheduleId, seatNumbers, basePrice, vehic
     setPromoLoading(true);
     setPromoError("");
     try {
-      const result = await validatePromoCode(codeToApply, basePrice * seatNumbers.length);
+      const result = await validatePromoCode(
+        codeToApply,
+        basePrice * seatNumbers.length,
+        seatNumbers.length
+      );
       if (result.valid) {
         setAppliedPromo({ id: result.promoId!, discount: result.discount!, code: codeToApply.toUpperCase() });
         setPromoInput(codeToApply.toUpperCase());
@@ -86,7 +90,7 @@ export default function CheckoutForm({ scheduleId, seatNumbers, basePrice, vehic
     e.preventDefault();
     setLoading(true);
     try {
-      const booking = await createBooking({
+      const bookingDraft = {
         scheduleId,
         contactName: contactData.name,
         contactEmail: contactData.email,
@@ -99,9 +103,10 @@ export default function CheckoutForm({ scheduleId, seatNumbers, basePrice, vehic
         originStopName,
         destinationStopName,
         segmentPrice,
-      });
+      };
 
-      router.push(`/payment?code=${booking.bookingCode}`);
+      sessionStorage.setItem("eltravelin_booking_draft", JSON.stringify(bookingDraft));
+      router.push("/payment");
     } catch (error) {
       console.error(error);
       await showError({ title: "Gagal", text: "Gagal melakukan pemesanan. Kursi mungkin sudah terisi." });
