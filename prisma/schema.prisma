@@ -52,7 +52,7 @@ model Schedule {
   stopTimesJson   String?
   bookings        Booking[]
   route           Route             @relation(fields: [routeId], references: [id])
-  template        ScheduleTemplate? @relation(fields: [templateId], references: [id])
+  template        ScheduleTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
   operatingTrip   OperatingTrip?    @relation(fields: [operatingTripId], references: [id], onDelete: Cascade)
 }
 
@@ -97,7 +97,7 @@ model Booking {
   promoCodeId     String?
   reminderSentAt  DateTime?
   lastReminderLevel Int           @default(0)
-  promoCode       PromoCode?    @relation(fields: [promoCodeId], references: [id])
+  promoCode       PromoCode?    @relation(fields: [promoCodeId], references: [id], onDelete: SetNull)
   schedule        Schedule      @relation(fields: [scheduleId], references: [id])
   passengers      Passenger[]
   seats           Seat[]
@@ -148,7 +148,7 @@ model Seat {
   seatNumber      String
   status          SeatStatus    @default(AVAILABLE)
   bookingId       String?
-  booking         Booking?      @relation(fields: [bookingId], references: [id])
+  booking         Booking?      @relation(fields: [bookingId], references: [id], onDelete: SetNull)
   operatingTrip   OperatingTrip @relation(fields: [operatingTripId], references: [id], onDelete: Cascade)
 
   @@unique([operatingTripId, seatNumber])
@@ -228,7 +228,7 @@ model OperatingTrip {
   status      TripStatus   @default(SCHEDULED)
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
-  vehicle     Vehicle?     @relation(fields: [vehicleId], references: [id])
+  vehicle     Vehicle?     @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
   schedules   Schedule[]
   seats       Seat[]
 }

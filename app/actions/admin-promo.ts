@@ -47,6 +47,22 @@ export async function updatePromoShowStatus(id: string, showOnCheckout: boolean)
 }
 
 export async function deletePromo(id: string) {
-  await prisma.promoCode.delete({ where: { id } });
+  await prisma.$transaction(async (tx) => {
+    const promo = await tx.promoCode.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+
+    if (!promo) throw new Error("Kode promo tidak ditemukan");
+
+    // Booking lama tetap dipertahankan, tetapi tidak boleh masih
+    // mereferensikan promo yang akan dihapus.
+    await tx.booking.updateMany({
+      where: { promoCodeId: id },
+      data: { promoCodeId: null },
+    });
+
+    await tx.promoCode.delete({ where: { id } });
+  });
   revalidatePath("/admin/promos");
 }
