@@ -150,7 +150,9 @@ export async function deleteTemplate(id: string) {
   await prisma.$transaction(async (tx) => {
     await tx.schedule.updateMany({
       where: { templateId: id },
-      data: { isDeleted: true }
+      // Jadwal yang sudah dibuat tetap dipertahankan untuk histori/booking,
+      // tetapi harus dilepas dari template sebelum template dihapus.
+      data: { isDeleted: true, templateId: null }
     });
     await tx.scheduleTemplate.delete({ where: { id } });
   });
@@ -247,6 +249,21 @@ export async function deleteRouteStop(id: string) {
   await prisma.$transaction(async (tx) => {
     const stop = await tx.routeStop.findUnique({ where: { id } });
     if (!stop) return;
+
+    const segmentCount = await tx.bookingSegment.count({
+      where: {
+        OR: [
+          { originStopId: id },
+          { destinationStopId: id },
+        ],
+      },
+    });
+
+    if (segmentCount > 0) {
+      throw new Error(
+        "Titik singgah tidak dapat dihapus karena sudah digunakan pada booking. Nonaktifkan titik ini saja."
+      );
+    }
 
     // 1. Delete the stop
     await tx.routeStop.delete({ where: { id } });
