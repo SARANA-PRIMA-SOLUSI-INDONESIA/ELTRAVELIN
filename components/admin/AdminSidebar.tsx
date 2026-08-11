@@ -12,6 +12,8 @@ const ALL_MENUS = [
   { label: "Overview", icon: "ri-dashboard-3-line", href: "/admin" },
   { label: "Jadwal Harian", icon: "ri-calendar-event-line", href: "/admin/schedules" },
   { label: "Jadwal Master", icon: "ri-map-pin-2-line", href: "/admin/master" },
+  { label: "Master Driver", icon: "ri-user-star-line", href: "/admin/drivers" },
+  { label: "Jadwal Driver", icon: "ri-steering-2-line", href: "/admin/driver-schedules" },
   { label: "Armada", icon: "ri-bus-line", href: "/admin/vehicles" },
   { label: "Banner", icon: "ri-image-line", href: "/admin/master/banner" },
   { label: "Promo", icon: "ri-percent-line", href: "/admin/promos" },
@@ -25,7 +27,7 @@ const ALL_MENUS = [
 
 const ROLE_MENU_HREFS: Record<string, string[]> = {
   SUPER_ADMIN: ALL_MENUS.map((m) => m.href),
-  ADMIN: ["/admin", "/admin/schedules", "/admin/master/banner", "/admin/bookings", "/admin/reports"],
+  ADMIN: ["/admin", "/admin/schedules", "/admin/master/banner", "/admin/drivers", "/admin/driver-schedules", "/admin/bookings", "/admin/reports"],
   CS: ["/admin", "/admin/schedules", "/admin/bookings"],
 };
 

@@ -10,6 +10,7 @@ export default async function Routes() {
       scheduleTemplates: { some: { isActive: true } },
     },
     include: {
+      stops: { where: { isDeleted: false }, orderBy: { sequence: 'asc' } },
       schedules: {
         where: {
           isActive: true,

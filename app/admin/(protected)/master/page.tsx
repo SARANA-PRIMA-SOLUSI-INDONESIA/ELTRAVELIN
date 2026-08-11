@@ -13,6 +13,7 @@ export default async function AdminMaster() {
     where: { isDeleted: false },
     include: {
       stops: {
+        where: { isDeleted: false },
         orderBy: {
           sequence: 'asc'
         }

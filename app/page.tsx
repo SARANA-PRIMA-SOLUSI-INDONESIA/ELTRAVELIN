@@ -26,9 +26,7 @@ export default async function Home() {
         scheduleTemplates: { some: { isActive: true } },
       },
       include: {
-        stops: {
-          orderBy: { sequence: 'asc' }
-        },
+        stops: { where: { isDeleted: false }, orderBy: { sequence: 'asc' } },
         scheduleTemplates: {
           where: { isActive: true },
           orderBy: { price: 'asc' },

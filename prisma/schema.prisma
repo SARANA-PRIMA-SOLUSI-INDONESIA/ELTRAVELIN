@@ -26,13 +26,14 @@ model RouteStop {
   stopTime  String?
   price     Int      @default(0)
   isActive  Boolean  @default(true)
+  isDeleted Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   route     Route    @relation(fields: [routeId], references: [id], onDelete: Cascade)
   bookingsAsOrigin BookingSegment[] @relation("OriginStop")
   bookingsAsDestination BookingSegment[] @relation("DestinationStop")
 
-  @@unique([routeId, sequence])
+  @@unique([routeId, sequence, isDeleted])
 }
 
 model Schedule {
@@ -224,11 +225,24 @@ model Vehicle {
 model OperatingTrip {
   id          String       @id @default(cuid())
   vehicleId   String?
+  driverId    String?
   date        DateTime     @db.Date
   status      TripStatus   @default(SCHEDULED)
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
   vehicle     Vehicle?     @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  driver      Driver?      @relation(fields: [driverId], references: [id], onDelete: SetNull)
   schedules   Schedule[]
   seats       Seat[]
+}
+
+model Driver {
+  id             String          @id @default(cuid())
+  name           String
+  phone          String?
+  licenseNo      String?
+  isActive       Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  operatingTrips OperatingTrip[]
 }

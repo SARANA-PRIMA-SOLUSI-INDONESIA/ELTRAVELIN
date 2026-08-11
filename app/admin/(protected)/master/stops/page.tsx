@@ -60,7 +60,11 @@ function StopsManagerForm() {
     if (!(await confirmAction({ title: "Hapus Titik", danger: true, text: "Apakah Anda yakin ingin menghapus titik singgah ini?" }))) return;
 
     try {
-      await deleteRouteStop(id);
+      const result = await deleteRouteStop(id);
+      if (!result.success) {
+        await showError({ title: "Gagal", text: result.error });
+        return;
+      }
       await loadData();
     } catch (error) {
       await showError({ title: "Gagal", text: "Gagal menghapus titik singgah: " + (error as Error).message });

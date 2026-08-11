@@ -208,6 +208,7 @@ export async function createRouteStop(routeId: string, name: string, sequence: n
     const stopsToShift = await tx.routeStop.findMany({
       where: {
         routeId,
+        isDeleted: false,
         sequence: { gte: sequence }
       },
       orderBy: {
@@ -246,45 +247,29 @@ export async function createRouteStop(routeId: string, name: string, sequence: n
 }
 
 export async function deleteRouteStop(id: string) {
-  await prisma.$transaction(async (tx) => {
-    const stop = await tx.routeStop.findUnique({ where: { id } });
-    if (!stop) return;
-
-    const segmentCount = await tx.bookingSegment.count({
-      where: {
-        OR: [
-          { originStopId: id },
-          { destinationStopId: id },
-        ],
-      },
-    });
-
-    if (segmentCount > 0) {
-      throw new Error(
-        "Titik singgah tidak dapat dihapus karena sudah digunakan pada booking. Nonaktifkan titik ini saja."
-      );
-    }
-
-    // 1. Delete the stop
-    await tx.routeStop.delete({ where: { id } });
-
-    // 2. Shift all subsequent stops by -1 to close the gap
-    await tx.routeStop.updateMany({
-      where: {
-        routeId: stop.routeId,
-        sequence: { gt: stop.sequence }
-      },
-      data: {
-        sequence: { decrement: 1 }
-      }
-    });
-  });
-
   try {
+    const result = await prisma.$transaction(async (tx) => {
+      const stop = await tx.routeStop.findUnique({ where: { id } });
+      if (!stop) return { success: false as const, error: "Titik singgah tidak ditemukan." };
+
+      // Soft delete: stop hilang dari UI baru, tetapi tetap ada untuk histori BookingSegment.
+      await tx.routeStop.update({ where: { id }, data: { isActive: false, isDeleted: true } });
+
+      return { success: true as const };
+    });
+
+    if (!result.success) return result;
+
     revalidatePath("/admin/master");
     revalidatePath("/");
     revalidatePath("/routes");
-  } catch (e) { }
+    return result;
+  } catch {
+    return {
+      success: false as const,
+      error: "Titik singgah gagal dihapus. Silakan coba lagi.",
+    };
+  }
 }
 
 export async function reorderRouteStops(routeId: string, orderedIds: string[]) {
@@ -314,8 +299,8 @@ export async function reorderRouteStops(routeId: string, orderedIds: string[]) {
 }
 
 export async function updateRouteStopStatus(id: string, isActive: boolean) {
-  const result = await prisma.routeStop.update({
-    where: { id },
+  const result = await prisma.routeStop.updateMany({
+    where: { id, isDeleted: false },
     data: { isActive }
   });
 
@@ -325,14 +310,14 @@ export async function updateRouteStopStatus(id: string, isActive: boolean) {
     revalidatePath("/routes");
   } catch (e) { }
 
-  return result;
+  return result.count > 0;
 }
 
 export async function getRouteById(id: string) {
   return prisma.route.findUnique({
     where: { id },
     include: {
-      stops: { orderBy: { sequence: 'asc' } },
+      stops: { where: { isDeleted: false }, orderBy: { sequence: 'asc' } },
       scheduleTemplates: { orderBy: { departureTime: 'asc' } }
     }
   });
@@ -343,6 +328,7 @@ export async function getRouteWithStops(id: string) {
     where: { id },
     include: {
       stops: {
+        where: { isDeleted: false },
         orderBy: { sequence: 'asc' }
       }
     }
@@ -380,9 +366,7 @@ export async function getTemplateById(id: string) {
       vehicle: true,
       route: {
         include: {
-          stops: {
-            orderBy: { sequence: "asc" }
-          }
+          stops: { where: { isDeleted: false }, orderBy: { sequence: "asc" } }
         }
       }
     }
@@ -396,9 +380,7 @@ export async function getTemplateWithStops(templateId: string) {
       vehicle: true,
       route: {
         include: {
-          stops: {
-            orderBy: { sequence: "asc" }
-          }
+          stops: { where: { isDeleted: false }, orderBy: { sequence: "asc" } }
         }
       }
     }
