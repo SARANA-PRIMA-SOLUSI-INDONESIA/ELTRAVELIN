@@ -1,4 +1,5 @@
 import { getBookingByCode } from "@/app/actions/booking";
+import { getPartnershipLogos } from "@/app/actions/admin-settings";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import PrintButton from "@/components/PrintButton";
@@ -15,6 +16,7 @@ export default async function InvoicePage({ params }: InvoiceProps) {
 
   const booking = await getBookingByCode(code);
   if (!booking || booking.status !== 'CONFIRMED') return notFound();
+  const partnershipLogoUrls = await getPartnershipLogos();
 
   const formattedDate = new Date().toLocaleDateString('id-ID', {
     day: 'numeric',
@@ -39,8 +41,8 @@ export default async function InvoicePage({ params }: InvoiceProps) {
   }) || '-';
 
   return (
-    <div className="min-h-screen bg-gray-100 py-8 px-4">
-      <div className="max-w-3xl mx-auto">
+    <div className="invoice-page min-h-screen bg-gray-100 py-8 px-4">
+      <div className="invoice-sheet max-w-3xl mx-auto bg-white">
         {/* Header Actions */}
         <div className="flex justify-between items-center mb-6 print:hidden">
           <Link 
@@ -54,9 +56,9 @@ export default async function InvoicePage({ params }: InvoiceProps) {
         </div>
 
         {/* Invoice Card */}
-        <div className="bg-white rounded-2xl shadow-lg overflow-hidden print:shadow-none">
+        <div className="rounded-2xl shadow-lg overflow-hidden print:shadow-none print:rounded-none">
           {/* Invoice Header */}
-          <div className="bg-navy-deep p-8 text-white">
+          <div className="bg-navy-deep p-6 text-white print:p-5">
             <div className="flex justify-between items-start">
               <div>
                 <h1 className="text-2xl font-display font-bold">INVOICE</h1>
@@ -72,7 +74,7 @@ export default async function InvoicePage({ params }: InvoiceProps) {
           </div>
 
           {/* Company & Customer Info */}
-          <div className="p-8 grid grid-cols-2 gap-8 border-b border-gray-100">
+          <div className="p-6 print:p-5 grid grid-cols-2 gap-6 border-b border-gray-100">
             <div>
               <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Diterbitkan Oleh</h3>
               <p className="font-bold text-navy-deep">ELTRAVEL INDONESIA MAJU</p>
@@ -89,7 +91,7 @@ export default async function InvoicePage({ params }: InvoiceProps) {
           </div>
 
           {/* Booking Details */}
-          <div className="p-8 border-b border-gray-100">
+          <div className="p-6 print:p-5 border-b border-gray-100">
             <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Detail Perjalanan</h3>
             <div className="grid grid-cols-2 gap-6">
               <div className="space-y-3">
@@ -139,7 +141,7 @@ export default async function InvoicePage({ params }: InvoiceProps) {
           </div>
 
           {/* Passenger List */}
-          <div className="p-8 border-b border-gray-100">
+          <div className="p-6 print:p-5 border-b border-gray-100">
             <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Daftar Penumpang</h3>
             <table className="w-full">
               <thead>
@@ -152,9 +154,9 @@ export default async function InvoicePage({ params }: InvoiceProps) {
               <tbody>
                 {booking.passengers.map((passenger, index) => (
                   <tr key={passenger.id} className="text-sm">
-                    <td className="py-3 text-gray-500">{index + 1}</td>
-                    <td className="py-3 font-medium text-navy-deep">{passenger.name}</td>
-                    <td className="py-3 text-gray-500">{booking.seats[index]?.seatNumber || '-'}</td>
+                    <td className="py-2 text-gray-500">{index + 1}</td>
+                    <td className="py-2 font-medium text-navy-deep">{passenger.name}</td>
+                    <td className="py-2 text-gray-500">{booking.seats[index]?.seatNumber || '-'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -162,7 +164,7 @@ export default async function InvoicePage({ params }: InvoiceProps) {
           </div>
 
           {/* Payment Summary */}
-          <div className="p-8 bg-gray-50">
+          <div className="p-6 print:p-5 bg-gray-50">
             <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Ringkasan Pembayaran</h3>
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
@@ -203,7 +205,8 @@ export default async function InvoicePage({ params }: InvoiceProps) {
           </div>
 
           {/* Footer */}
-          <div className="p-8 bg-navy-deep/5 text-center">
+          <div className="p-5 print:p-4 bg-navy-deep/5 text-center">
+            {partnershipLogoUrls.length > 0 && <div className="mb-4 border-b border-gray-200 pb-4"><p className="mb-3 text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400">Partnership</p><div className="flex flex-wrap items-center justify-center gap-5">{partnershipLogoUrls.map((url, index) => <img key={`${url}-${index}`} src={url} alt={`Logo partnership ${index + 1}`} className="h-10 w-auto max-w-28 object-contain" />)}</div></div>}
             <p className="text-xs text-gray-500">
               Terima kasih telah menggunakan layanan EL Travel. Invoice ini sah sebagai bukti pembayaran.
             </p>

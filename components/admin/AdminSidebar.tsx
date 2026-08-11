@@ -20,6 +20,7 @@ const ALL_MENUS = [
   { label: "Pemesanan", icon: "ri-ticket-2-line", href: "/admin/bookings" },
   { label: "Laporan", icon: "ri-bar-chart-box-line", href: "/admin/reports" },
   { label: "Pengaturan", icon: "ri-settings-3-line", href: "/admin/settings" },
+  { label: "Logo Partnership", icon: "ri-image-edit-line", href: "/admin/partnership-logo" },
   { label: "Pengguna", icon: "ri-shield-user-line", href: "/admin/users" },
   { label: "Test WA", icon: "ri-whatsapp-line", href: "/admin/test-wa" },
   { label: "Test Email", icon: "ri-mail-line", href: "/admin/test-mail" },

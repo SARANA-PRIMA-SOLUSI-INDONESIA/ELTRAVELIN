@@ -13,6 +13,7 @@ const ROLE_ACCESS: Record<string, string[]> = {
     '/admin/bookings',
     '/admin/reports',
     '/admin/settings',
+    '/admin/partnership-logo',
     '/admin/users',
     '/admin/test-wa',
     '/admin/test-mail',
