@@ -272,24 +272,27 @@ export async function getSchedulesWithStops(
   // Calculate segment price for each schedule
   const schedulesWithSegmentPrice = schedules.map((schedule: any) => {
     const route = schedule.route;
-    const activeStops = route.stops.filter((s: any) => s.isActive !== false);
-    const originIndex = activeStops.findIndex((s: any) => s.name.toLowerCase().includes(originStop.toLowerCase()));
-    const destIndex = activeStops.findIndex((s: any) => s.name.toLowerCase().includes(destStop.toLowerCase()));
-    
-    // Sum prices from stops AFTER origin up to destination (inclusive)
-    // Price at each stop represents cost FROM previous stop TO this stop
+    const allStops = route.stops;
+    const activeStops = allStops.filter((s: any) => s.isActive !== false);
+    const origin = activeStops.find((s: any) => s.name.toLowerCase().includes(originStop.toLowerCase()));
+    const dest = activeStops.find((s: any) => s.name.toLowerCase().includes(destStop.toLowerCase()));
+    const originIndex = origin ? allStops.findIndex((s: any) => s.id === origin.id) : -1;
+    const destIndex = dest ? allStops.findIndex((s: any) => s.id === dest.id) : -1;
+
+    // Sum prices from stops AFTER origin up to destination (inclusive) over ALL
+    // non-deleted stops, so hidden stops (isActive=false) still contribute.
     let segmentPrice = 0;
-    for (let i = originIndex + 1; i <= destIndex && i < activeStops.length; i++) {
-      segmentPrice += activeStops[i].price || 0;
+    for (let i = originIndex + 1; i <= destIndex && i < allStops.length; i++) {
+      segmentPrice += allStops[i].price || 0;
     }
-    
+
     return {
       ...schedule,
       segmentPrice,
-      originStopId: activeStops[originIndex]?.id,
-      destinationStopId: activeStops[destIndex]?.id,
-      originStopSequence: activeStops[originIndex]?.sequence,
-      destStopSequence: activeStops[destIndex]?.sequence,
+      originStopId: origin?.id,
+      destinationStopId: dest?.id,
+      originStopSequence: origin?.sequence,
+      destStopSequence: dest?.sequence,
       _count: {
         seats: schedule.operatingTrip?._count?.seats || 0
       }
@@ -408,7 +411,8 @@ export async function createBooking(data: {
   let resolvedOriginStopId: string | undefined;
   let resolvedDestinationStopId: string | undefined;
   if ((data.originStopName && data.destinationStopName) || (data.originStopId && data.destinationStopId)) {
-    const activeStops = schedule.route.stops.filter((stop: any) => stop.isActive !== false);
+    const allStops = schedule.route.stops;
+    const activeStops = allStops.filter((stop: any) => stop.isActive !== false);
     const originIndex = data.originStopName
       ? activeStops.findIndex((stop: any) => stop.name === data.originStopName)
       : activeStops.findIndex((stop: any) => stop.id === data.originStopId);
@@ -420,11 +424,19 @@ export async function createBooking(data: {
       throw new Error("Titik perjalanan tidak valid atau sudah dinonaktifkan.");
     }
 
-    resolvedOriginStopId = activeStops[originIndex].id;
-    resolvedDestinationStopId = activeStops[destinationIndex].id;
-    pricePerSeat = activeStops
-      .slice(originIndex + 1, destinationIndex + 1)
-      .reduce((sum: number, stop: any) => sum + (stop.price || 0), 0);
+    const origin = activeStops[originIndex];
+    const destination = activeStops[destinationIndex];
+    resolvedOriginStopId = origin.id;
+    resolvedDestinationStopId = destination.id;
+
+    // Sum segment price over ALL non-deleted stops so hidden stops still contribute.
+    const originIdxAll = allStops.findIndex((stop: any) => stop.id === origin.id);
+    const destIdxAll = allStops.findIndex((stop: any) => stop.id === destination.id);
+    if (originIdxAll !== -1 && destIdxAll > originIdxAll) {
+      pricePerSeat = allStops
+        .slice(originIdxAll + 1, destIdxAll + 1)
+        .reduce((sum: number, stop: any) => sum + (stop.price || 0), 0);
+    }
   }
 
   const basePrice = pricePerSeat * data.seatNumbers.length;
@@ -511,6 +523,10 @@ export async function createBooking(data: {
     schedule,
     seats: data.seatNumbers.map(n => ({ seatNumber: n })),
     passengers: data.passengerNames.map(n => ({ name: n })),
+    segment: {
+      originStop: schedule.route.stops.find((s: any) => s.id === resolvedOriginStopId),
+      destinationStop: schedule.route.stops.find((s: any) => s.id === resolvedDestinationStopId),
+    },
   };
   sendAdminWhatsAppNotification(notificationData).catch(err => console.error("Admin WA notif error:", err));
   sendBookingPendingReminder(notificationData).catch(err => console.error("Customer WA pending notif error:", err));
@@ -616,11 +632,14 @@ export async function adminCreateBooking(data: {
 
   let pricePerSeat = schedule.price;
   if (data.originStopId && data.destinationStopId) {
-    const stops = schedule.route.stops.filter((stop: any) => stop.isActive !== false);
-    const originIdx = stops.findIndex((s: any) => s.id === data.originStopId);
-    const destIdx = stops.findIndex((s: any) => s.id === data.destinationStopId);
-    if (originIdx !== -1 && destIdx > originIdx) {
-      pricePerSeat = stops
+    const allStops = schedule.route.stops;
+    const activeStops = allStops.filter((stop: any) => stop.isActive !== false);
+    const originStop = activeStops.find((s: any) => s.id === data.originStopId);
+    const destStop = activeStops.find((s: any) => s.id === data.destinationStopId);
+    const originIdx = originStop ? allStops.findIndex((s: any) => s.id === originStop.id) : -1;
+    const destIdx = destStop ? allStops.findIndex((s: any) => s.id === destStop.id) : -1;
+    if (originStop && destStop && originIdx !== -1 && destIdx > originIdx) {
+      pricePerSeat = allStops
         .slice(originIdx + 1, destIdx + 1)
         .reduce((sum: number, s: any) => sum + (s.price || 0), 0);
     }
@@ -688,7 +707,13 @@ export async function adminCreateBooking(data: {
         route: schedule.route
       },
       seats: data.seatNumbers.map(num => ({ seatNumber: num })),
-      passengers: data.passengerNames.map(name => ({ name }))
+      passengers: data.passengerNames.map(name => ({ name: name })),
+      segment: data.originStopId && data.destinationStopId
+        ? {
+            originStop: schedule.route.stops.find((s: any) => s.id === data.originStopId),
+            destinationStop: schedule.route.stops.find((s: any) => s.id === data.destinationStopId),
+          }
+        : undefined,
     };
 
     sendETicket(notificationData).catch(err => console.error("Error sending admin E-ticket:", err));

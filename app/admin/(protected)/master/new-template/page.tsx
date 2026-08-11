@@ -1,6 +1,6 @@
 "use client";
 
-import { createTemplate, getVehicles, getRouteWithStops } from "@/app/actions/admin-master";
+import { createTemplate, getVehicles } from "@/app/actions/admin-master";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, Suspense, useEffect } from "react";
 import Link from "next/link";
@@ -16,25 +16,12 @@ function NewTemplateForm() {
   const [loading, setLoading] = useState(false);
   const [departureTime, setDepartureTime] = useState("08:00");
   const [arrivalTime, setArrivalTime] = useState("11:30");
-  const [price, setPrice] = useState(0);
   const [capacity, setCapacity] = useState(15);
   const [vehicleId, setVehicleId] = useState("");
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [selectedDays, setSelectedDays] = useState<number[]>([]);
 
   useEffect(() => { getVehicles().then(v => setVehicles(v)); }, []);
-
-  useEffect(() => {
-    if (!routeId) return;
-    getRouteWithStops(routeId).then((routeData: any) => {
-      if (routeData && routeData.stops) {
-        const sum = routeData.stops
-          .filter((stop: any) => stop.isActive !== false)
-          .reduce((acc: number, stop: any) => acc + (stop.price || 0), 0);
-        setPrice(sum);
-      }
-    });
-  }, [routeId]);
 
   const toggleDay = (day: number) => {
     setSelectedDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]);
@@ -46,10 +33,10 @@ function NewTemplateForm() {
     setLoading(true);
     try {
       if (selectedDays.length === 0) {
-        await createTemplate({ routeId, departureTime, arrivalTime, price: Number(price), capacity: Number(capacity), vehicleId: vehicleId || undefined });
+        await createTemplate({ routeId, departureTime, arrivalTime, capacity: Number(capacity), vehicleId: vehicleId || undefined });
       } else {
         for (const day of selectedDays) {
-          await createTemplate({ routeId, departureTime, arrivalTime, price: Number(price), capacity: Number(capacity), vehicleId: vehicleId || undefined, dayOfWeek: day });
+          await createTemplate({ routeId, departureTime, arrivalTime, capacity: Number(capacity), vehicleId: vehicleId || undefined, dayOfWeek: day });
         }
       }
       router.push(routeId ? `/admin/master#route-${routeId}` : "/admin/master");
@@ -77,7 +64,6 @@ function NewTemplateForm() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="flex flex-col gap-2"><label className="text-xs font-bold text-navy-deep uppercase tracking-widest">Jam Keberangkatan</label><TimeInput value={departureTime} onChange={setDepartureTime} required /></div>
           <div className="flex flex-col gap-2"><label className="text-xs font-bold text-navy-deep uppercase tracking-widest">Jam Tiba (Estimasi)</label><TimeInput value={arrivalTime} onChange={setArrivalTime} required /></div>
-          <div className="flex flex-col gap-2"><label className="text-xs font-bold text-navy-deep uppercase tracking-widest">Harga Tiket</label><input type="number" min="0" value={price} onChange={(e) => setPrice(Number(e.target.value))} className="bg-surface-low rounded-xl px-4 py-4 text-sm outline-none border-none focus:ring-2 focus:ring-gold-warm font-bold" required /><p className="text-[10px] text-foreground/40">Auto dari titik rute, bisa diubah.</p></div>
           <div className="flex flex-col gap-2"><label className="text-xs font-bold text-navy-deep uppercase tracking-widest">Kapasitas Kursi</label><input type="number" min="1" max="99" value={capacity} onChange={(e) => setCapacity(Number(e.target.value))} className="bg-surface-low rounded-xl px-4 py-4 text-sm outline-none border-none focus:ring-2 focus:ring-gold-warm font-bold" required /><p className="text-[10px] text-foreground/40">Default 15.</p></div>
           <div className="flex flex-col gap-2"><label className="text-xs font-bold text-navy-deep uppercase tracking-widest">Armada (Opsional)</label><select value={vehicleId} onChange={(e) => setVehicleId(e.target.value)} className="bg-surface-low rounded-xl px-4 py-4 text-sm outline-none border-none focus:ring-2 focus:ring-gold-warm cursor-pointer"><option value="">-- Tanpa Armada --</option>{vehicles.map(v => (<option key={v.id} value={v.id}>{v.name} ({v.plateNumber})</option>))}</select></div>
         </div>

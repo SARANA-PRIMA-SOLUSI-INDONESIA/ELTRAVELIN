@@ -45,7 +45,12 @@ export default async function AdminMaster() {
       </div>
 
       <div className="flex flex-col gap-12">
-        {routes.map((route: any) => (
+        {routes.map((route: any) => {
+          // Total harga rute = jumlah harga semua titik singgah (non-deleted), termasuk hidden.
+          // Ini yang menjadi harga tiket template & jadwal.
+          const routeTotalPrice = (route.stops || []).reduce((sum: number, s: any) => sum + (s.price || 0), 0);
+
+          return (
           <div
             key={route.id}
             id={`route-${route.id}`}
@@ -129,7 +134,7 @@ export default async function AdminMaster() {
                       <div className="flex flex-col gap-2">
                         <div className="flex justify-between text-xs">
                           <span className="text-foreground/40">Harga</span>
-                          <span className="font-bold text-navy-deep">Rp {t.price.toLocaleString('id-ID')}</span>
+                          <span className="font-bold text-navy-deep">Rp {routeTotalPrice.toLocaleString('id-ID')}</span>
                         </div>
                         <div className="flex justify-between text-xs">
                           <span className="text-foreground/40">Armada</span>
@@ -152,7 +157,8 @@ export default async function AdminMaster() {
               </div>
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

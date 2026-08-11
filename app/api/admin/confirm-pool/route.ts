@@ -17,6 +17,12 @@ export async function POST(request: Request) {
         schedule: { include: { route: true } },
         seats: true,
         passengers: true,
+        segment: {
+          include: {
+            originStop: true,
+            destinationStop: true,
+          },
+        },
       },
     });
 
@@ -42,6 +48,12 @@ export async function POST(request: Request) {
         schedule: { include: { route: true } },
         seats: true,
         passengers: true,
+        segment: {
+          include: {
+            originStop: true,
+            destinationStop: true,
+          },
+        },
       },
     });
 

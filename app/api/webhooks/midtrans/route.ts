@@ -53,7 +53,13 @@ export async function POST(req: Request) {
           }
         },
         seats: true,
-        passengers: true
+        passengers: true,
+        segment: {
+          include: {
+            originStop: true,
+            destinationStop: true,
+          },
+        },
       }
     });
 

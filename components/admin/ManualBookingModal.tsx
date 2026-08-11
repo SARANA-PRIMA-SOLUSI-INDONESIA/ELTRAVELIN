@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { getSchedules, adminCreateBooking, getAvailableSeatsForSchedule } from "@/app/actions/booking";
 import { showSuccess } from "@/lib/swal";
@@ -72,15 +72,27 @@ export default function ManualBookingModal({ onClose }: { onClose: () => void })
     [stops]
   );
 
+  // Sum prices over ALL non-deleted stops (not just active) so hidden stops
+  // (isActive=false) still contribute to the segment price.
+  const calcSegmentPrice = useCallback(
+    (originStopId: string, destinationStopId: string) => {
+      const origin = activeStops.find((s: any) => s.id === originStopId);
+      const dest = activeStops.find((s: any) => s.id === destinationStopId);
+      if (!origin || !dest) return null;
+      const originIdx = stops.findIndex((s: any) => s.id === origin.id);
+      const destIdx = stops.findIndex((s: any) => s.id === dest.id);
+      if (originIdx === -1 || destIdx <= originIdx) return null;
+      return stops
+        .slice(originIdx + 1, destIdx + 1)
+        .reduce((sum: number, s: any) => sum + (s.price || 0), 0);
+    },
+    [stops, activeStops]
+  );
+
   const segmentPrice = useMemo(() => {
     if (!originStopId || !destinationStopId || activeStops.length === 0) return null;
-    const originIdx = activeStops.findIndex((s: any) => s.id === originStopId);
-    const destIdx = activeStops.findIndex((s: any) => s.id === destinationStopId);
-    if (originIdx === -1 || destIdx <= originIdx) return null;
-    return activeStops
-      .slice(originIdx + 1, destIdx + 1)
-      .reduce((sum: number, s: any) => sum + (s.price || 0), 0);
-  }, [originStopId, destinationStopId, activeStops]);
+    return calcSegmentPrice(originStopId, destinationStopId);
+  }, [originStopId, destinationStopId, activeStops, calcSegmentPrice]);
 
   const effectivePrice = segmentPrice ?? selectedSchedule?.price ?? 0;
   const validPassengers = passengers.filter((p) => p.trim());
@@ -246,11 +258,7 @@ export default function ManualBookingModal({ onClose }: { onClose: () => void })
                         const originIdx = activeStops.findIndex((st: any) => st.id === originStopId);
                         return i > originIdx;
                       }).map((s: any) => {
-                        const originIdx = activeStops.findIndex((st: any) => st.id === originStopId);
-                        const destIdx = activeStops.findIndex((st: any) => st.id === s.id);
-                        const price = activeStops
-                          .slice(originIdx + 1, destIdx + 1)
-                          .reduce((sum: number, st: any) => sum + (st.price || 0), 0);
+                        const price = calcSegmentPrice(originStopId, s.id) ?? 0;
                         return (
                           <option key={s.id} value={s.id}>
                             {s.name} — Rp {price.toLocaleString("id-ID")}

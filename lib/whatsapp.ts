@@ -1,5 +1,14 @@
 import { getAppUrl } from "./env";
 
+// Titik Naik / Titik Turun diambil dari BookingSegment bila ada (fallback ke route).
+function getOriginPoint(booking: any) {
+  return booking.segment?.originStop?.name || booking.schedule?.route?.origin || "-";
+}
+
+function getDestPoint(booking: any) {
+  return booking.segment?.destinationStop?.name || booking.schedule?.route?.destination || "-";
+}
+
 export async function sendWhatsAppMessage(to: string, message: string) {
   const apiKey = process.env.STARSENDER_API_KEY;
 
@@ -41,9 +50,7 @@ export async function sendAdminWhatsAppNotification(booking: any) {
   const adminPhone = process.env.ADMIN_PHONE;
   if (!adminPhone) return;
 
-  const rute = booking.schedule?.route
-    ? booking.schedule.route.origin + " \u2192 " + booking.schedule.route.destination
-    : "-";
+  const rute = getOriginPoint(booking) + " \u2192 " + getDestPoint(booking);
   const departure = booking.schedule?.departureTime
     ? new Date(booking.schedule.departureTime).toLocaleString("id-ID", { dateStyle: "full", timeStyle: "short", timeZone: "Asia/Jakarta" })
     : "-";
@@ -69,7 +76,7 @@ export async function sendAdminWhatsAppNotification(booking: any) {
 }
 
 export async function sendBookingSuccessMessage(booking: any) {
-  const rute = booking.schedule.route.origin + " \u2192 " + booking.schedule.route.destination;
+  const rute = getOriginPoint(booking) + " \u2192 " + getDestPoint(booking);
   const departure = new Date(booking.schedule.departureTime).toLocaleString("id-ID", {
     dateStyle: "full",
     timeStyle: "short",
@@ -92,9 +99,7 @@ export async function sendBookingSuccessMessage(booking: any) {
 }
 
 export async function sendBookingPendingReminder(booking: any) {
-  const rute = booking.schedule?.route
-    ? booking.schedule.route.origin + " \u2192 " + booking.schedule.route.destination
-    : "-";
+  const rute = getOriginPoint(booking) + " \u2192 " + getDestPoint(booking);
   const departure = booking.schedule?.departureTime
     ? new Date(booking.schedule.departureTime).toLocaleString("id-ID", { dateStyle: "full", timeStyle: "short", timeZone: "Asia/Jakarta" })
     : "-";

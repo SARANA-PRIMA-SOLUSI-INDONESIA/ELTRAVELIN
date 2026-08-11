@@ -17,7 +17,6 @@ function EditTemplateForm() {
   const [fetching, setFetching] = useState(true);
   const [departureTime, setDepartureTime] = useState("");
   const [arrivalTime, setArrivalTime] = useState("");
-  const [price, setPrice] = useState(0);
   const [capacity, setCapacity] = useState(15);
   const [vehicleId, setVehicleId] = useState("");
   const [vehicles, setVehicles] = useState<any[]>([]);
@@ -31,11 +30,6 @@ function EditTemplateForm() {
       if (template) {
         setDepartureTime(template.departureTime);
         setArrivalTime(template.arrivalTime);
-        const stops = template.route.stops || [];
-        const sum = stops
-          .filter((stop: any) => stop.isActive !== false)
-          .reduce((acc: number, stop: any) => acc + (stop.price || 0), 0);
-        setPrice(sum);
         setCapacity(template.capacity || 15);
         setVehicleId(template.vehicleId || "");
         setRouteName(template.route.origin + " → " + template.route.destination);
@@ -54,7 +48,7 @@ function EditTemplateForm() {
     if (!id) return;
     setLoading(true);
     try {
-      await updateTemplate(id, { departureTime, arrivalTime, price: Number(price), capacity: Number(capacity), vehicleId: vehicleId || undefined, dayOfWeek: selectedDay ?? undefined });
+      await updateTemplate(id, { departureTime, arrivalTime, capacity: Number(capacity), vehicleId: vehicleId || undefined, dayOfWeek: selectedDay ?? undefined });
       router.push(backHref);
     } catch (error) { await showError({ title: "Gagal", text: "Gagal: " + (error as Error).message }); } finally { setLoading(false); }
   };
@@ -85,11 +79,6 @@ function EditTemplateForm() {
           <div className="flex flex-col gap-2">
             <label className="text-xs font-bold text-navy-deep uppercase tracking-widest">Jam Tiba (Estimasi)</label>
             <TimeInput value={arrivalTime} onChange={setArrivalTime} required />
-          </div>
-          <div className="flex flex-col gap-2">
-            <label className="text-xs font-bold text-navy-deep uppercase tracking-widest">Harga Tiket (Auto dari Titik Rute)</label>
-            <input type="number" min="0" value={price} onChange={(e) => setPrice(Number(e.target.value))} className="bg-surface-low rounded-xl px-4 py-4 text-sm outline-none border-none focus:ring-2 focus:ring-gold-warm font-bold" required />
-            <p className="text-[10px] text-foreground/40">Terisi otomatis, tetap bisa diubah.</p>
           </div>
           <div className="flex flex-col gap-2">
             <label className="text-xs font-bold text-navy-deep uppercase tracking-widest">Kapasitas Kursi</label>

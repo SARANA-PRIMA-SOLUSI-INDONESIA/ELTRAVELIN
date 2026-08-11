@@ -2,6 +2,15 @@ const RESEND_API_KEY = process.env.SMTP_PASS;
 const SMTP_FROM = process.env.SMTP_FROM || 'noreply@eltravel.in';
 const RESEND_URL = 'https://api.resend.com/emails';
 
+// Titik Naik / Titik Turun diambil dari BookingSegment bila ada (fallback ke route).
+function getOriginPoint(booking: any) {
+  return booking.segment?.originStop?.name || booking.schedule?.route?.origin || '?';
+}
+
+function getDestPoint(booking: any) {
+  return booking.segment?.destinationStop?.name || booking.schedule?.route?.destination || '?';
+}
+
 async function sendMail(to: string, subject: string, html: string) {
   try {
     const res = await fetch(RESEND_URL, {
@@ -44,7 +53,7 @@ export async function sendETicket(booking: any) {
       
       <div style="background: #F8F9FA; padding: 15px; border-radius: 8px; margin: 20px 0;">
         <p><strong>Kode Booking:</strong> ${booking.bookingCode}</p>
-        <p><strong>Rute:</strong> ${booking.schedule.route.origin} → ${booking.schedule.route.destination}</p>
+        <p><strong>Rute:</strong> ${getOriginPoint(booking)} → ${getDestPoint(booking)}</p>
         <p><strong>Waktu Keberangkatan:</strong> ${new Date(booking.schedule.departureTime).toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'short' })}</p>
         <p><strong>Kursi:</strong> ${booking.seats.map((s: any) => s.seatNumber).join(', ')}</p>
         <p><strong>Total Bayar:</strong> Rp ${booking.totalPrice.toLocaleString('id-ID')}</p>
@@ -112,7 +121,7 @@ export async function sendAdminNotification(booking: any) {
             </tr>
             <tr>
               <td style="padding: 8px 0; border-top: 1px solid #e5e7eb; vertical-align: top; width: 130px; color: #6b7280; font-size: 13px; font-weight: 600;">Rute</td>
-              <td style="padding: 8px 0 8px 16px; border-top: 1px solid #e5e7eb; vertical-align: top; font-size: 13px; color: #111827; word-break: break-word;">${booking.schedule?.route?.origin || '?'} &rarr; ${booking.schedule?.route?.destination || '?'}</td>
+              <td style="padding: 8px 0 8px 16px; border-top: 1px solid #e5e7eb; vertical-align: top; font-size: 13px; color: #111827; word-break: break-word;">${getOriginPoint(booking)} &rarr; ${getDestPoint(booking)}</td>
             </tr>
             <tr>
               <td style="padding: 8px 0; border-top: 1px solid #e5e7eb; vertical-align: top; width: 130px; color: #6b7280; font-size: 13px; font-weight: 600;">Keberangkatan</td>

@@ -22,7 +22,7 @@ model RouteStop {
   id        String   @id @default(cuid())
   routeId   String
   name      String
-  sequence  Int
+  sequence  Int?
   stopTime  String?
   price     Int      @default(0)
   isActive  Boolean  @default(true)
