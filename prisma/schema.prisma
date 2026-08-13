@@ -55,6 +55,8 @@ model Schedule {
   route           Route             @relation(fields: [routeId], references: [id])
   template        ScheduleTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
   operatingTrip   OperatingTrip?    @relation(fields: [operatingTripId], references: [id], onDelete: Cascade)
+
+  @@unique([templateId, departureTime, isDeleted])
 }
 
 model ScheduleTemplate {
@@ -242,6 +244,7 @@ model Driver {
   phone          String?
   licenseNo      String?
   isActive       Boolean         @default(true)
+  restDayOfWeek  Int?
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
   operatingTrips OperatingTrip[]

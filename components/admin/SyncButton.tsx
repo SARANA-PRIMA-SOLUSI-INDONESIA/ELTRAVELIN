@@ -8,11 +8,11 @@ export default function SyncButton() {
   const [loading, setLoading] = useState(false);
 
   const handleSync = async () => {
-    if (!(await confirmAction({ title: "Sinkronkan Jadwal", text: "Generate jadwal baru untuk 7 hari ke depan?" }))) return;
+    if (!(await confirmAction({ title: "Sinkronkan Jadwal", text: "Generate jadwal baru untuk 14 hari ke depan?" }))) return;
     
     setLoading(true);
     try {
-      await triggerSyncSchedules(7);
+      await triggerSyncSchedules(14);
       await showSuccess({ title: "Berhasil", text: "Jadwal berhasil disinkronkan!" });
     } catch (error) {
       await showError({ title: "Gagal Sinkronisasi", text: "Gagal sinkronisasi: " + (error as Error).message });

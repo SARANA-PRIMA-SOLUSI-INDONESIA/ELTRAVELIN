@@ -89,8 +89,9 @@ eltravelin/
 │   ├── auth.ts                   # JWT authentication
 │   ├── mail.ts                   # Email utilities
 │   ├── midtrans.ts               # Midtrans client
+│   ├── on-demand-schedules.ts    # Materialisasi jadwal on-demand (per tanggal)
+│   ├── driver-scheduling.ts      # Engine feasibilitas & auto-assign driver
 │   ├── prisma.ts                 # Prisma client initialization
-│   ├── schedule-generator.ts     # Generator jadwal
 │   └── whatsapp.ts               # WhatsApp utilities
 ├── prisma/                       # Database
 │   ├── schema.prisma             # Database schema
@@ -205,6 +206,13 @@ eltravelin/
 - **Endpoint**: `/api/cron/process-bookings`
 - **Fungsi**: Proses booking otomatis (reminder, cleanup, dll)
 - **Trigger**: Dapat di-trigger manual via action atau external cron
+
+### Sync Schedules & Driver
+- **Endpoint**: `/api/cron/sync-schedules`
+- **Fungsi**: Setiap malam materialisasi jadwal H+1 s/d H+14 (`DRIVER_PLANNING_DAYS`) lalu auto-assign driver otomatis untuk rentang tersebut (hanya slot kosong).
+- **Auth**: Wajib `Authorization: Bearer <CRON_SECRET>` (atau `x-cron-key` / query `?key=`).
+- **Trigger**: Website cron job eksternal, misal tiap hari 05:00 WIB.
+- **Window**: Booking H+1..H+30 on-demand (`BOOKING_WINDOW_DAYS`), armada/driver H+1..H+14 (`DRIVER_PLANNING_DAYS`).
 
 ## API Routes
 

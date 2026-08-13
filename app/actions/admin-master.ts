@@ -1,7 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { syncSchedulesFromTemplates } from "@/lib/schedule-generator";
+import { ensureSchedulesForDate, DRIVER_PLANNING_DAYS, dateKeysFromToday, wibTodayStart } from "@/lib/on-demand-schedules";
 import { revalidatePath } from "next/cache";
 
 export async function createRoute(origin: string, destination: string) {
@@ -112,8 +112,7 @@ export async function createTemplate(data: {
 }
 
 export async function updateTemplateStatus(id: string, isActive: boolean) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = wibTodayStart();
 
   await prisma.$transaction(async (tx) => {
     await tx.scheduleTemplate.update({
@@ -171,12 +170,18 @@ export async function deleteTemplate(id: string) {
 
 // --- Sync Action ---
 
-export async function triggerSyncSchedules(days: number = 7) {
-  await syncSchedulesFromTemplates(prisma as any, days);
+export async function triggerSyncSchedules(days: number = DRIVER_PLANNING_DAYS) {
+  // Warm-cache opsional: materialisasi days hari ke depan sekaligus
+  // (bukan pre-generate seluruh horizon). Jadwal tetap dibuat on-demand saat dicari.
+  let created = 0;
+  for (const key of dateKeysFromToday(0, days)) {
+    created += await ensureSchedulesForDate(prisma, key);
+  }
   revalidatePath("/admin/schedules");
   revalidatePath("/admin/master");
   revalidatePath("/");
   revalidatePath("/routes");
+  return { created };
 }
 
 // --- Schedule Specific Actions ---
@@ -415,8 +420,7 @@ export async function updateTemplateStopTimes(templateId: string, stopTimesJson:
   });
 
   // 2. Update all future generated schedules from this template (WIB departureTime >= today)
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = wibTodayStart();
 
   await prisma.schedule.updateMany({
     where: {

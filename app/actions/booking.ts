@@ -3,15 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { sendBookingSuccessMessage, sendAdminWhatsAppNotification, sendBookingPendingReminder } from "@/lib/whatsapp";
 import { sendAdminNotification, sendETicket } from "@/lib/mail";
-
-// Helper to get a Date object forced to Jakarta time
-function getJakartaDate(dateStr?: string, hour = 0, minute = 0, second = 0) {
-  const date = dateStr ? new Date(dateStr) : new Date();
-  const jktString = date.toLocaleString("en-US", { timeZone: "Asia/Jakarta" });
-  const jktDate = new Date(jktString);
-  jktDate.setHours(hour, minute, second, 0);
-  return jktDate;
-}
+import { ensureSchedulesForDate, BOOKING_WINDOW_DAYS, dateKeysFromToday, wibStartOfDay, wibEndOfDay } from "@/lib/on-demand-schedules";
 
 export async function getSchedules(
   origin: string, 
@@ -28,9 +20,12 @@ export async function getSchedules(
   const pageSize = options?.pageSize || 10;
   const skip = (page - 1) * pageSize;
 
+  // Materialisasi on-demand untuk tanggal yang dicari (dalam window 30 hari).
+  await ensureSchedulesForDate(prisma, date);
+
   // Create start/end of day in Jakarta timezone context
-  const startOfDay = new Date(`${date}T00:00:00+07:00`);
-  const endOfDay = new Date(`${date}T23:59:59+07:00`);
+  const startOfDay = wibStartOfDay(date);
+  const endOfDay = wibEndOfDay(date);
 
   const absoluteNow = new Date(); 
   const effectiveGte = startOfDay > absoluteNow ? startOfDay : absoluteNow;
@@ -151,9 +146,12 @@ export async function getSchedulesWithStops(
   const pageSize = options?.pageSize || 10;
   const skip = (page - 1) * pageSize;
 
+  // Materialisasi on-demand untuk tanggal yang dicari.
+  await ensureSchedulesForDate(prisma, date);
+
   // Create start/end of day in Jakarta timezone context
-  const startOfDay = new Date(`${date}T00:00:00+07:00`);
-  const endOfDay = new Date(`${date}T23:59:59+07:00`);
+  const startOfDay = wibStartOfDay(date);
+  const endOfDay = wibEndOfDay(date);
 
   const absoluteNow = new Date();
   const effectiveGte = startOfDay > absoluteNow ? startOfDay : absoluteNow;
@@ -313,6 +311,18 @@ export async function getSchedulesWithStops(
 }
 
 export async function getScheduleById(id: string) {
+  // Materialisasi on-demand: kalau schedule dari template belum dibuat, buat dulu.
+  const existing = await prisma.schedule.findUnique({
+    where: { id },
+    select: { templateId: true, departureTime: true },
+  });
+  if (!existing) {
+    const fallback = await prisma.schedule.findUnique({ where: { id }, select: { departureTime: true } });
+    if (fallback) await ensureSchedulesForDate(prisma, fallback.departureTime.toISOString().slice(0, 10));
+  } else if (existing.templateId) {
+    await ensureSchedulesForDate(prisma, existing.departureTime.toISOString().slice(0, 10));
+  }
+
   const schedule = await prisma.schedule.findUnique({
     where: { id },
     include: {
@@ -957,6 +967,11 @@ export async function changeBookingRoute(bookingId: string, newRouteId: string, 
 export async function getAvailableSchedulesForReschedule(routeId: string, excludeScheduleId: string) {
   const now = new Date();
 
+  // Materialisasi on-demand untuk hari ini s/d akhir window.
+  for (const key of dateKeysFromToday(0, BOOKING_WINDOW_DAYS)) {
+    await ensureSchedulesForDate(prisma, key);
+  }
+
   return prisma.schedule.findMany({
     where: {
       routeId: routeId,
@@ -1322,6 +1337,15 @@ export async function editBooking(data: EditBookingData) {
 
 // Get available seats for a schedule
 export async function getAvailableSeatsForSchedule(scheduleId: string) {
+  // Materialisasi on-demand sebelum ambil kursi.
+  const existing = await prisma.schedule.findUnique({
+    where: { id: scheduleId },
+    select: { departureTime: true },
+  });
+  if (existing) {
+    await ensureSchedulesForDate(prisma, existing.departureTime.toISOString().slice(0, 10));
+  }
+
   const schedule = await prisma.schedule.findUnique({
     where: { id: scheduleId },
     include: {
@@ -1344,6 +1368,15 @@ export async function getAvailableSeatsForSchedule(scheduleId: string) {
 }
 
 export async function getScheduleManifest(scheduleId: string) {
+  // Materialisasi on-demand sebelum ambil manifest.
+  const existing = await prisma.schedule.findUnique({
+    where: { id: scheduleId },
+    select: { departureTime: true },
+  });
+  if (existing) {
+    await ensureSchedulesForDate(prisma, existing.departureTime.toISOString().slice(0, 10));
+  }
+
   const schedule = await prisma.schedule.findUnique({
     where: { id: scheduleId },
     include: {

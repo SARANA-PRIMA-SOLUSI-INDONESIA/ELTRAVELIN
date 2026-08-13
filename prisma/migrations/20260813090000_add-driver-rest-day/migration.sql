@@ -1,0 +1,1 @@
+ALTER TABLE `Driver` ADD COLUMN `restDayOfWeek` INT NULL;
