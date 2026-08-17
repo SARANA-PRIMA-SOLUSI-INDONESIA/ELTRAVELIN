@@ -557,6 +557,8 @@ async function validatePromoCodeById(id: string, totalAmount: number, seatCount 
   // Check Quota
   if (promo.usageLimit && promo.usedCount >= promo.usageLimit) return { valid: false, discount: 0 };
 
+  if (totalAmount < promo.minOrder) return { valid: false, discount: 0 };
+
   let discount = 0;
   if (promo.discountType === 'FIXED') {
     discount = promo.discountValue * seatCount;
@@ -632,6 +634,7 @@ export async function adminCreateBooking(data: {
   paymentMethod: string;
   originStopId?: string;
   destinationStopId?: string;
+  promoCodeId?: string;
 }) {
   const schedule = await prisma.schedule.findUnique({
     where: { id: data.scheduleId },
@@ -655,7 +658,21 @@ export async function adminCreateBooking(data: {
     }
   }
 
-  const totalPrice = pricePerSeat * data.seatNumbers.length;
+  const basePrice = pricePerSeat * data.seatNumbers.length;
+  let discountAmount = 0;
+
+  if (data.promoCodeId) {
+    const promoVal = await validatePromoCodeById(
+      data.promoCodeId,
+      basePrice,
+      data.seatNumbers.length
+    );
+    if (promoVal.valid) {
+      discountAmount = promoVal.discount;
+    }
+  }
+
+  const totalPrice = basePrice - discountAmount;
   const bookingCode = `ADM-${Math.floor(100000 + Math.random() * 900000)}-${data.seatNumbers[0]}`;
 
   return prisma.$transaction(async (tx: any) => {
@@ -667,7 +684,8 @@ export async function adminCreateBooking(data: {
         contactEmail: data.contactEmail || null,
         contactPhone: data.contactPhone,
         totalPrice,
-        discountAmount: 0,
+        discountAmount,
+        promoCodeId: data.promoCodeId,
         paymentMethod: data.paymentMethod,
         status: 'CONFIRMED',
         passengerName: data.passengerNames[0],
@@ -707,6 +725,14 @@ export async function adminCreateBooking(data: {
           },
         })
       ));
+    }
+
+    // Increment promo usage count if a promo code was applied
+    if (data.promoCodeId) {
+      await tx.promoCode.update({
+        where: { id: data.promoCodeId },
+        data: { usedCount: { increment: 1 } }
+      });
     }
 
     // Send WhatsApp notification for admin bookings
