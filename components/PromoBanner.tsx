@@ -32,22 +32,34 @@ export default function PromoBanner({ banners }: { banners: any[] }) {
   return (
     <section className="px-4 sm:px-6 md:px-12 lg:px-24 -mt-10 md:-mt-20 relative z-20">
       <div className="max-w-7xl mx-auto flex flex-col gap-6">
-        <div className="overflow-hidden rounded-2xl md:rounded-[2rem] shadow-2xl relative group">
+        <div className="relative isolate w-full min-w-0 overflow-hidden rounded-2xl md:rounded-[2rem] shadow-2xl group">
           <div 
             ref={scrollRef}
-            className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar"
+            className="flex w-full min-w-0 overflow-x-auto snap-x snap-mandatory no-scrollbar"
           >
             {banners.map((banner, index) => (
-              <div key={banner.id || index} className="min-w-full snap-start flex justify-center">
+              <div key={banner.id || index} className="basis-full min-w-0 max-w-full flex-none snap-start overflow-hidden">
+                <div className="hidden md:block w-full min-w-0 max-w-full overflow-hidden">
                 <Image
                   src={banner.imageUrl || "/promo-banner.png"}
                   alt={banner.title || "Promo Banner"}
-                  width={0}
-                  height={0}
+                  width={1200}
+                  height={600}
                   sizes="(max-width: 1280px) 100vw, 1280px"
-                  className="w-full h-auto max-w-full"
+                  className="block w-full max-w-full h-auto"
                   priority={index === 0}
                 />
+                </div>
+                <div className="relative block md:hidden w-full min-w-0 max-w-full aspect-[4/3] overflow-hidden">
+                <Image
+                  src={banner.imageUrl || "/promo-banner.png"}
+                  alt={banner.title || "Promo Banner"}
+                  fill
+                  sizes="(max-width: 1280px) 100vw, 1280px"
+                  className="object-cover object-center"
+                  priority={index === 0}
+                />
+                </div>
               </div>
             ))}
           </div>
