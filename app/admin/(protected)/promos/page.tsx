@@ -24,18 +24,18 @@ export default async function AdminPromos() {
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      <div className="grid min-w-0 grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
         {promos.length === 0 ? (
           <div className="col-span-full py-20 text-center bg-white rounded-[2.5rem] border-2 border-dashed border-outline-ghost">
             <p className="text-sm text-foreground/40 font-medium">Belum ada kode promo aktif.</p>
           </div>
         ) : (
           promos.map((promo: any) => (
-            <div key={promo.id} className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-transparent hover:border-gold-soft transition-all flex flex-col gap-6 group">
-              <div className="flex justify-between items-start">
-                <div className="flex flex-col gap-1">
-                  <span className="text-2xl font-display font-bold text-navy-deep tracking-wider">{promo.code}</span>
-                  <div className="flex items-center gap-2">
+            <div key={promo.id} className="min-w-0 overflow-hidden bg-white p-8 rounded-[2.5rem] shadow-sm border border-transparent hover:border-gold-soft transition-all flex flex-col gap-6 group">
+              <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex min-w-0 flex-col gap-1">
+                  <span className="max-w-full break-words text-2xl font-display font-bold text-navy-deep tracking-wider">{promo.code}</span>
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="text-[10px] font-bold text-foreground/40 uppercase tracking-widest">Kode Promo</span>
                     {/* Status Badge */}
                     {(() => {
@@ -50,7 +50,10 @@ export default async function AdminPromos() {
                     })()}
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex max-w-full flex-wrap items-center gap-2 sm:justify-end">
+                   <Link href={`/admin/promos/edit?id=${promo.id}`} className="w-9 h-9 rounded-lg bg-white border border-outline-ghost text-navy-deep hover:bg-navy-deep hover:text-white transition-all flex items-center justify-center" title="Edit Promo">
+                     <i className="ri-pencil-line"></i>
+                   </Link>
                    <PromoShowToggle id={promo.id} initialStatus={promo.showOnCheckout} />
                    <PromoToggle id={promo.id} initialStatus={promo.isActive} />
                    <DeleteButton id={promo.id} type="promo" />

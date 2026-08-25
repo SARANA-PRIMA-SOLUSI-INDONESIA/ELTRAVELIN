@@ -1,7 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { syncSchedulesFromTemplates } from "@/lib/schedule-generator";
+import { ensureSchedulesForDate, DRIVER_PLANNING_DAYS, dateKeysFromToday, wibTodayStart } from "@/lib/on-demand-schedules";
 import { revalidatePath } from "next/cache";
 
 export async function createRoute(origin: string, destination: string) {
@@ -112,8 +112,7 @@ export async function createTemplate(data: {
 }
 
 export async function updateTemplateStatus(id: string, isActive: boolean) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = wibTodayStart();
 
   await prisma.$transaction(async (tx) => {
     await tx.scheduleTemplate.update({
@@ -171,12 +170,18 @@ export async function deleteTemplate(id: string) {
 
 // --- Sync Action ---
 
-export async function triggerSyncSchedules(days: number = 7) {
-  await syncSchedulesFromTemplates(prisma as any, days);
+export async function triggerSyncSchedules(days: number = DRIVER_PLANNING_DAYS) {
+  // Warm-cache opsional: materialisasi days hari ke depan sekaligus
+  // (bukan pre-generate seluruh horizon). Jadwal tetap dibuat on-demand saat dicari.
+  let created = 0;
+  for (const key of dateKeysFromToday(0, days)) {
+    created += await ensureSchedulesForDate(prisma, key);
+  }
   revalidatePath("/admin/schedules");
   revalidatePath("/admin/master");
   revalidatePath("/");
   revalidatePath("/routes");
+  return { created };
 }
 
 // --- Schedule Specific Actions ---
@@ -209,7 +214,14 @@ export async function deleteSchedule(id: string) {
 
 // --- RouteStop Actions ---
 
-export async function createRouteStop(routeId: string, name: string, sequence: number, stopTime?: string, price?: number) {
+export async function createRouteStop(
+  routeId: string,
+  name: string,
+  sequence: number,
+  stopTime?: string,
+  price?: number,
+  flags?: { canBoarding?: boolean; canAlighting?: boolean }
+) {
   const result = await prisma.$transaction(async (tx) => {
     // 1. Get all stops with sequence >= input sequence, ordered descending
     const stopsToShift = await tx.routeStop.findMany({
@@ -239,7 +251,9 @@ export async function createRouteStop(routeId: string, name: string, sequence: n
         name,
         sequence,
         stopTime: stopTime || null,
-        price: price || 0
+        price: price || 0,
+        canBoarding: flags?.canBoarding ?? true,
+        canAlighting: flags?.canAlighting ?? true,
       }
     });
 
@@ -314,6 +328,27 @@ export async function updateRouteStopStatus(id: string, isActive: boolean) {
   const result = await prisma.routeStop.updateMany({
     where: { id, isDeleted: false },
     data: { isActive }
+  });
+
+  try {
+    revalidatePath("/admin/master");
+    revalidatePath("/");
+    revalidatePath("/routes");
+  } catch (e) { }
+
+  return result.count > 0;
+}
+
+export async function updateRouteStopFlags(id: string, flags: { canBoarding?: boolean; canAlighting?: boolean }) {
+  const data: { canBoarding?: boolean; canAlighting?: boolean } = {};
+  if (typeof flags.canBoarding === "boolean") data.canBoarding = flags.canBoarding;
+  if (typeof flags.canAlighting === "boolean") data.canAlighting = flags.canAlighting;
+
+  if (Object.keys(data).length === 0) return false;
+
+  const result = await prisma.routeStop.updateMany({
+    where: { id, isDeleted: false },
+    data
   });
 
   try {
@@ -415,8 +450,7 @@ export async function updateTemplateStopTimes(templateId: string, stopTimesJson:
   });
 
   // 2. Update all future generated schedules from this template (WIB departureTime >= today)
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = wibTodayStart();
 
   await prisma.schedule.updateMany({
     where: {

@@ -3,15 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { sendBookingSuccessMessage, sendAdminWhatsAppNotification, sendBookingPendingReminder } from "@/lib/whatsapp";
 import { sendAdminNotification, sendETicket } from "@/lib/mail";
-
-// Helper to get a Date object forced to Jakarta time
-function getJakartaDate(dateStr?: string, hour = 0, minute = 0, second = 0) {
-  const date = dateStr ? new Date(dateStr) : new Date();
-  const jktString = date.toLocaleString("en-US", { timeZone: "Asia/Jakarta" });
-  const jktDate = new Date(jktString);
-  jktDate.setHours(hour, minute, second, 0);
-  return jktDate;
-}
+import { ensureSchedulesForDate, BOOKING_WINDOW_DAYS, dateKeysFromToday, wibStartOfDay, wibEndOfDay } from "@/lib/on-demand-schedules";
 
 export async function getSchedules(
   origin: string, 
@@ -28,9 +20,12 @@ export async function getSchedules(
   const pageSize = options?.pageSize || 10;
   const skip = (page - 1) * pageSize;
 
+  // Materialisasi on-demand untuk tanggal yang dicari (dalam window 30 hari).
+  await ensureSchedulesForDate(prisma, date);
+
   // Create start/end of day in Jakarta timezone context
-  const startOfDay = new Date(`${date}T00:00:00+07:00`);
-  const endOfDay = new Date(`${date}T23:59:59+07:00`);
+  const startOfDay = wibStartOfDay(date);
+  const endOfDay = wibEndOfDay(date);
 
   const absoluteNow = new Date(); 
   const effectiveGte = startOfDay > absoluteNow ? startOfDay : absoluteNow;
@@ -151,9 +146,12 @@ export async function getSchedulesWithStops(
   const pageSize = options?.pageSize || 10;
   const skip = (page - 1) * pageSize;
 
+  // Materialisasi on-demand untuk tanggal yang dicari.
+  await ensureSchedulesForDate(prisma, date);
+
   // Create start/end of day in Jakarta timezone context
-  const startOfDay = new Date(`${date}T00:00:00+07:00`);
-  const endOfDay = new Date(`${date}T23:59:59+07:00`);
+  const startOfDay = wibStartOfDay(date);
+  const endOfDay = wibEndOfDay(date);
 
   const absoluteNow = new Date();
   const effectiveGte = startOfDay > absoluteNow ? startOfDay : absoluteNow;
@@ -171,7 +169,8 @@ export async function getSchedulesWithStops(
         some: {
           isDeleted: false,
           name: { contains: originStop },
-          isActive: true
+          isActive: true,
+          canBoarding: true
         }
       }
     },
@@ -184,9 +183,10 @@ export async function getSchedulesWithStops(
   });
 
   // Filter routes where both selected stops are active and destination comes after origin.
+  // Origin must allow boarding, destination must allow alighting.
   const validRoutes = routesWithStops.filter(route => {
-    const originIndex = route.stops.findIndex(s => s.name.toLowerCase().includes(originStop.toLowerCase()) && s.isActive !== false);
-    const destIndex = route.stops.findIndex(s => s.name.toLowerCase().includes(destStop.toLowerCase()) && s.isActive !== false);
+    const originIndex = route.stops.findIndex(s => s.name.toLowerCase().includes(originStop.toLowerCase()) && s.isActive !== false && s.canBoarding !== false);
+    const destIndex = route.stops.findIndex(s => s.name.toLowerCase().includes(destStop.toLowerCase()) && s.isActive !== false && s.canAlighting !== false);
     return originIndex !== -1 && destIndex !== -1 && destIndex > originIndex;
   });
 
@@ -274,8 +274,8 @@ export async function getSchedulesWithStops(
     const route = schedule.route;
     const allStops = route.stops;
     const activeStops = allStops.filter((s: any) => s.isActive !== false);
-    const origin = activeStops.find((s: any) => s.name.toLowerCase().includes(originStop.toLowerCase()));
-    const dest = activeStops.find((s: any) => s.name.toLowerCase().includes(destStop.toLowerCase()));
+    const origin = activeStops.find((s: any) => s.name.toLowerCase().includes(originStop.toLowerCase()) && s.canBoarding !== false);
+    const dest = activeStops.find((s: any) => s.name.toLowerCase().includes(destStop.toLowerCase()) && s.canAlighting !== false);
     const originIndex = origin ? allStops.findIndex((s: any) => s.id === origin.id) : -1;
     const destIndex = dest ? allStops.findIndex((s: any) => s.id === dest.id) : -1;
 
@@ -313,6 +313,18 @@ export async function getSchedulesWithStops(
 }
 
 export async function getScheduleById(id: string) {
+  // Materialisasi on-demand: kalau schedule dari template belum dibuat, buat dulu.
+  const existing = await prisma.schedule.findUnique({
+    where: { id },
+    select: { templateId: true, departureTime: true },
+  });
+  if (!existing) {
+    const fallback = await prisma.schedule.findUnique({ where: { id }, select: { departureTime: true } });
+    if (fallback) await ensureSchedulesForDate(prisma, fallback.departureTime.toISOString().slice(0, 10));
+  } else if (existing.templateId) {
+    await ensureSchedulesForDate(prisma, existing.departureTime.toISOString().slice(0, 10));
+  }
+
   const schedule = await prisma.schedule.findUnique({
     where: { id },
     include: {
@@ -420,12 +432,20 @@ export async function createBooking(data: {
       ? activeStops.findIndex((stop: any) => stop.name === data.destinationStopName)
       : activeStops.findIndex((stop: any) => stop.id === data.destinationStopId);
 
-    if (originIndex === -1 || destinationIndex <= originIndex) {
+    if (originIndex === -1 || destinationIndex === -1 || destinationIndex <= originIndex) {
       throw new Error("Titik perjalanan tidak valid atau sudah dinonaktifkan.");
     }
 
     const origin = activeStops[originIndex];
     const destination = activeStops[destinationIndex];
+
+    if (origin.canBoarding === false) {
+      throw new Error("Titik naik yang dipilih tidak diizinkan untuk penumpang naik.");
+    }
+    if (destination.canAlighting === false) {
+      throw new Error("Titik turun yang dipilih tidak diizinkan untuk penumpang turun.");
+    }
+
     resolvedOriginStopId = origin.id;
     resolvedDestinationStopId = destination.id;
 
@@ -547,6 +567,8 @@ async function validatePromoCodeById(id: string, totalAmount: number, seatCount 
   // Check Quota
   if (promo.usageLimit && promo.usedCount >= promo.usageLimit) return { valid: false, discount: 0 };
 
+  if (totalAmount < promo.minOrder) return { valid: false, discount: 0 };
+
   let discount = 0;
   if (promo.discountType === 'FIXED') {
     discount = promo.discountValue * seatCount;
@@ -622,6 +644,7 @@ export async function adminCreateBooking(data: {
   paymentMethod: string;
   originStopId?: string;
   destinationStopId?: string;
+  promoCodeId?: string;
 }) {
   const schedule = await prisma.schedule.findUnique({
     where: { id: data.scheduleId },
@@ -636,16 +659,36 @@ export async function adminCreateBooking(data: {
     const activeStops = allStops.filter((stop: any) => stop.isActive !== false);
     const originStop = activeStops.find((s: any) => s.id === data.originStopId);
     const destStop = activeStops.find((s: any) => s.id === data.destinationStopId);
-    const originIdx = originStop ? allStops.findIndex((s: any) => s.id === originStop.id) : -1;
-    const destIdx = destStop ? allStops.findIndex((s: any) => s.id === destStop.id) : -1;
-    if (originStop && destStop && originIdx !== -1 && destIdx > originIdx) {
+
+    if (!originStop) throw new Error("Titik naik tidak valid atau sudah dinonaktifkan.");
+    if (!destStop) throw new Error("Titik turun tidak valid atau sudah dinonaktifkan.");
+    if (originStop.canBoarding === false) throw new Error("Titik naik yang dipilih tidak diizinkan untuk penumpang naik.");
+    if (destStop.canAlighting === false) throw new Error("Titik turun yang dipilih tidak diizinkan untuk penumpang turun.");
+
+    const originIdx = allStops.findIndex((s: any) => s.id === originStop.id);
+    const destIdx = allStops.findIndex((s: any) => s.id === destStop.id);
+    if (originIdx !== -1 && destIdx > originIdx) {
       pricePerSeat = allStops
         .slice(originIdx + 1, destIdx + 1)
         .reduce((sum: number, s: any) => sum + (s.price || 0), 0);
     }
   }
 
-  const totalPrice = pricePerSeat * data.seatNumbers.length;
+  const basePrice = pricePerSeat * data.seatNumbers.length;
+  let discountAmount = 0;
+
+  if (data.promoCodeId) {
+    const promoVal = await validatePromoCodeById(
+      data.promoCodeId,
+      basePrice,
+      data.seatNumbers.length
+    );
+    if (promoVal.valid) {
+      discountAmount = promoVal.discount;
+    }
+  }
+
+  const totalPrice = basePrice - discountAmount;
   const bookingCode = `ADM-${Math.floor(100000 + Math.random() * 900000)}-${data.seatNumbers[0]}`;
 
   return prisma.$transaction(async (tx: any) => {
@@ -657,7 +700,8 @@ export async function adminCreateBooking(data: {
         contactEmail: data.contactEmail || null,
         contactPhone: data.contactPhone,
         totalPrice,
-        discountAmount: 0,
+        discountAmount,
+        promoCodeId: data.promoCodeId,
         paymentMethod: data.paymentMethod,
         status: 'CONFIRMED',
         passengerName: data.passengerNames[0],
@@ -697,6 +741,14 @@ export async function adminCreateBooking(data: {
           },
         })
       ));
+    }
+
+    // Increment promo usage count if a promo code was applied
+    if (data.promoCodeId) {
+      await tx.promoCode.update({
+        where: { id: data.promoCodeId },
+        data: { usedCount: { increment: 1 } }
+      });
     }
 
     // Send WhatsApp notification for admin bookings
@@ -956,6 +1008,11 @@ export async function changeBookingRoute(bookingId: string, newRouteId: string, 
 // Get available schedules for reschedule (same route, future dates)
 export async function getAvailableSchedulesForReschedule(routeId: string, excludeScheduleId: string) {
   const now = new Date();
+
+  // Materialisasi on-demand untuk hari ini s/d akhir window.
+  for (const key of dateKeysFromToday(0, BOOKING_WINDOW_DAYS)) {
+    await ensureSchedulesForDate(prisma, key);
+  }
 
   return prisma.schedule.findMany({
     where: {
@@ -1322,6 +1379,15 @@ export async function editBooking(data: EditBookingData) {
 
 // Get available seats for a schedule
 export async function getAvailableSeatsForSchedule(scheduleId: string) {
+  // Materialisasi on-demand sebelum ambil kursi.
+  const existing = await prisma.schedule.findUnique({
+    where: { id: scheduleId },
+    select: { departureTime: true },
+  });
+  if (existing) {
+    await ensureSchedulesForDate(prisma, existing.departureTime.toISOString().slice(0, 10));
+  }
+
   const schedule = await prisma.schedule.findUnique({
     where: { id: scheduleId },
     include: {
@@ -1344,6 +1410,15 @@ export async function getAvailableSeatsForSchedule(scheduleId: string) {
 }
 
 export async function getScheduleManifest(scheduleId: string) {
+  // Materialisasi on-demand sebelum ambil manifest.
+  const existing = await prisma.schedule.findUnique({
+    where: { id: scheduleId },
+    select: { departureTime: true },
+  });
+  if (existing) {
+    await ensureSchedulesForDate(prisma, existing.departureTime.toISOString().slice(0, 10));
+  }
+
   const schedule = await prisma.schedule.findUnique({
     where: { id: scheduleId },
     include: {

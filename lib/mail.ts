@@ -54,7 +54,7 @@ export async function sendETicket(booking: any) {
       <div style="background: #F8F9FA; padding: 15px; border-radius: 8px; margin: 20px 0;">
         <p><strong>Kode Booking:</strong> ${booking.bookingCode}</p>
         <p><strong>Rute:</strong> ${getOriginPoint(booking)} → ${getDestPoint(booking)}</p>
-        <p><strong>Waktu Keberangkatan:</strong> ${new Date(booking.schedule.departureTime).toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'short' })}</p>
+        <p><strong>Waktu Keberangkatan:</strong> ${new Date(booking.schedule.departureTime).toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'short', timeZone: 'Asia/Jakarta' })}</p>
         <p><strong>Kursi:</strong> ${booking.seats.map((s: any) => s.seatNumber).join(', ')}</p>
         <p><strong>Total Bayar:</strong> Rp ${booking.totalPrice.toLocaleString('id-ID')}</p>
       </div>

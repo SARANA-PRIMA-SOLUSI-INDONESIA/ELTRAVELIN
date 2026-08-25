@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { getSchedules, adminCreateBooking, getAvailableSeatsForSchedule } from "@/app/actions/booking";
+import { getSchedules, adminCreateBooking, getAvailableSeatsForSchedule, validatePromoCode } from "@/app/actions/booking";
 import { showSuccess } from "@/lib/swal";
 
 export default function ManualBookingModal({ onClose }: { onClose: () => void }) {
@@ -28,6 +28,11 @@ export default function ManualBookingModal({ onClose }: { onClose: () => void })
 
   const [originStopId, setOriginStopId] = useState("");
   const [destinationStopId, setDestinationStopId] = useState("");
+
+  const [promoInput, setPromoInput] = useState("");
+  const [promoLoading, setPromoLoading] = useState(false);
+  const [appliedPromo, setAppliedPromo] = useState<{ id: string; discount: number; code: string } | null>(null);
+  const [promoError, setPromoError] = useState("");
 
   useEffect(() => {
     fetchSchedules();
@@ -71,6 +76,15 @@ export default function ManualBookingModal({ onClose }: { onClose: () => void })
     () => stops.filter((stop: any) => stop.isActive !== false),
     [stops]
   );
+  // Stops eligible as boarding (titik naik) / alighting (titik turun)
+  const boardingStops = useMemo(
+    () => activeStops.filter((s: any) => s.canBoarding !== false),
+    [activeStops]
+  );
+  const alightingStops = useMemo(
+    () => activeStops.filter((s: any) => s.canAlighting !== false),
+    [activeStops]
+  );
 
   // Sum prices over ALL non-deleted stops (not just active) so hidden stops
   // (isActive=false) still contribute to the segment price.
@@ -112,6 +126,30 @@ export default function ManualBookingModal({ onClose }: { onClose: () => void })
     if (passengers.length > 1) setPassengers(passengers.filter((_, idx) => idx !== i));
   };
 
+  const handleApplyPromo = async () => {
+    if (!promoInput.trim()) return;
+    setPromoLoading(true);
+    setPromoError("");
+    try {
+      const result = await validatePromoCode(
+        promoInput,
+        effectivePrice * validPassengers.length,
+        validPassengers.length
+      );
+      if (result.valid) {
+        setAppliedPromo({ id: result.promoId!, discount: result.discount!, code: promoInput.trim().toUpperCase() });
+        setPromoInput(promoInput.trim().toUpperCase());
+      } else {
+        setAppliedPromo(null);
+        setPromoError(result.message || "Kode tidak valid");
+      }
+    } catch {
+      setPromoError("Gagal memvalidasi kode");
+    } finally {
+      setPromoLoading(false);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!selectedSchedule) return setError("Pilih jadwal terlebih dahulu");
     if (!contactName.trim() || !contactPhone.trim()) return setError("Nama dan telepon pemesan wajib diisi");
@@ -131,6 +169,7 @@ export default function ManualBookingModal({ onClose }: { onClose: () => void })
         paymentMethod,
         originStopId: originStopId || undefined,
         destinationStopId: destinationStopId || undefined,
+        promoCodeId: appliedPromo?.id,
       });
       await showSuccess({ title: "Berhasil", text: "Booking manual berhasil dibuat! Status CONFIRMED. Notifikasi sudah dikirim ke pelanggan." });
       onClose();
@@ -228,7 +267,7 @@ export default function ManualBookingModal({ onClose }: { onClose: () => void })
               </div>
             )}
 
-            {activeStops.length > 1 && (
+            {boardingStops.length > 0 && alightingStops.length > 0 && (
               <div className="mt-4 p-4 bg-surface-low rounded-2xl space-y-3">
                 <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Pilih Titik Naik/Turun</p>
                 <div className="grid grid-cols-2 gap-3">
@@ -240,7 +279,7 @@ export default function ManualBookingModal({ onClose }: { onClose: () => void })
                       className="w-full px-3 py-2 rounded-lg border border-gray-200 text-xs font-medium focus:border-navy-deep outline-none"
                     >
                       <option value="">-- Pilih --</option>
-                      {activeStops.map((s: any) => (
+                      {boardingStops.map((s: any) => (
                         <option key={s.id} value={s.id}>{s.name} {s.price > 0 ? `(+${s.price.toLocaleString("id-ID")})` : ""}</option>
                       ))}
                     </select>
@@ -254,9 +293,9 @@ export default function ManualBookingModal({ onClose }: { onClose: () => void })
                       className="w-full px-3 py-2 rounded-lg border border-gray-200 text-xs font-medium focus:border-navy-deep outline-none disabled:opacity-40"
                     >
                       <option value="">-- Pilih --</option>
-                      {activeStops.filter((s: any, i: number) => {
-                        const originIdx = activeStops.findIndex((st: any) => st.id === originStopId);
-                        return i > originIdx;
+                      {alightingStops.filter((s: any, i: number) => {
+                        const originIdx = alightingStops.findIndex((st: any) => st.id === originStopId);
+                        return i > originIdx && originIdx !== -1;
                       }).map((s: any) => {
                         const price = calcSegmentPrice(originStopId, s.id) ?? 0;
                         return (
@@ -370,15 +409,51 @@ export default function ManualBookingModal({ onClose }: { onClose: () => void })
                 </div>
               </div>
 
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Kode Promo (opsional)</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={promoInput}
+                    onChange={(e) => setPromoInput(e.target.value)}
+                    placeholder="Masukkan kode promo"
+                    className="flex-1 px-4 py-3 rounded-xl border border-gray-200 focus:border-navy-deep focus:ring-2 focus:ring-navy-deep/20 outline-none uppercase font-bold tracking-widest"
+                  />
+                  <button
+                    onClick={handleApplyPromo}
+                    disabled={promoLoading || !promoInput.trim()}
+                    className="px-6 rounded-xl bg-navy-deep text-white font-medium text-sm hover:bg-navy-deep/90 transition-all disabled:opacity-50"
+                  >
+                    {promoLoading ? "..." : "Pakai"}
+                  </button>
+                </div>
+                {promoError && <p className="text-red-500 text-xs font-medium mt-2">{promoError}</p>}
+                {appliedPromo && (
+                  <p className="text-green-600 text-xs font-bold mt-2">
+                    ✓ Promo {appliedPromo.code} — diskon Rp {appliedPromo.discount.toLocaleString("id-ID")}
+                  </p>
+                )}
+              </div>
+
               {selectedSchedule && (
                 <div className="bg-surface-low p-4 rounded-2xl">
                   <div className="flex justify-between text-xs">
                     <span className="text-gray-500">{selectedSchedule.route?.origin} → {selectedSchedule.route?.destination}</span>
                     <span className="font-bold">{new Date(selectedSchedule.departureTime).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}</span>
                   </div>
-                  <div className="flex justify-between mt-1">
-                    <span className="text-xs text-gray-400">{validPassengers.length} x Rp {effectivePrice.toLocaleString("id-ID")}</span>
+                  <div className="flex justify-between mt-1 text-xs">
+                    <span className="text-gray-400">Subtotal ({validPassengers.length} x Rp {effectivePrice.toLocaleString("id-ID")})</span>
                     <span className="font-bold text-navy-deep">Rp {(effectivePrice * validPassengers.length).toLocaleString("id-ID")}</span>
+                  </div>
+                  {appliedPromo && (
+                    <div className="flex justify-between mt-1 text-xs text-green-600">
+                      <span>Potongan Promo</span>
+                      <span className="font-bold">- Rp {appliedPromo.discount.toLocaleString("id-ID")}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between mt-2 pt-2 border-t border-gray-200 text-sm">
+                    <span className="font-bold text-gray-600">Total</span>
+                    <span className="font-bold text-navy-deep">Rp {Math.max(0, effectivePrice * validPassengers.length - (appliedPromo?.discount || 0)).toLocaleString("id-ID")}</span>
                   </div>
                   {originStopId && destinationStopId && (
                     <p className="text-[10px] text-green-600 mt-1">

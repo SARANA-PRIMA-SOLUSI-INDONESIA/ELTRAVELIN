@@ -24,12 +24,14 @@ model RouteStop {
   name      String
   sequence  Int?
   stopTime  String?
-  price     Int      @default(0)
-  isActive  Boolean  @default(true)
-  isDeleted Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  route     Route    @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  price      Int      @default(0)
+  isActive   Boolean  @default(true)
+  canBoarding  Boolean  @default(true)
+  canAlighting Boolean @default(true)
+  isDeleted  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  route      Route    @relation(fields: [routeId], references: [id], onDelete: Cascade)
   bookingsAsOrigin BookingSegment[] @relation("OriginStop")
   bookingsAsDestination BookingSegment[] @relation("DestinationStop")
 
@@ -55,6 +57,8 @@ model Schedule {
   route           Route             @relation(fields: [routeId], references: [id])
   template        ScheduleTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
   operatingTrip   OperatingTrip?    @relation(fields: [operatingTripId], references: [id], onDelete: Cascade)
+
+  @@unique([templateId, departureTime, isDeleted])
 }
 
 model ScheduleTemplate {
@@ -242,6 +246,7 @@ model Driver {
   phone          String?
   licenseNo      String?
   isActive       Boolean         @default(true)
+  restDayOfWeek  Int?
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
   operatingTrips OperatingTrip[]

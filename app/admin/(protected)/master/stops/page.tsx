@@ -1,6 +1,6 @@
 "use client";
 
-import { createRouteStop, deleteRouteStop, getRouteWithStops, reorderRouteStops, updateRouteStopStatus } from "@/app/actions/admin-master";
+import { createRouteStop, deleteRouteStop, getRouteWithStops, reorderRouteStops, updateRouteStopStatus, updateRouteStopFlags } from "@/app/actions/admin-master";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
@@ -19,6 +19,8 @@ function StopsManagerForm() {
   const [name, setName] = useState("");
   const [price, setPrice] = useState<number>(0);
   const [insertSequence, setInsertSequence] = useState<number>(1);
+  const [canBoarding, setCanBoarding] = useState<boolean>(true);
+  const [canAlighting, setCanAlighting] = useState<boolean>(true);
 
   const activeStops = stops.filter((stop) => stop.isActive !== false);
 
@@ -47,9 +49,11 @@ function StopsManagerForm() {
 
     setLoading(true);
     try {
-      await createRouteStop(routeId, name, Number(insertSequence), undefined, price);
+      await createRouteStop(routeId, name, Number(insertSequence), undefined, price, { canBoarding, canAlighting });
       setName("");
       setPrice(0);
+      setCanBoarding(true);
+      setCanAlighting(true);
       await loadData();
     } catch (error) {
       await showError({ title: "Gagal", text: "Gagal menambahkan titik singgah: " + (error as Error).message });
@@ -76,6 +80,15 @@ function StopsManagerForm() {
   const handleToggleStatus = async (id: string, currentStatus: boolean) => {
     try {
       await updateRouteStopStatus(id, !currentStatus);
+      await loadData();
+    } catch (error) {
+      await showError({ title: "Gagal", text: "Gagal memperbarui status titik singgah: " + (error as Error).message });
+    }
+  };
+
+  const handleToggleFlag = async (id: string, flag: "canBoarding" | "canAlighting", currentValue: boolean) => {
+    try {
+      await updateRouteStopFlags(id, { [flag]: !currentValue });
       await loadData();
     } catch (error) {
       await showError({ title: "Gagal", text: "Gagal memperbarui status titik singgah: " + (error as Error).message });
@@ -176,6 +189,39 @@ function StopsManagerForm() {
               </p>
             </div>
 
+            <div className="flex flex-col gap-3">
+              <label className="text-xs font-bold text-navy-deep uppercase tracking-widest">Peran Titik</label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setCanBoarding((v) => !v)}
+                  className={`flex items-center gap-2 rounded-xl px-4 py-3 text-xs font-bold uppercase tracking-wider border transition-all ${
+                    canBoarding
+                      ? "bg-green-50 border-green-200 text-green-700"
+                      : "bg-surface-low border-outline-ghost text-foreground/40"
+                  }`}
+                >
+                  <i className={`${canBoarding ? "ri-checkbox-circle-fill" : "ri-checkbox-blank-circle-line"} text-sm`}></i>
+                  Titik Naik
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCanAlighting((v) => !v)}
+                  className={`flex items-center gap-2 rounded-xl px-4 py-3 text-xs font-bold uppercase tracking-wider border transition-all ${
+                    canAlighting
+                      ? "bg-green-50 border-green-200 text-green-700"
+                      : "bg-surface-low border-outline-ghost text-foreground/40"
+                  }`}
+                >
+                  <i className={`${canAlighting ? "ri-checkbox-circle-fill" : "ri-checkbox-blank-circle-line"} text-sm`}></i>
+                  Titik Turun
+                </button>
+              </div>
+              <p className="text-[10px] text-foreground/40 mt-1 leading-normal">
+                Aktifkan sesuai apakah titik ini boleh dijadikan titik naik / titik turun penumpang.
+              </p>
+            </div>
+
             <button
               type="submit"
               disabled={loading}
@@ -213,10 +259,19 @@ function StopsManagerForm() {
                     {/* Stop Box card */}
                     <div className={`bg-surface-low border border-transparent hover:border-gold-soft hover:shadow-ambient rounded-2xl p-5 flex items-center justify-between transition-all ${!isActive ? 'opacity-60 grayscale-[40%] bg-surface-low/80 border-dashed border-outline-ghost' : ''}`}>
                       <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-xs font-bold text-gold-warm uppercase tracking-wider">Titik Ke-{stop.sequence}</span>
+                          {stop.canBoarding && (
+                            <span className="bg-green-100 text-green-700 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider">Naik</span>
+                          )}
+                          {stop.canAlighting && (
+                            <span className="bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider">Turun</span>
+                          )}
                           {!isActive && (
                             <span className="bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider">Tersembunyi</span>
+                          )}
+                          {isActive && !stop.canBoarding && !stop.canAlighting && (
+                            <span className="bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider">Transit Saja</span>
                           )}
                         </div>
                         <h3 className="text-base font-display font-bold text-navy-deep uppercase">{stop.name}</h3>
@@ -227,6 +282,28 @@ function StopsManagerForm() {
 
                       {/* Action buttons */}
                       <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => handleToggleFlag(stop.id, "canBoarding", stop.canBoarding)}
+                          className={`w-8 h-8 rounded-lg border transition-all flex items-center justify-center ${
+                            stop.canBoarding
+                              ? "bg-green-50 border-green-100 text-green-600 hover:bg-green-600 hover:text-white"
+                              : "bg-gray-100 border-gray-200 text-gray-400 hover:bg-green-500 hover:text-white"
+                          }`}
+                          title={stop.canBoarding ? "Nonaktifkan Titik Naik" : "Aktifkan Titik Naik"}
+                        >
+                          <i className="ri-user-add-line text-sm"></i>
+                        </button>
+                        <button
+                          onClick={() => handleToggleFlag(stop.id, "canAlighting", stop.canAlighting)}
+                          className={`w-8 h-8 rounded-lg border transition-all flex items-center justify-center ${
+                            stop.canAlighting
+                              ? "bg-blue-50 border-blue-100 text-blue-500 hover:bg-blue-500 hover:text-white"
+                              : "bg-gray-100 border-gray-200 text-gray-400 hover:bg-blue-500 hover:text-white"
+                          }`}
+                          title={stop.canAlighting ? "Nonaktifkan Titik Turun" : "Aktifkan Titik Turun"}
+                        >
+                          <i className="ri-user-unfollow-line text-sm"></i>
+                        </button>
                         <button
                           onClick={() => handleToggleStatus(stop.id, stop.isActive)}
                           className={`w-8 h-8 rounded-lg border transition-all flex items-center justify-center ${
