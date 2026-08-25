@@ -64,10 +64,15 @@ export async function POST(req: Request) {
     });
 
     if (bookingStatus === 'CONFIRMED') {
-      sendETicket(updatedBooking).catch(err => console.error("Error sending Midtrans E-ticket:", err));
-      sendBookingSuccessMessage(updatedBooking).catch(err => console.error("Error sending Midtrans WA success:", err));
-      sendAdminNotification(updatedBooking).catch(err => console.error("Error sending Midtrans admin email:", err));
-      sendAdminWhatsAppNotification(updatedBooking).catch(err => console.error("Error sending Midtrans admin WA:", err));
+      const notifications = await Promise.allSettled([
+        sendETicket(updatedBooking),
+        sendBookingSuccessMessage(updatedBooking),
+        sendAdminNotification(updatedBooking),
+        sendAdminWhatsAppNotification(updatedBooking),
+      ]);
+      notifications.forEach((result) => {
+        if (result.status === "rejected") console.error("[Midtrans] Notification error:", result.reason);
+      });
     }
 
     console.log(`Booking ${order_id} updated to ${bookingStatus}`);
