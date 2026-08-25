@@ -76,6 +76,15 @@ export default function ManualBookingModal({ onClose }: { onClose: () => void })
     () => stops.filter((stop: any) => stop.isActive !== false),
     [stops]
   );
+  // Stops eligible as boarding (titik naik) / alighting (titik turun)
+  const boardingStops = useMemo(
+    () => activeStops.filter((s: any) => s.canBoarding !== false),
+    [activeStops]
+  );
+  const alightingStops = useMemo(
+    () => activeStops.filter((s: any) => s.canAlighting !== false),
+    [activeStops]
+  );
 
   // Sum prices over ALL non-deleted stops (not just active) so hidden stops
   // (isActive=false) still contribute to the segment price.
@@ -258,7 +267,7 @@ export default function ManualBookingModal({ onClose }: { onClose: () => void })
               </div>
             )}
 
-            {activeStops.length > 1 && (
+            {boardingStops.length > 0 && alightingStops.length > 0 && (
               <div className="mt-4 p-4 bg-surface-low rounded-2xl space-y-3">
                 <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Pilih Titik Naik/Turun</p>
                 <div className="grid grid-cols-2 gap-3">
@@ -270,7 +279,7 @@ export default function ManualBookingModal({ onClose }: { onClose: () => void })
                       className="w-full px-3 py-2 rounded-lg border border-gray-200 text-xs font-medium focus:border-navy-deep outline-none"
                     >
                       <option value="">-- Pilih --</option>
-                      {activeStops.map((s: any) => (
+                      {boardingStops.map((s: any) => (
                         <option key={s.id} value={s.id}>{s.name} {s.price > 0 ? `(+${s.price.toLocaleString("id-ID")})` : ""}</option>
                       ))}
                     </select>
@@ -284,9 +293,9 @@ export default function ManualBookingModal({ onClose }: { onClose: () => void })
                       className="w-full px-3 py-2 rounded-lg border border-gray-200 text-xs font-medium focus:border-navy-deep outline-none disabled:opacity-40"
                     >
                       <option value="">-- Pilih --</option>
-                      {activeStops.filter((s: any, i: number) => {
-                        const originIdx = activeStops.findIndex((st: any) => st.id === originStopId);
-                        return i > originIdx;
+                      {alightingStops.filter((s: any, i: number) => {
+                        const originIdx = alightingStops.findIndex((st: any) => st.id === originStopId);
+                        return i > originIdx && originIdx !== -1;
                       }).map((s: any) => {
                         const price = calcSegmentPrice(originStopId, s.id) ?? 0;
                         return (

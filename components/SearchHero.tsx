@@ -18,15 +18,17 @@ export default function SearchHero({ routes = [] }: { routes: any[] }) {
     })) || []
   );
   
-  // Get unique stop names for "Titik Naik" (only active stops)
-  const activeStops = allStops.filter((s: { isActive?: boolean }) => s.isActive !== false);
+  // Get active stops eligible as boarding (titik naik) or alighting (titik turun)
+  const boardingStops = allStops.filter((s: any) => s.isActive !== false && s.canBoarding !== false);
+  const alightingStops = allStops.filter((s: any) => s.isActive !== false && s.canAlighting !== false);
 
-  // Valid destinations for a given origin name (same route, higher sequence, active stops only)
+  // Valid destinations for a given origin name (same route, higher sequence,
+  // origin must allow boarding, destination must allow alighting)
   const getValidDestinationsFor = (originName: string) => {
-    const originStops = activeStops.filter(s => s.name === originName);
+    const originStops = boardingStops.filter(s => s.name === originName);
     const possibleDestinations = new Set<string>();
     for (const origin of originStops) {
-      const routeStops = activeStops.filter(s => s.routeId === origin.routeId);
+      const routeStops = alightingStops.filter(s => s.routeId === origin.routeId);
       const destStops = routeStops.filter(s => s.sequence > origin.sequence);
       destStops.forEach(s => possibleDestinations.add(s.name));
     }
@@ -36,7 +38,7 @@ export default function SearchHero({ routes = [] }: { routes: any[] }) {
   // Only origins that actually have a destination after them. A terminal stop
   // (last stop on its route) must not be selectable/defaultable as origin.
   const uniqueStopNames = Array.from(
-    new Set(activeStops.map(s => s.name).filter(name => getValidDestinationsFor(name).length > 0))
+    new Set(boardingStops.map(s => s.name).filter(name => getValidDestinationsFor(name).length > 0))
   ).sort();
   
   const [originStop, setOriginStop] = useState("");

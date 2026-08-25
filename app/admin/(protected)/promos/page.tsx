@@ -51,6 +51,9 @@ export default async function AdminPromos() {
                   </div>
                 </div>
                 <div className="flex max-w-full flex-wrap items-center gap-2 sm:justify-end">
+                   <Link href={`/admin/promos/edit?id=${promo.id}`} className="w-9 h-9 rounded-lg bg-white border border-outline-ghost text-navy-deep hover:bg-navy-deep hover:text-white transition-all flex items-center justify-center" title="Edit Promo">
+                     <i className="ri-pencil-line"></i>
+                   </Link>
                    <PromoShowToggle id={promo.id} initialStatus={promo.showOnCheckout} />
                    <PromoToggle id={promo.id} initialStatus={promo.isActive} />
                    <DeleteButton id={promo.id} type="promo" />

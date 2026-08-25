@@ -24,12 +24,14 @@ model RouteStop {
   name      String
   sequence  Int?
   stopTime  String?
-  price     Int      @default(0)
-  isActive  Boolean  @default(true)
-  isDeleted Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  route     Route    @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  price      Int      @default(0)
+  isActive   Boolean  @default(true)
+  canBoarding  Boolean  @default(true)
+  canAlighting Boolean @default(true)
+  isDeleted  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  route      Route    @relation(fields: [routeId], references: [id], onDelete: Cascade)
   bookingsAsOrigin BookingSegment[] @relation("OriginStop")
   bookingsAsDestination BookingSegment[] @relation("DestinationStop")
 

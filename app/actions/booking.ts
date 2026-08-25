@@ -169,7 +169,8 @@ export async function getSchedulesWithStops(
         some: {
           isDeleted: false,
           name: { contains: originStop },
-          isActive: true
+          isActive: true,
+          canBoarding: true
         }
       }
     },
@@ -182,9 +183,10 @@ export async function getSchedulesWithStops(
   });
 
   // Filter routes where both selected stops are active and destination comes after origin.
+  // Origin must allow boarding, destination must allow alighting.
   const validRoutes = routesWithStops.filter(route => {
-    const originIndex = route.stops.findIndex(s => s.name.toLowerCase().includes(originStop.toLowerCase()) && s.isActive !== false);
-    const destIndex = route.stops.findIndex(s => s.name.toLowerCase().includes(destStop.toLowerCase()) && s.isActive !== false);
+    const originIndex = route.stops.findIndex(s => s.name.toLowerCase().includes(originStop.toLowerCase()) && s.isActive !== false && s.canBoarding !== false);
+    const destIndex = route.stops.findIndex(s => s.name.toLowerCase().includes(destStop.toLowerCase()) && s.isActive !== false && s.canAlighting !== false);
     return originIndex !== -1 && destIndex !== -1 && destIndex > originIndex;
   });
 
@@ -272,8 +274,8 @@ export async function getSchedulesWithStops(
     const route = schedule.route;
     const allStops = route.stops;
     const activeStops = allStops.filter((s: any) => s.isActive !== false);
-    const origin = activeStops.find((s: any) => s.name.toLowerCase().includes(originStop.toLowerCase()));
-    const dest = activeStops.find((s: any) => s.name.toLowerCase().includes(destStop.toLowerCase()));
+    const origin = activeStops.find((s: any) => s.name.toLowerCase().includes(originStop.toLowerCase()) && s.canBoarding !== false);
+    const dest = activeStops.find((s: any) => s.name.toLowerCase().includes(destStop.toLowerCase()) && s.canAlighting !== false);
     const originIndex = origin ? allStops.findIndex((s: any) => s.id === origin.id) : -1;
     const destIndex = dest ? allStops.findIndex((s: any) => s.id === dest.id) : -1;
 
@@ -430,12 +432,20 @@ export async function createBooking(data: {
       ? activeStops.findIndex((stop: any) => stop.name === data.destinationStopName)
       : activeStops.findIndex((stop: any) => stop.id === data.destinationStopId);
 
-    if (originIndex === -1 || destinationIndex <= originIndex) {
+    if (originIndex === -1 || destinationIndex === -1 || destinationIndex <= originIndex) {
       throw new Error("Titik perjalanan tidak valid atau sudah dinonaktifkan.");
     }
 
     const origin = activeStops[originIndex];
     const destination = activeStops[destinationIndex];
+
+    if (origin.canBoarding === false) {
+      throw new Error("Titik naik yang dipilih tidak diizinkan untuk penumpang naik.");
+    }
+    if (destination.canAlighting === false) {
+      throw new Error("Titik turun yang dipilih tidak diizinkan untuk penumpang turun.");
+    }
+
     resolvedOriginStopId = origin.id;
     resolvedDestinationStopId = destination.id;
 
@@ -649,9 +659,15 @@ export async function adminCreateBooking(data: {
     const activeStops = allStops.filter((stop: any) => stop.isActive !== false);
     const originStop = activeStops.find((s: any) => s.id === data.originStopId);
     const destStop = activeStops.find((s: any) => s.id === data.destinationStopId);
-    const originIdx = originStop ? allStops.findIndex((s: any) => s.id === originStop.id) : -1;
-    const destIdx = destStop ? allStops.findIndex((s: any) => s.id === destStop.id) : -1;
-    if (originStop && destStop && originIdx !== -1 && destIdx > originIdx) {
+
+    if (!originStop) throw new Error("Titik naik tidak valid atau sudah dinonaktifkan.");
+    if (!destStop) throw new Error("Titik turun tidak valid atau sudah dinonaktifkan.");
+    if (originStop.canBoarding === false) throw new Error("Titik naik yang dipilih tidak diizinkan untuk penumpang naik.");
+    if (destStop.canAlighting === false) throw new Error("Titik turun yang dipilih tidak diizinkan untuk penumpang turun.");
+
+    const originIdx = allStops.findIndex((s: any) => s.id === originStop.id);
+    const destIdx = allStops.findIndex((s: any) => s.id === destStop.id);
+    if (originIdx !== -1 && destIdx > originIdx) {
       pricePerSeat = allStops
         .slice(originIdx + 1, destIdx + 1)
         .reduce((sum: number, s: any) => sum + (s.price || 0), 0);

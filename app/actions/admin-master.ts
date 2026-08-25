@@ -214,7 +214,14 @@ export async function deleteSchedule(id: string) {
 
 // --- RouteStop Actions ---
 
-export async function createRouteStop(routeId: string, name: string, sequence: number, stopTime?: string, price?: number) {
+export async function createRouteStop(
+  routeId: string,
+  name: string,
+  sequence: number,
+  stopTime?: string,
+  price?: number,
+  flags?: { canBoarding?: boolean; canAlighting?: boolean }
+) {
   const result = await prisma.$transaction(async (tx) => {
     // 1. Get all stops with sequence >= input sequence, ordered descending
     const stopsToShift = await tx.routeStop.findMany({
@@ -244,7 +251,9 @@ export async function createRouteStop(routeId: string, name: string, sequence: n
         name,
         sequence,
         stopTime: stopTime || null,
-        price: price || 0
+        price: price || 0,
+        canBoarding: flags?.canBoarding ?? true,
+        canAlighting: flags?.canAlighting ?? true,
       }
     });
 
@@ -319,6 +328,27 @@ export async function updateRouteStopStatus(id: string, isActive: boolean) {
   const result = await prisma.routeStop.updateMany({
     where: { id, isDeleted: false },
     data: { isActive }
+  });
+
+  try {
+    revalidatePath("/admin/master");
+    revalidatePath("/");
+    revalidatePath("/routes");
+  } catch (e) { }
+
+  return result.count > 0;
+}
+
+export async function updateRouteStopFlags(id: string, flags: { canBoarding?: boolean; canAlighting?: boolean }) {
+  const data: { canBoarding?: boolean; canAlighting?: boolean } = {};
+  if (typeof flags.canBoarding === "boolean") data.canBoarding = flags.canBoarding;
+  if (typeof flags.canAlighting === "boolean") data.canAlighting = flags.canAlighting;
+
+  if (Object.keys(data).length === 0) return false;
+
+  const result = await prisma.routeStop.updateMany({
+    where: { id, isDeleted: false },
+    data
   });
 
   try {
