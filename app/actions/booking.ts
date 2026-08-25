@@ -5,6 +5,18 @@ import { sendBookingSuccessMessage, sendAdminWhatsAppNotification, sendBookingPe
 import { sendAdminNotification, sendETicket } from "@/lib/mail";
 import { ensureSchedulesForDate, BOOKING_WINDOW_DAYS, dateKeysFromToday, wibStartOfDay, wibEndOfDay } from "@/lib/on-demand-schedules";
 
+async function sendNotificationsIndependently(
+  label: string,
+  notifications: Array<{ name: string; task: Promise<unknown> }>
+) {
+  const results = await Promise.allSettled(notifications.map(({ task }) => task));
+  results.forEach((result, index) => {
+    if (result.status === "rejected") {
+      console.error(`[Notifications] ${label} ${notifications[index].name} failed:`, result.reason);
+    }
+  });
+}
+
 export async function getSchedules(
   origin: string, 
   destination: string, 
@@ -548,9 +560,11 @@ export async function createBooking(data: {
       destinationStop: schedule.route.stops.find((s: any) => s.id === resolvedDestinationStopId),
     },
   };
-  sendAdminWhatsAppNotification(notificationData).catch(err => console.error("Admin WA notif error:", err));
-  sendBookingPendingReminder(notificationData).catch(err => console.error("Customer WA pending notif error:", err));
-  sendAdminNotification(notificationData).catch(err => console.error("Admin email notif error:", err));
+  await sendNotificationsIndependently("customer booking", [
+    { name: "admin WhatsApp", task: sendAdminWhatsAppNotification(notificationData) },
+    { name: "customer WhatsApp", task: sendBookingPendingReminder(notificationData) },
+    { name: "admin email", task: sendAdminNotification(notificationData) },
+  ]);
 
   return booking;
 }
@@ -768,10 +782,12 @@ export async function adminCreateBooking(data: {
         : undefined,
     };
 
-    sendETicket(notificationData).catch(err => console.error("Error sending admin E-ticket:", err));
-    sendBookingSuccessMessage(notificationData).catch(err => console.error("Error sending admin WA success:", err));
-    sendAdminWhatsAppNotification(notificationData).catch(err => console.error("Admin WA notif error:", err));
-    sendAdminNotification(notificationData).catch(err => console.error("Error sending admin email:", err));
+    await sendNotificationsIndependently("admin booking", [
+      { name: "customer email", task: sendETicket(notificationData) },
+      { name: "customer WhatsApp", task: sendBookingSuccessMessage(notificationData) },
+      { name: "admin WhatsApp", task: sendAdminWhatsAppNotification(notificationData) },
+      { name: "admin email", task: sendAdminNotification(notificationData) },
+    ]);
 
     return booking;
   });

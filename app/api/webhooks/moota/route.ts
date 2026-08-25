@@ -83,10 +83,15 @@ export async function POST(request: Request) {
         },
       });
 
-      sendETicket(updatedBooking).catch((err) => console.error("[Moota] Error sending E-ticket:", err));
-      sendBookingSuccessMessage(updatedBooking).catch((err) => console.error("[Moota] Error sending WA:", err));
-      sendAdminNotification(updatedBooking).catch((err) => console.error("[Moota] Error sending admin email:", err));
-      sendAdminWhatsAppNotification(updatedBooking).catch((err) => console.error("[Moota] Error sending admin WA:", err));
+      const notifications = await Promise.allSettled([
+        sendETicket(updatedBooking),
+        sendBookingSuccessMessage(updatedBooking),
+        sendAdminNotification(updatedBooking),
+        sendAdminWhatsAppNotification(updatedBooking),
+      ]);
+      notifications.forEach((result) => {
+        if (result.status === "rejected") console.error("[Moota] Notification error:", result.reason);
+      });
 
       console.log(`[Moota] Booking ${booking.bookingCode} confirmed, E-Ticket sent`);
     }

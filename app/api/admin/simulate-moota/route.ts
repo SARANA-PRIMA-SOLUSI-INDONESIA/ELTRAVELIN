@@ -88,11 +88,17 @@ export async function POST(request: Request) {
       }
     });
 
-    // Kirim notifikasi
-    sendETicket(updatedBooking).catch(err => console.error("Error sending E-ticket:", err));
-    sendBookingSuccessMessage(updatedBooking).catch(err => console.error("Error sending WA:", err));
-    sendAdminNotification(updatedBooking).catch(err => console.error("Error sending admin email:", err));
-    sendAdminWhatsAppNotification(updatedBooking).catch(err => console.error("Error sending admin WA:", err));
+    // Kirim setiap kanal secara independen. Kegagalan satu provider tidak
+    // boleh menghentikan kanal notifikasi lainnya.
+    const notifications = await Promise.allSettled([
+      sendETicket(updatedBooking),
+      sendBookingSuccessMessage(updatedBooking),
+      sendAdminNotification(updatedBooking),
+      sendAdminWhatsAppNotification(updatedBooking),
+    ]);
+    notifications.forEach((result) => {
+      if (result.status === "rejected") console.error("[SimulateMoota] Notification error:", result.reason);
+    });
 
     return NextResponse.json({
       success: true,

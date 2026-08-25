@@ -32,13 +32,15 @@ async function sendMail(to: string, subject: string, html: string) {
     const data = await res.json();
 
     if (!res.ok) {
-      console.error('Resend API error:', JSON.stringify(data));
-      return;
+      const error = new Error(`Resend API error (${res.status}): ${JSON.stringify(data)}`);
+      console.error(error.message);
+      throw error;
     }
 
     console.log(`Email sent to ${to}, id: ${data.id}`);
   } catch (error) {
     console.error('Failed to send email:', error);
+    throw error;
   }
 }
 

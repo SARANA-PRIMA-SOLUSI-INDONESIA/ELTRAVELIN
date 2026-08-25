@@ -10,10 +10,10 @@ function getDestPoint(booking: any) {
 }
 
 export async function sendWhatsAppMessage(to: string, message: string) {
-  const apiKey = process.env.STARSENDER_API_KEY;
+  const apiKey = process.env.STARSENDER_API_KEY?.trim();
 
   if (!apiKey) {
-    return { success: false, message: "API Key tidak terbaca." };
+    throw new Error("STARSENDER_API_KEY tidak terbaca di server.");
   }
 
   let formattedTo = to.replace(/[^0-9]/g, '');
@@ -21,6 +21,9 @@ export async function sendWhatsAppMessage(to: string, message: string) {
     formattedTo = '62' + formattedTo.slice(1);
   } else if (!formattedTo.startsWith('62')) {
     formattedTo = '62' + formattedTo;
+  }
+  if (!/^62\d{8,13}$/.test(formattedTo)) {
+    throw new Error(`Nomor WhatsApp tidak valid setelah normalisasi: ${formattedTo}`);
   }
 
   try {
@@ -38,8 +41,33 @@ export async function sendWhatsAppMessage(to: string, message: string) {
       })
     });
 
-    const result = await response.json();
-    return result;
+    const responseText = await response.text();
+    let result: unknown;
+    try {
+      result = responseText ? JSON.parse(responseText) : null;
+    } catch {
+      result = responseText;
+    }
+
+    if (!response.ok) {
+      const error = new Error(`StarSender API error (${response.status}): ${JSON.stringify(result)}`);
+      console.error(error.message);
+      throw error;
+    }
+
+    if (
+      result &&
+      typeof result === "object" &&
+      ("success" in result && result.success === false ||
+        "status" in result && result.status === false ||
+        "error" in result && Boolean(result.error))
+    ) {
+      const error = new Error(`StarSender menolak pesan: ${JSON.stringify(result)}`);
+      console.error(error.message);
+      throw error;
+    }
+
+    return result as { success: boolean; message: string };
   } catch (error) {
     console.error("Failed to send WhatsApp message:", error);
     throw error;
