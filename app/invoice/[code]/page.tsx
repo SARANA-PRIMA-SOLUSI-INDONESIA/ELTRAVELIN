@@ -17,6 +17,10 @@ export default async function InvoicePage({ params }: InvoiceProps) {
   const booking = await getBookingByCode(code);
   if (!booking || booking.status !== 'CONFIRMED') return notFound();
   const partnershipLogoUrls = await getPartnershipLogos();
+  const selectedOrigin = booking.segment?.originStop.name || booking.schedule.route.origin;
+  const selectedDestination = booking.segment?.destinationStop.name || booking.schedule.route.destination;
+  const pricePerTicket = booking.segment?.basePrice || booking.schedule.price;
+  const ticketSubtotal = pricePerTicket * booking.passengers.length;
 
   const dateTimeOptions = {
     day: 'numeric',
@@ -91,7 +95,7 @@ export default async function InvoicePage({ params }: InvoiceProps) {
               <div className="space-y-3">
                 <div>
                   <p className="text-xs text-gray-400">Rute</p>
-                  <p className="font-bold text-navy-deep">{booking.schedule.route.origin} → {booking.schedule.route.destination}</p>
+                  <p className="font-bold text-navy-deep">{selectedOrigin} → {selectedDestination}</p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-400">Tanggal Keberangkatan</p>
@@ -162,8 +166,8 @@ export default async function InvoicePage({ params }: InvoiceProps) {
             <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Ringkasan Pembayaran</h3>
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Harga Tiket ({booking.passengers.length} x {booking.schedule.price.toLocaleString('id-ID')})</span>
-                <span className="font-medium">Rp {(booking.passengers.length * booking.schedule.price).toLocaleString('id-ID')}</span>
+                <span className="text-gray-500">Harga Tiket ({booking.passengers.length} x {pricePerTicket.toLocaleString('id-ID')})</span>
+                <span className="font-medium">Rp {ticketSubtotal.toLocaleString('id-ID')}</span>
               </div>
               {booking.discountAmount > 0 && (
                 <div className="flex justify-between text-sm text-green-600">

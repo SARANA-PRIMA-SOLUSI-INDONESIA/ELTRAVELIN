@@ -23,6 +23,8 @@ export default async function SeatSelection({ searchParams }: SeatSelectionProps
 
   const schedule = await getScheduleById(scheduleId);
   if (!schedule) return notFound();
+  const displayOrigin = originStopName || schedule.route.origin;
+  const displayDestination = destinationStopName || schedule.route.destination;
 
   // Redirect if schedule has already departed
   if (schedule.departureTime < new Date()) {
@@ -47,7 +49,7 @@ export default async function SeatSelection({ searchParams }: SeatSelectionProps
       <div className="bg-gold-warm py-4 px-6 md:px-12 lg:px-24">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="flex flex-col">
-            <span className="font-display font-bold text-navy-deep">{schedule.route.origin} - {schedule.route.destination}</span>
+            <span className="font-display font-bold text-navy-deep">{displayOrigin} - {displayDestination}</span>
             <span className="text-xs text-navy-deep/70">
               {new Date(schedule.departureTime).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' })} • {schedule.vehicleType}
             </span>
