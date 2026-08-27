@@ -15,7 +15,8 @@ export async function POST(req: Request) {
       gross_amount,
       signature_key,
       transaction_status,
-      payment_type
+      payment_type,
+      transaction_time
     } = body;
 
     const serverKey = process.env.MIDTRANS_SERVER_KEY!;
@@ -44,7 +45,9 @@ export async function POST(req: Request) {
       data: { 
         status: bookingStatus,
         paymentType: payment_type,
-        settlementTime: (transaction_status === 'settlement' || transaction_status === 'capture') ? new Date() : null
+        settlementTime: (transaction_status === 'settlement' || transaction_status === 'capture')
+          ? (transaction_time ? new Date(transaction_time) : new Date())
+          : null
       },
       include: {
         schedule: {

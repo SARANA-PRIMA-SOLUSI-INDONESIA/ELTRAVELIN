@@ -18,27 +18,21 @@ export default async function InvoicePage({ params }: InvoiceProps) {
   if (!booking || booking.status !== 'CONFIRMED') return notFound();
   const partnershipLogoUrls = await getPartnershipLogos();
 
-  const formattedDate = new Date().toLocaleDateString('id-ID', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric'
-  });
-
-  const bookingDate = booking.createdAt.toLocaleDateString('id-ID', {
+  const dateTimeOptions = {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
     hour: '2-digit',
-    minute: '2-digit'
-  });
+    minute: '2-digit',
+    timeZone: 'Asia/Jakarta',
+  } as const;
 
-  const settlementDate = booking.settlementTime?.toLocaleDateString('id-ID', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  }) || '-';
+  const bookingDate = booking.createdAt.toLocaleString('id-ID', dateTimeOptions);
+
+  // Legacy confirmed bookings may not have settlementTime; createdAt is the
+  // only reliable payment timestamp available for those records.
+  const settlementDate = (booking.settlementTime || booking.createdAt).toLocaleString('id-ID', dateTimeOptions);
+  const invoiceDate = (booking.settlementTime || booking.createdAt).toLocaleString('id-ID', dateTimeOptions);
 
   return (
     <div className="invoice-page min-h-screen bg-gray-100 py-8 px-4">
@@ -68,7 +62,7 @@ export default async function InvoicePage({ params }: InvoiceProps) {
                 <div className="bg-green-500 text-white px-4 py-2 rounded-lg text-sm font-bold">
                   LUNAS
                 </div>
-                <p className="text-white/60 text-xs mt-2">{formattedDate}</p>
+                <p className="text-white/60 text-xs mt-2">{invoiceDate}</p>
               </div>
             </div>
           </div>
@@ -211,7 +205,7 @@ export default async function InvoicePage({ params }: InvoiceProps) {
               Terima kasih telah menggunakan layanan EL Travel. Invoice ini sah sebagai bukti pembayaran.
             </p>
             <p className="text-[10px] text-gray-400 mt-2">
-              Dicetak dari sistem EL Travel pada {formattedDate}
+              Diterbitkan oleh sistem EL Travel pada {invoiceDate}
             </p>
           </div>
         </div>

@@ -60,11 +60,17 @@ export async function POST(request: Request) {
 
       console.log(`[Moota] MATCH! Booking ${booking.bookingCode}, updating to CONFIRMED`);
 
+      const providerDate = mutation.date ?? mutation.transaction_date ?? mutation.created_at ?? mutation.timestamp;
+      const parsedProviderDate = providerDate ? new Date(providerDate) : null;
+      const settlementTime = parsedProviderDate && !Number.isNaN(parsedProviderDate.getTime())
+        ? parsedProviderDate
+        : new Date();
+
       const updatedBooking = await prisma.booking.update({
         where: { id: booking.id },
         data: {
           status: "CONFIRMED",
-          settlementTime: new Date(),
+          settlementTime,
         },
         include: {
           schedule: {
