@@ -619,7 +619,13 @@ export async function getBookingByCode(code: string) {
         }
       },
       seats: true,
-      passengers: true
+      passengers: true,
+      segment: {
+        include: {
+          originStop: true,
+          destinationStop: true,
+        },
+      },
     }
   });
 }

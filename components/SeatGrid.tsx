@@ -115,6 +115,12 @@ export default function SeatGrid({ initialSeats, scheduleId, price, originStopId
         <h2 className="text-xl font-display font-bold text-navy-deep">Detail Pesanan</h2>
         
         <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-1 text-sm">
+            <span className="text-foreground/40 font-medium">Rute Dipilih</span>
+            <span className="text-navy-deep font-bold leading-relaxed">
+              {originStopName || 'Rute utama'} → {destinationStopName || 'Rute utama'}
+            </span>
+          </div>
           <div className="flex justify-between items-center text-sm">
             <span className="text-foreground/40 font-medium">Layanan</span>
             <span className="text-navy-deep font-bold italic">Executive</span>
