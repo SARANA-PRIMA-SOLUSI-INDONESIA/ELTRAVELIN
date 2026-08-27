@@ -718,6 +718,7 @@ export async function adminCreateBooking(data: {
         promoCodeId: data.promoCodeId,
         paymentMethod: data.paymentMethod,
         status: 'CONFIRMED',
+        settlementTime: new Date(),
         passengerName: data.passengerNames[0],
         passengerPhone: data.contactPhone,
         passengerEmail: data.contactEmail || null,
