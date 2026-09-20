@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { sendBookingSuccessMessage, sendAdminWhatsAppNotification, sendBookingPendingReminder } from "@/lib/whatsapp";
 import { sendAdminNotification, sendETicket } from "@/lib/mail";
 import { ensureSchedulesForDate, BOOKING_WINDOW_DAYS, dateKeysFromToday, wibStartOfDay, wibEndOfDay } from "@/lib/on-demand-schedules";
+import { getPickupConfig } from "@/lib/pickup-server";
+import { calcPickupFee, findPickupCity, recalcPickupFee, validatePickupLocation } from "@/lib/pickup";
 
 async function sendNotificationsIndependently(
   label: string,
@@ -418,6 +420,10 @@ export async function createBooking(data: {
   originStopName?: string;
   destinationStopName?: string;
   segmentPrice?: number;
+  pickupLat?: number;
+  pickupLng?: number;
+  pickupAddress?: string;
+  pickupNote?: string;
 }) {
   const schedule = await prisma.schedule.findUnique({
     where: { id: data.scheduleId },
@@ -485,8 +491,29 @@ export async function createBooking(data: {
     }
   }
 
+  let pickupFee = 0;
+  let pickupCityName: string | null = null;
+  let pickupZoneLabel: string | null = null;
+  let pickupDistanceKm: number | null = null;
+  if (data.pickupLat != null && data.pickupLng != null) {
+    const pickupConfig = await getPickupConfig();
+    const location = validatePickupLocation(
+      pickupConfig,
+      schedule.route.origin,
+      data.pickupLat,
+      data.pickupLng,
+      data.originStopName
+    );
+    if (!location.ok) throw new Error(location.error);
+    if (!data.pickupAddress?.trim()) throw new Error("Alamat penjemputan wajib diisi.");
+    pickupFee = calcPickupFee(location.zone, data.seatNumbers.length);
+    pickupCityName = location.city.name;
+    pickupZoneLabel = location.zone.label;
+    pickupDistanceKm = location.distanceKm;
+  }
+
   const uniqueCode = Math.floor(100 + Math.random() * 899);
-  const totalPrice = (basePrice - discountAmount) + uniqueCode;
+  const totalPrice = (basePrice - discountAmount) + pickupFee + uniqueCode;
   const bookingCode = `EL-${Math.floor(100000 + Math.random() * 900000)}-${data.seatNumbers[0]}`;
 
   const booking = await prisma.$transaction(async (tx: any) => {
@@ -499,6 +526,15 @@ export async function createBooking(data: {
         contactPhone: data.contactPhone,
         totalPrice,
         discountAmount,
+        pickupRequested: pickupFee > 0,
+        pickupCity: pickupCityName,
+        pickupZone: pickupZoneLabel,
+        pickupAddress: data.pickupAddress?.trim() || null,
+        pickupNote: data.pickupNote?.trim() || null,
+        pickupFee,
+        pickupLat: data.pickupLat ?? null,
+        pickupLng: data.pickupLng ?? null,
+        pickupDistanceKm,
         promoCodeId: data.promoCodeId,
         paymentMethod: data.paymentMethod || 'UNSET',
         status: 'PENDING',
@@ -523,8 +559,10 @@ export async function createBooking(data: {
     }
 
     if (schedule.operatingTripId) {
-      await Promise.all(data.seatNumbers.map(num => 
-        tx.seat.update({
+      // Sequential (bukan Promise.all): query paralel di interactive transaction
+      // dengan driver adapter bisa dieksekusi di luar transaksi sehingga FK bookingId gagal.
+      for (const num of data.seatNumbers) {
+        await tx.seat.update({
           where: {
             operatingTripId_seatNumber: {
               operatingTripId: schedule.operatingTripId as string,
@@ -535,8 +573,8 @@ export async function createBooking(data: {
             status: 'BOOKED',
             bookingId: booking.id,
           },
-        })
-      ));
+        });
+      }
     }
 
     if (data.promoCodeId) {
@@ -665,6 +703,10 @@ export async function adminCreateBooking(data: {
   originStopId?: string;
   destinationStopId?: string;
   promoCodeId?: string;
+  pickupLat?: number;
+  pickupLng?: number;
+  pickupAddress?: string;
+  pickupNote?: string;
 }) {
   const schedule = await prisma.schedule.findUnique({
     where: { id: data.scheduleId },
@@ -708,7 +750,31 @@ export async function adminCreateBooking(data: {
     }
   }
 
-  const totalPrice = basePrice - discountAmount;
+  let pickupFee = 0;
+  let pickupCityName: string | null = null;
+  let pickupZoneLabel: string | null = null;
+  let pickupDistanceKm: number | null = null;
+  if (data.pickupLat != null && data.pickupLng != null) {
+    const pickupConfig = await getPickupConfig();
+    const boardingStopName = data.originStopId
+      ? schedule.route.stops.find((stop: { id: string; name: string }) => stop.id === data.originStopId)?.name || null
+      : null;
+    const location = validatePickupLocation(
+      pickupConfig,
+      schedule.route.origin,
+      data.pickupLat,
+      data.pickupLng,
+      boardingStopName
+    );
+    if (!location.ok) throw new Error(location.error);
+    if (!data.pickupAddress?.trim()) throw new Error("Alamat penjemputan wajib diisi.");
+    pickupFee = calcPickupFee(location.zone, data.seatNumbers.length);
+    pickupCityName = location.city.name;
+    pickupZoneLabel = location.zone.label;
+    pickupDistanceKm = location.distanceKm;
+  }
+
+  const totalPrice = basePrice - discountAmount + pickupFee;
   const bookingCode = `ADM-${Math.floor(100000 + Math.random() * 900000)}-${data.seatNumbers[0]}`;
 
   return prisma.$transaction(async (tx: any) => {
@@ -721,6 +787,15 @@ export async function adminCreateBooking(data: {
         contactPhone: data.contactPhone,
         totalPrice,
         discountAmount,
+        pickupRequested: pickupFee > 0,
+        pickupCity: pickupCityName,
+        pickupZone: pickupZoneLabel,
+        pickupAddress: data.pickupAddress?.trim() || null,
+        pickupNote: data.pickupNote?.trim() || null,
+        pickupFee,
+        pickupLat: data.pickupLat ?? null,
+        pickupLng: data.pickupLng ?? null,
+        pickupDistanceKm,
         promoCodeId: data.promoCodeId,
         paymentMethod: data.paymentMethod,
         status: 'CONFIRMED',
@@ -748,8 +823,9 @@ export async function adminCreateBooking(data: {
 
     // 2. Update all selected seats status for the physical vehicle trip
     if (schedule.operatingTripId) {
-      await Promise.all(data.seatNumbers.map(num => 
-        tx.seat.update({
+      // Sequential — lihat catatan di createBooking.
+      for (const num of data.seatNumbers) {
+        await tx.seat.update({
           where: {
             operatingTripId_seatNumber: {
               operatingTripId: schedule.operatingTripId as string,
@@ -760,8 +836,8 @@ export async function adminCreateBooking(data: {
             status: 'BOOKED',
             bookingId: booking.id,
           },
-        })
-      ));
+        });
+      }
     }
 
     // Increment promo usage count if a promo code was applied
@@ -846,6 +922,15 @@ export async function rescheduleBooking(bookingId: string, newScheduleId: string
   if (!newSchedule) throw new Error("Jadwal baru tidak ditemukan");
   if (newSchedule.departureTime < new Date()) throw new Error("Jadwal baru sudah berlalu");
 
+  const pickupConfig = await getPickupConfig();
+  const passengerCount = booking.seats.length || 1;
+  const pickupFee = booking.pickupRequested
+    ? recalcPickupFee(pickupConfig, booking.pickupCity, booking.pickupZone, passengerCount, booking.pickupDistanceKm)
+    : 0;
+  const pickupData = pickupFee > 0
+    ? { pickupRequested: true, pickupFee }
+    : { pickupRequested: false, pickupFee: 0, pickupCity: null, pickupZone: null, pickupAddress: null, pickupNote: null, pickupLat: null, pickupLng: null, pickupDistanceKm: null };
+
   return prisma.$transaction(async (tx: any) => {
     // Release old seats
     if (booking.schedule.operatingTripId) {
@@ -860,7 +945,6 @@ export async function rescheduleBooking(bookingId: string, newScheduleId: string
 
     // Calculate new price
     const pricePerSeat = newSchedule.price;
-    const passengerCount = booking.seats.length || 1;
     const newTotalPrice = pricePerSeat * passengerCount;
 
     // Update booking with new schedule
@@ -868,8 +952,9 @@ export async function rescheduleBooking(bookingId: string, newScheduleId: string
       where: { id: bookingId },
       data: {
         scheduleId: newScheduleId,
-        totalPrice: newTotalPrice,
-        discountAmount: 0
+        totalPrice: newTotalPrice + pickupFee,
+        discountAmount: 0,
+        ...pickupData,
       },
       include: {
         schedule: { include: { route: true } },
@@ -962,6 +1047,19 @@ export async function changeBookingRoute(bookingId: string, newRouteId: string, 
   if (!newSchedule) throw new Error("Jadwal baru tidak ditemukan");
   if (newSchedule.routeId !== newRouteId) throw new Error("Jadwal tidak sesuai dengan rute");
 
+  const pickupConfig = await getPickupConfig();
+  const passengerCount = booking.seats.length || 1;
+  const newPickupCity = findPickupCity(pickupConfig, newSchedule.route.origin);
+  const keepPickup = Boolean(
+    booking.pickupRequested && newPickupCity && newPickupCity.name === booking.pickupCity
+  );
+  const pickupFee = keepPickup
+    ? recalcPickupFee(pickupConfig, booking.pickupCity, booking.pickupZone, passengerCount, booking.pickupDistanceKm)
+    : 0;
+  const pickupData = pickupFee > 0
+    ? { pickupRequested: true, pickupFee }
+    : { pickupRequested: false, pickupFee: 0, pickupCity: null, pickupZone: null, pickupAddress: null, pickupNote: null, pickupLat: null, pickupLng: null, pickupDistanceKm: null };
+
   return prisma.$transaction(async (tx: any) => {
     // Release old seats
     if (booking.schedule.operatingTripId) {
@@ -976,7 +1074,6 @@ export async function changeBookingRoute(bookingId: string, newRouteId: string, 
 
     // Calculate new price
     const pricePerSeat = newSchedule.price;
-    const passengerCount = booking.seats.length || 1;
     const newTotalPrice = pricePerSeat * passengerCount;
 
     // Delete old segment if exists
@@ -991,8 +1088,9 @@ export async function changeBookingRoute(bookingId: string, newRouteId: string, 
       where: { id: bookingId },
       data: {
         scheduleId: newScheduleId,
-        totalPrice: newTotalPrice,
-        discountAmount: 0
+        totalPrice: newTotalPrice + pickupFee,
+        discountAmount: 0,
+        ...pickupData,
       },
       include: {
         schedule: { include: { route: true } },
@@ -1159,6 +1257,19 @@ export async function editBooking(data: EditBookingData) {
     if (!newSchedule) throw new Error("Jadwal baru tidak ditemukan");
     if (newSchedule.routeId !== data.newRouteId) throw new Error("Jadwal tidak sesuai dengan rute");
 
+    const pickupConfig = await getPickupConfig();
+    const passengerCount = data.passengers?.length || booking.passengers.length || 1;
+    const newPickupCity = findPickupCity(pickupConfig, newSchedule.route.origin);
+    const keepPickup = Boolean(
+      booking.pickupRequested && newPickupCity && newPickupCity.name === booking.pickupCity
+    );
+    const pickupFee = keepPickup
+      ? recalcPickupFee(pickupConfig, booking.pickupCity, booking.pickupZone, passengerCount, booking.pickupDistanceKm)
+      : 0;
+    const pickupData = pickupFee > 0
+      ? { pickupRequested: true, pickupFee }
+      : { pickupRequested: false, pickupFee: 0, pickupCity: null, pickupZone: null, pickupAddress: null, pickupNote: null, pickupLat: null, pickupLng: null, pickupDistanceKm: null };
+
     return prisma.$transaction(async (tx: any) => {
       // Release old seats
       if (booking.schedule.operatingTripId) {
@@ -1179,7 +1290,6 @@ export async function editBooking(data: EditBookingData) {
       }
 
       // Calculate new price
-      const passengerCount = data.passengers?.length || booking.passengers.length || 1;
       const newTotalPrice = newSchedule.price * passengerCount;
 
       // Update booking
@@ -1187,8 +1297,9 @@ export async function editBooking(data: EditBookingData) {
         where: { id: bookingId },
         data: {
           scheduleId: data.newScheduleId,
-          totalPrice: newTotalPrice,
-          discountAmount: 0
+          totalPrice: newTotalPrice + pickupFee,
+          discountAmount: 0,
+          ...pickupData,
         },
         include: {
           schedule: { include: { route: true } },
@@ -1255,6 +1366,15 @@ export async function editBooking(data: EditBookingData) {
     if (newSchedule.routeId !== booking.schedule.routeId) throw new Error("Jadwal baru harus dari rute yang sama");
     if (newSchedule.departureTime < new Date()) throw new Error("Jadwal baru sudah berlalu");
 
+    const pickupConfig = await getPickupConfig();
+    const passengerCount = data.passengers?.length || booking.passengers.length || 1;
+    const pickupFee = booking.pickupRequested
+      ? recalcPickupFee(pickupConfig, booking.pickupCity, booking.pickupZone, passengerCount, booking.pickupDistanceKm)
+      : 0;
+    const pickupData = pickupFee > 0
+      ? { pickupRequested: true, pickupFee }
+      : { pickupRequested: false, pickupFee: 0, pickupCity: null, pickupZone: null, pickupAddress: null, pickupNote: null, pickupLat: null, pickupLng: null, pickupDistanceKm: null };
+
     return prisma.$transaction(async (tx: any) => {
       // Release old seats
       if (booking.schedule.operatingTripId) {
@@ -1268,7 +1388,6 @@ export async function editBooking(data: EditBookingData) {
       }
 
       // Calculate new price
-      const passengerCount = data.passengers?.length || booking.passengers.length || 1;
       const newTotalPrice = newSchedule.price * passengerCount;
 
       // Update booking
@@ -1276,8 +1395,9 @@ export async function editBooking(data: EditBookingData) {
         where: { id: bookingId },
         data: {
           scheduleId: data.newScheduleId,
-          totalPrice: newTotalPrice,
-          discountAmount: 0
+          totalPrice: newTotalPrice + pickupFee,
+          discountAmount: 0,
+          ...pickupData,
         },
         include: {
           schedule: { include: { route: true } },
@@ -1355,7 +1475,23 @@ export async function editBooking(data: EditBookingData) {
       // Recalculate total price based on new passenger count
       const pricePerSeat = booking.schedule.price;
       const newTotalPrice = pricePerSeat * data.passengers.length;
-      updateData.totalPrice = newTotalPrice;
+      let newPickupFee = booking.pickupRequested ? booking.pickupFee : 0;
+      if (booking.pickupRequested) {
+        const pickupConfig = await getPickupConfig();
+        newPickupFee = recalcPickupFee(pickupConfig, booking.pickupCity, booking.pickupZone, data.passengers.length, booking.pickupDistanceKm);
+        if (newPickupFee > 0) {
+          updateData.pickupFee = newPickupFee;
+        } else {
+          updateData.pickupRequested = false;
+          updateData.pickupFee = 0;
+          updateData.pickupCity = null;
+          updateData.pickupZone = null;
+          updateData.pickupAddress = null;
+          updateData.pickupNote = null;
+          newPickupFee = 0;
+        }
+      }
+      updateData.totalPrice = newTotalPrice + newPickupFee;
 
       // Update seats if seat numbers provided and operating trip exists
       if (data.seatNumbers && data.seatNumbers.length > 0 && booking.schedule.operatingTripId) {

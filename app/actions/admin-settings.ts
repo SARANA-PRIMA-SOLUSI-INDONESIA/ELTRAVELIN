@@ -3,6 +3,13 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { put } from "@vercel/blob";
+import { getSession } from "@/lib/auth";
+import { getPickupConfig } from "@/lib/pickup-server";
+import {
+  PICKUP_CONFIG_KEY,
+  mergePickupConfig,
+  type PickupConfig,
+} from "@/lib/pickup";
 
 const GIMMICK_PERCENT_KEY = "gimmickMarkupPercent";
 const GIMMICK_ENABLED_KEY = "gimmickMarkupEnabled";
@@ -65,6 +72,33 @@ export async function updateGimmickMarkupSettings(data: {
   revalidatePath("/admin/settings");
   revalidatePath("/search");
   return { percent, enabled: data.enabled };
+}
+
+async function requireSuperAdmin() {
+  const session = await getSession();
+  if (!session || session.role !== "SUPER_ADMIN") {
+    throw new Error("Tidak memiliki akses. Silakan login ulang.");
+  }
+  return session;
+}
+
+export async function getPickupSettings(): Promise<PickupConfig> {
+  return getPickupConfig();
+}
+
+export async function updatePickupSettings(data: PickupConfig) {
+  await requireSuperAdmin();
+
+  const normalized = mergePickupConfig(data);
+  if (normalized.cities.length === 0) {
+    throw new Error("Minimal satu kota dengan satu zona harus diisi.");
+  }
+
+  await setSetting(PICKUP_CONFIG_KEY, JSON.stringify(normalized));
+
+  revalidatePath("/admin/settings");
+  revalidatePath("/checkout");
+  return normalized;
 }
 
 export async function getPartnershipLogos() {

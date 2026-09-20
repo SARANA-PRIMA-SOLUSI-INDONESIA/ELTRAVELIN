@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { sendETicket, sendAdminNotification } from "@/lib/mail";
 import { sendBookingSuccessMessage, sendAdminWhatsAppNotification } from "@/lib/whatsapp";
+import { confirmTourBookingBySystem } from "@/app/actions/tour";
 
 export async function POST(request: Request) {
   try {
@@ -41,7 +42,28 @@ export async function POST(request: Request) {
       });
 
       if (!booking) {
-        console.log(`[Moota] No pending booking found for amount ${amount}`);
+        console.log(`[Moota] No pending booking found for amount ${amount}, checking Tour & Sewa bookings...`);
+
+        const tourBooking = await prisma.tourBooking.findFirst({
+          where: {
+            totalPrice: amount,
+            status: "PENDING",
+            paymentMethod: "MOOTA",
+          },
+          orderBy: { createdAt: "desc" },
+        });
+
+        if (tourBooking) {
+          const providerDate = mutation.date ?? mutation.transaction_date ?? mutation.created_at ?? mutation.timestamp;
+          const parsedProviderDate = providerDate ? new Date(providerDate) : null;
+          const tourSettlementTime = parsedProviderDate && !Number.isNaN(parsedProviderDate.getTime())
+            ? parsedProviderDate
+            : new Date();
+
+          console.log(`[Moota] MATCH Tour Booking ${tourBooking.bookingCode}, updating to CONFIRMED`);
+          await confirmTourBookingBySystem(tourBooking.bookingCode, tourSettlementTime);
+          continue;
+        }
 
         const allPending = await prisma.booking.findMany({
           where: { status: "PENDING", paymentMethod: "MOOTA" },

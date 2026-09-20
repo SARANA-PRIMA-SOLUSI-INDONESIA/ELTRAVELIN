@@ -1,0 +1,8 @@
+-- AlterTable
+ALTER TABLE `TourInquiry` ADD COLUMN `unitCount` INTEGER NOT NULL DEFAULT 1;
+
+-- AlterTable
+ALTER TABLE `TourQuote` ADD COLUMN `unitCount` INTEGER NOT NULL DEFAULT 1;
+
+-- AlterTable
+ALTER TABLE `TourBooking` ADD COLUMN `unitCount` INTEGER NOT NULL DEFAULT 1;

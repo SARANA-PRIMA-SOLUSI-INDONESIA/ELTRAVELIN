@@ -8,7 +8,7 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 // Bump this when adding new Prisma models so HMR drops stale singletons
-const PRISMA_CLIENT_VERSION = "route-stop-v2";
+const PRISMA_CLIENT_VERSION = "booking-pickup-geo-v5";
 
 function getConnectionLimit() {
   // Vercel/serverless: keep pool tiny (many instances share one MySQL max_connections).

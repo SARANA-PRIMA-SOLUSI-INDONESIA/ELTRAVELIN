@@ -1,8 +1,10 @@
 import { getBookingByCode } from "@/app/actions/booking";
+import { getTourBookingByCode } from "@/app/actions/tour";
 import { getPartnershipLogos } from "@/app/actions/admin-settings";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import PrintButton from "@/components/PrintButton";
+import { TOUR_PAYMENT_METHOD_LABELS, TOUR_TYPE_LABELS } from "@/lib/tour";
 
 interface InvoiceProps {
   params: Promise<{ code: string }>;
@@ -15,7 +17,11 @@ export default async function InvoicePage({ params }: InvoiceProps) {
   if (!code) return notFound();
 
   const booking = await getBookingByCode(code);
-  if (!booking || booking.status !== 'CONFIRMED') return notFound();
+  if (!booking || booking.status !== 'CONFIRMED') {
+    const tourBooking = await getTourBookingByCode(code);
+    if (!tourBooking || tourBooking.status !== 'CONFIRMED') return notFound();
+    return <TourInvoice booking={tourBooking} />;
+  }
   const partnershipLogoUrls = await getPartnershipLogos();
   const selectedOrigin = booking.segment?.originStop.name || booking.schedule.route.origin;
   const selectedDestination = booking.segment?.destinationStop.name || booking.schedule.route.destination;
@@ -134,6 +140,17 @@ export default async function InvoicePage({ params }: InvoiceProps) {
                     {booking.paymentMethod === 'MOOTA' ? 'Transfer Bank' : booking.paymentMethod === 'POOL' ? 'Bayar di Pool' : booking.paymentMethod}
                   </p>
                 </div>
+                {booking.pickupRequested && (
+                  <div>
+                    <p className="text-xs text-gray-400">Layanan Jemput ({booking.pickupCity || '-'})</p>
+                    <p className="font-medium text-gray-700">
+                      {booking.pickupZone || '-'}
+                      {booking.pickupDistanceKm != null ? ` • ± ${Number(booking.pickupDistanceKm).toLocaleString('id-ID', { maximumFractionDigits: 1 })} km` : ''}
+                    </p>
+                    <p className="text-xs text-gray-500">{booking.pickupAddress || '-'}</p>
+                    {booking.pickupNote && <p className="text-xs text-gray-500">Catatan: {booking.pickupNote}</p>}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -175,6 +192,12 @@ export default async function InvoicePage({ params }: InvoiceProps) {
                   <span className="font-medium">- Rp {booking.discountAmount.toLocaleString('id-ID')}</span>
                 </div>
               )}
+              {booking.pickupFee > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">Biaya Jemput ({booking.passengers.length} pax)</span>
+                  <span className="font-medium">Rp {booking.pickupFee.toLocaleString('id-ID')}</span>
+                </div>
+              )}
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">Kode Unik</span>
                 <span className="font-medium">Rp {(booking.totalPrice % 1000).toLocaleString('id-ID')}</span>
@@ -210,6 +233,158 @@ export default async function InvoicePage({ params }: InvoiceProps) {
             </p>
             <p className="text-[10px] text-gray-400 mt-2">
               Diterbitkan oleh sistem EL Travel pada {invoiceDate}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+async function TourInvoice({ booking }: { booking: NonNullable<Awaited<ReturnType<typeof getTourBookingByCode>>> }) {
+  const partnershipLogoUrls = await getPartnershipLogos();
+  const dateTimeOptions = {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'Asia/Jakarta',
+  } as const;
+
+  const period = booking.endDate
+    ? `${booking.startDate.toLocaleDateString('id-ID', dateTimeOptions)} - ${booking.endDate.toLocaleDateString('id-ID', dateTimeOptions)}`
+    : booking.startDate.toLocaleDateString('id-ID', dateTimeOptions);
+
+  const bookingDate = booking.createdAt.toLocaleString('id-ID', { ...dateTimeOptions, hour: '2-digit', minute: '2-digit' });
+  const settlementDate = (booking.settlementTime || booking.createdAt).toLocaleString('id-ID', { ...dateTimeOptions, hour: '2-digit', minute: '2-digit' });
+  const uniqueCode = booking.paymentMethod === 'MOOTA' ? booking.totalPrice % 1000 : 0;
+
+  return (
+    <div className="invoice-page min-h-screen bg-gray-100 py-8 px-4">
+      <div className="invoice-sheet max-w-3xl mx-auto bg-white">
+        <div className="flex justify-between items-center mb-6 print:hidden">
+          <Link
+            href={`/tour/booking/${booking.bookingCode}`}
+            className="flex items-center gap-2 text-navy-deep hover:text-gold-warm transition-colors"
+          >
+            <i className="ri-arrow-left-line"></i>
+            <span className="font-medium">Kembali ke Detail Booking</span>
+          </Link>
+          <PrintButton />
+        </div>
+
+        <div className="rounded-2xl shadow-lg overflow-hidden print:shadow-none print:rounded-none">
+          <div className="bg-navy-deep p-6 text-white print:p-5">
+            <div className="flex justify-between items-start">
+              <div>
+                <h1 className="text-2xl font-display font-bold">INVOICE</h1>
+                <p className="text-white/60 text-sm mt-1">#{booking.bookingCode}</p>
+              </div>
+              <div className="text-right">
+                <div className="bg-green-500 text-white px-4 py-2 rounded-lg text-sm font-bold">LUNAS</div>
+                <p className="text-white/60 text-xs mt-2">{settlementDate}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-6 print:p-5 grid grid-cols-2 gap-6 border-b border-gray-100">
+            <div>
+              <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Diterbitkan Oleh</h3>
+              <p className="font-bold text-navy-deep">ELTRAVEL INDONESIA MAJU</p>
+              <p className="text-sm text-gray-500 mt-1">PT Eltravel Indonesia Maju</p>
+              <p className="text-sm text-gray-500">Jl. A. Yani No.835A, Padasuka, Kec. Cibeunying Kidul, Kota Bandung, Jawa Barat 40125</p>
+              <p className="text-sm text-gray-500">Telepon: 0811-221-286</p>
+            </div>
+            <div>
+              <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Ditagihkan Kepada</h3>
+              <p className="font-bold text-navy-deep">{booking.customerName}</p>
+              <p className="text-sm text-gray-500 mt-1">{booking.customerEmail || '-'}</p>
+              <p className="text-sm text-gray-500">{booking.customerPhone}</p>
+            </div>
+          </div>
+
+          <div className="p-6 print:p-5 border-b border-gray-100">
+            <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Detail Layanan</h3>
+            <div className="grid grid-cols-2 gap-6">
+              <div className="space-y-3">
+                <div>
+                  <p className="text-xs text-gray-400">Layanan</p>
+                  <p className="font-bold text-navy-deep">{booking.serviceName}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400">Jenis</p>
+                  <p className="font-medium text-gray-700">{TOUR_TYPE_LABELS[booking.serviceType] || booking.serviceType}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400">Tanggal</p>
+                  <p className="font-medium text-gray-700">{period}</p>
+                </div>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <p className="text-xs text-gray-400">Jumlah Peserta</p>
+                  <p className="font-medium text-gray-700">{booking.paxCount} Orang</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400">Jumlah Unit</p>
+                  <p className="font-medium text-gray-700">{booking.unitCount} Unit</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400">Penjemputan</p>
+                  <p className="font-medium text-gray-700">{booking.pickupLocation || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400">Metode Pembayaran</p>
+                  <p className="font-medium text-gray-700">{booking.paymentMethod ? TOUR_PAYMENT_METHOD_LABELS[booking.paymentMethod] || booking.paymentMethod : '-'}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-6 print:p-5 bg-gray-50">
+            <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Ringkasan Pembayaran</h3>
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Subtotal</span>
+                <span className="font-medium">Rp {booking.basePrice.toLocaleString('id-ID')}</span>
+              </div>
+              {booking.discountAmount > 0 && (
+                <div className="flex justify-between text-sm text-green-600">
+                  <span>Diskon{booking.discountReason ? ` (${booking.discountReason})` : ''}</span>
+                  <span className="font-medium">- Rp {booking.discountAmount.toLocaleString('id-ID')}</span>
+                </div>
+              )}
+              {uniqueCode > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">Kode Unik</span>
+                  <span className="font-medium">Rp {uniqueCode.toLocaleString('id-ID')}</span>
+                </div>
+              )}
+              <div className="border-t pt-3 mt-3">
+                <div className="flex justify-between">
+                  <span className="font-bold text-navy-deep">TOTAL DIBAYAR</span>
+                  <span className="font-bold text-navy-deep text-xl">Rp {booking.totalPrice.toLocaleString('id-ID')}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-xs text-gray-400">Tanggal Pemesanan</p>
+                  <p className="font-medium text-gray-700">{bookingDate}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400">Tanggal Pembayaran</p>
+                  <p className="font-medium text-gray-700">{settlementDate}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-5 print:p-4 bg-navy-deep/5 text-center">
+            {partnershipLogoUrls.length > 0 && <div className="mb-4 border-b border-gray-200 pb-4"><p className="mb-3 text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400">Partnership</p><div className="flex flex-wrap items-center justify-center gap-5">{partnershipLogoUrls.map((url, index) => <img key={`${url}-${index}`} src={url} alt={`Logo partnership ${index + 1}`} className="h-10 w-auto max-w-28 object-contain" />)}</div></div>}
+            <p className="text-xs text-gray-500">
+              Terima kasih telah menggunakan layanan EL Travel. Invoice ini sah sebagai bukti pembayaran.
             </p>
           </div>
         </div>

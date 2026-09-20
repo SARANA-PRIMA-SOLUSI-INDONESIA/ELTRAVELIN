@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import RouteCard from "@/components/RouteCard";
+import Link from "next/link";
 
 export const dynamic = 'force-dynamic';
 
@@ -62,9 +63,9 @@ export default async function Routes() {
             <h2 className="text-3xl font-display font-bold text-navy-deep">Ingin Rute Khusus?</h2>
             <p className="text-foreground/60 max-w-md font-body">Layanan sewa armada kami tersedia untuk perjalanan bisnis, acara keluarga, atau wisata khusus Anda.</p>
           </div>
-          <button className="btn-primary px-8 py-4 rounded-full font-bold text-sm shadow-md uppercase tracking-widest">
-            Hubungi Concierge
-          </button>
+          <Link href="/tour" className="btn-primary px-8 py-4 rounded-full font-bold text-sm shadow-md uppercase tracking-widest">
+            Lihat Tour & Sewa
+          </Link>
         </div>
       </section>
     </div>

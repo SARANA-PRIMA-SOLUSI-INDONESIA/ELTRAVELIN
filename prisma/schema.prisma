@@ -102,6 +102,15 @@ model Booking {
   promoCodeId     String?
   reminderSentAt  DateTime?
   lastReminderLevel Int           @default(0)
+  pickupRequested Boolean       @default(false)
+  pickupCity      String?
+  pickupZone      String?
+  pickupAddress   String?
+  pickupNote      String?
+  pickupFee       Int           @default(0)
+  pickupLat       Float?
+  pickupLng       Float?
+  pickupDistanceKm Float?
   promoCode       PromoCode?    @relation(fields: [promoCodeId], references: [id], onDelete: SetNull)
   schedule        Schedule      @relation(fields: [scheduleId], references: [id])
   passengers      Passenger[]
@@ -214,16 +223,17 @@ enum TripStatus {
 }
 
 model Vehicle {
-  id          String             @id @default(cuid())
-  plateNumber String             @unique
-  name        String
-  driverName  String?
-  capacity    Int
-  isActive    Boolean            @default(true)
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
-  trips       OperatingTrip[]
-  templates   ScheduleTemplate[]
+  id           String             @id @default(cuid())
+  plateNumber  String             @unique
+  name         String
+  driverName   String?
+  capacity     Int
+  isActive     Boolean            @default(true)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  trips        OperatingTrip[]
+  templates    ScheduleTemplate[]
+  tourServices TourService[]
 }
 
 model OperatingTrip {
@@ -250,4 +260,155 @@ model Driver {
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
   operatingTrips OperatingTrip[]
+}
+
+// ─────────────────────────────────────────────────────────────
+// Tour & Sewa (Paket Tour + Sewa Harian dengan alur nego/quote)
+// ─────────────────────────────────────────────────────────────
+
+enum TourServiceType {
+  TOUR_PACKAGE
+  DAILY_RENTAL
+}
+
+enum TourPriceUnit {
+  PER_PAX
+  PER_VEHICLE
+  PER_DAY
+}
+
+enum TourInquiryStatus {
+  NEW
+  QUOTED
+  ACCEPTED
+  REJECTED
+  EXPIRED
+  CONVERTED
+}
+
+enum TourQuoteStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+model TourService {
+  id             String          @id @default(cuid())
+  type           TourServiceType
+  name           String
+  slug           String          @unique
+  shortDesc      String?
+  description    String?         @db.Text
+  destinations   String?         @db.Text
+  durationLabel  String?
+  durationDays   Int?
+  durationNights Int?
+  itinerary      String?         @db.Text
+  facilities     String?         @db.Text
+  includes       String?         @db.Text
+  excludes       String?         @db.Text
+  basePrice      Int
+  priceUnit      TourPriceUnit   @default(PER_PAX)
+  minPax         Int             @default(1)
+  maxPax         Int?
+  vehicleId      String?
+  imageUrl       String?
+  gallery        String?         @db.Text
+  isActive       Boolean         @default(true)
+  isFeatured     Boolean         @default(false)
+  sortOrder      Int             @default(0)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  vehicle        Vehicle?        @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  inquiries      TourInquiry[]
+  bookings       TourBooking[]
+
+  @@index([type, isActive])
+  @@index([isFeatured])
+}
+
+model TourInquiry {
+  id             String            @id @default(cuid())
+  inquiryCode    String            @unique
+  serviceId      String
+  customerName   String
+  customerEmail  String?
+  customerPhone  String
+  startDate      DateTime
+  endDate        DateTime?
+  paxCount       Int
+  unitCount      Int               @default(1)
+  pickupLocation String?
+  notes          String?           @db.Text
+  basePrice      Int
+  status         TourInquiryStatus @default(NEW)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  service        TourService       @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  quotes         TourQuote[]
+  bookings       TourBooking[]
+
+  @@index([status])
+}
+
+model TourQuote {
+  id             String          @id @default(cuid())
+  quoteNumber    String          @unique
+  inquiryId      String
+  pricePerUnit   Int
+  unitCount      Int             @default(1)
+  subtotal       Int
+  discountType   String?
+  discountValue  Int             @default(0)
+  discountReason String?
+  totalPrice     Int
+  validUntil     DateTime?
+  notes          String?         @db.Text
+  status         TourQuoteStatus @default(DRAFT)
+  createdBy      String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  inquiry        TourInquiry     @relation(fields: [inquiryId], references: [id], onDelete: Cascade)
+  bookings       TourBooking[]
+}
+
+model TourBooking {
+  id              String          @id @default(cuid())
+  bookingCode     String          @unique
+  inquiryId       String?
+  quoteId         String?
+  serviceId       String
+  serviceName     String
+  serviceType     TourServiceType
+  startDate       DateTime
+  endDate         DateTime?
+  paxCount        Int
+  unitCount       Int             @default(1)
+  pickupLocation  String?
+  customerName    String
+  customerEmail   String?
+  customerPhone   String
+  basePrice       Int
+  discountAmount  Int             @default(0)
+  discountReason  String?
+  totalPrice      Int
+  status          BookingStatus   @default(PENDING)
+  paymentMethod   String?
+  paymentProofUrl String?
+  paymentNote     String?
+  verifiedBy      String?
+  verifiedAt      DateTime?
+  settlementTime  DateTime?
+  notes           String?         @db.Text
+  createdByAdmin  String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  service         TourService     @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  inquiry         TourInquiry?    @relation(fields: [inquiryId], references: [id], onDelete: SetNull)
+  quote           TourQuote?      @relation(fields: [quoteId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([paymentMethod])
 }

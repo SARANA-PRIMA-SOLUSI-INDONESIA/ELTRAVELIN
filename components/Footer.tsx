@@ -28,10 +28,10 @@ export default function Footer() {
         <div className="grid grid-cols-2 md:grid-cols-3 gap-12">
           <div className="flex flex-col gap-4">
             <h4 className="font-display font-bold text-navy-deep text-sm uppercase tracking-wider mb-2">Layanan</h4>
-            <Link href="#" className="text-sm text-foreground/60 hover:text-navy-deep transition-colors">Booking Tiket</Link>
-            <Link href="#" className="text-sm text-foreground/60 hover:text-navy-deep transition-colors">Sewa Bus</Link>
-            <Link href="#" className="text-sm text-foreground/60 hover:text-navy-deep transition-colors">Pengiriman Paket</Link>
-            <Link href="#" className="text-sm text-foreground/60 hover:text-navy-deep transition-colors">EL Travel Executive</Link>
+            <Link href="/" className="text-sm text-foreground/60 hover:text-navy-deep transition-colors">Booking Tiket</Link>
+            <Link href="/tour" className="text-sm text-foreground/60 hover:text-navy-deep transition-colors">Tour & Sewa</Link>
+            <Link href="/routes" className="text-sm text-foreground/60 hover:text-navy-deep transition-colors">Rute Travel</Link>
+            <Link href="/fleet" className="text-sm text-foreground/60 hover:text-navy-deep transition-colors">Armada</Link>
           </div>
 
           <div className="flex flex-col gap-4">
