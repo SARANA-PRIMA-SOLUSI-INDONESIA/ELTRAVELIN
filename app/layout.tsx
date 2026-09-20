@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Manrope, Inter } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import PWAInstall from "@/components/PWAInstall";
@@ -53,6 +54,7 @@ export default function RootLayout({
         <div className="print:hidden"><Footer /></div>
         <div className="print:hidden"><WhatsAppButton /></div>
         <div className="print:hidden"><PWAInstall /></div>
+        <Analytics />
       </body>
     </html>
   );
