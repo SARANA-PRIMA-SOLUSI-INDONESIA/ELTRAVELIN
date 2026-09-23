@@ -21,8 +21,26 @@ export const DAY_NAMES = [
 
 export type ConflictType = "HARD" | "SOFT";
 
+export type ConflictRule =
+  | "TIME_OVERLAP"
+  | "LOCATION"
+  | "REST"
+  | "REST_DAY"
+  | "CONSECUTIVE_DAYS"
+  | "DUTY_HOURS";
+
+export const CONFLICT_RULE_LABELS: Record<ConflictRule, string> = {
+  TIME_OVERLAP: "bentrok waktu dengan trip lain",
+  LOCATION: "lokasi driver tidak cocok",
+  REST: "istirahat kurang",
+  REST_DAY: "hari libur mingguan",
+  CONSECUTIVE_DAYS: "sudah 6 hari kerja berturut-turut",
+  DUTY_HOURS: "jam bertugas melebihi 12 jam",
+};
+
 export interface AssignmentConflict {
   type: ConflictType;
+  rule: ConflictRule;
   message: string;
 }
 
@@ -77,6 +95,7 @@ export function findAssignmentConflict(
     if (prepStart < t.arrivalTime && trip.arrivalTime > t.departureTime) {
       return {
         type: "HARD",
+        rule: "TIME_OVERLAP",
         message: `Bentrok waktu dengan ${t.origin} → ${t.destination} (${t.departureTime.toLocaleString("id-ID", { timeZone: "Asia/Jakarta" })})`,
       };
     }
@@ -87,6 +106,7 @@ export function findAssignmentConflict(
   if (location && location !== trip.origin) {
     return {
       type: "HARD",
+      rule: "LOCATION",
       message: `Driver masih berada di ${location}, bukan ${trip.origin}. Tugaskan trip balik ke ${trip.origin} terlebih dahulu.`,
     };
   }
@@ -101,12 +121,14 @@ export function findAssignmentConflict(
     if (sameDay && gap < DRIVER_RULES.MIN_REST_AT_DEST_MINUTES) {
       return {
         type: "SOFT",
+        rule: "REST",
         message: `Istirahat kurang: tiba ${prior.arrivalTime.toLocaleTimeString("id-ID", { timeZone: "Asia/Jakarta" })} lalu berangkat ${Math.max(0, Math.round(gap))} menit kemudian.`,
       };
     }
     if (!sameDay && gap < DRIVER_RULES.MIN_OVERNIGHT_REST_HOURS * 60) {
       return {
         type: "SOFT",
+        rule: "REST",
         message: `Istirahat bermalam kurang dari ${DRIVER_RULES.MIN_OVERNIGHT_REST_HOURS} jam.`,
       };
     }
@@ -118,6 +140,7 @@ export function findAssignmentConflict(
     if (tripDay === options.restDayOfWeek) {
       return {
         type: "SOFT",
+        rule: "REST_DAY",
         message: `Driver libur mingguan (${DAY_NAMES[options.restDayOfWeek]}). Pilih driver lain atau override.`,
       };
     }
@@ -138,20 +161,27 @@ export function findAssignmentConflict(
   if (workedDays.size >= DRIVER_RULES.MAX_CONSECUTIVE_WORK_DAYS && !workedDays.has(tripDayKey)) {
     return {
       type: "SOFT",
+      rule: "CONSECUTIVE_DAYS",
       message: `Driver sudah bekerja ${DRIVER_RULES.MAX_CONSECUTIVE_WORK_DAYS} hari berturut-turut; hari ini (${DAY_NAMES[wibDayOfWeek(trip.departureTime)]}) harus libur.`,
     };
   }
 
-  // 6) Batas jam bertugas harian (WIB)
+  // 6) Batas jam bertugas harian (WIB).
+  // Hanya berlaku untuk menggabungkan beberapa trip dalam satu hari; satu trip yang
+  // durasinya sendiri melebihi batas bukan konflik penugasan (tidak bisa dihindari
+  // dengan memilih driver lain) dan sebelumnya memblokir semua driver.
   if (trip.durationMinutes > 0) {
     const tripDayKey2 = wibDayKey(trip.departureTime);
     const dutyTrips = history.filter((t) => wibDayKey(t.departureTime) === tripDayKey2);
-    const duty = dutyTrips.reduce((sum, t) => sum + t.durationMinutes, 0) + trip.durationMinutes;
-    if (duty > DRIVER_RULES.MAX_DUTY_HOURS_PER_DAY * 60) {
-      return {
-        type: "SOFT",
-        message: `Total jam bertugas hari ini (${Math.round(duty / 60)} jam) melebihi ${DRIVER_RULES.MAX_DUTY_HOURS_PER_DAY} jam.`,
-      };
+    if (dutyTrips.length > 0) {
+      const duty = dutyTrips.reduce((sum, t) => sum + t.durationMinutes, 0) + trip.durationMinutes;
+      if (duty > DRIVER_RULES.MAX_DUTY_HOURS_PER_DAY * 60) {
+        return {
+          type: "SOFT",
+          rule: "DUTY_HOURS",
+          message: `Total jam bertugas hari ini (${Math.round(duty / 60)} jam) melebihi ${DRIVER_RULES.MAX_DUTY_HOURS_PER_DAY} jam.`,
+        };
+      }
     }
   }
 

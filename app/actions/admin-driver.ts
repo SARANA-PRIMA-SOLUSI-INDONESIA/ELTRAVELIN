@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import {
+  CONFLICT_RULE_LABELS,
   checkDriverFeasibility,
   findAssignmentConflict,
   type DriverTripWithHours,
@@ -16,6 +17,10 @@ function clean(value?: string) {
 }
 
 const MINUTE = 60_000;
+// Riwayat lama dipakai hanya untuk konteks lokasi/istirahat. Tanpa batas, tujuan trip
+// berbulan lalu bisa memblokir seluruh range (driver dianggap masih di kota lama).
+const HISTORY_WINDOW_DAYS = 14;
+const DAY = 86_400_000;
 
 type ScheduleWithRoute = Schedule & { route: Pick<Route, "origin" | "destination">; operatingTrip?: Pick<OperatingTrip, "driverId"> | null };
 
@@ -209,7 +214,7 @@ export async function autoAssignDrivers(from: string, to: string) {
   const prior = await prisma.schedule.findMany({
     where: {
       isDeleted: false,
-      departureTime: { lt: fromD },
+      departureTime: { lt: fromD, gte: new Date(fromD.getTime() - HISTORY_WINDOW_DAYS * DAY) },
       operatingTrip: { driverId: { in: drivers.map((d) => d.id) } },
     },
     include: {
@@ -250,7 +255,9 @@ export async function autoAssignDrivers(from: string, to: string) {
   }
 
   let assigned = 0;
+  let repositioned = 0;
   const skipped: string[] = [];
+  const skipReasons = new Map<string, number>();
 
   const sortedGroups = [...groups.entries()]
     .sort((a, b) => new Date(a[1][0].departureTime).getTime() - new Date(b[1][0].departureTime).getTime());
@@ -263,26 +270,42 @@ export async function autoAssignDrivers(from: string, to: string) {
     const departureTime = g[0].departureTime;
     const arrivalTime = new Date(Math.max(...g.map((s) => s.arrivalTime.getTime())));
 
-    const candidates = [...drivers]
+    const tripCandidate = {
+      id: g[0].id,
+      departureTime,
+      arrivalTime,
+      origin,
+      destination,
+      durationMinutes: (arrivalTime.getTime() - departureTime.getTime()) / MINUTE,
+    };
+
+    const evaluated = [...drivers]
       .sort((a, b) => (load.get(a.id) ?? 0) - (load.get(b.id) ?? 0))
-      .filter((d) => {
-        const conflict = findAssignmentConflict(history[d.id] ?? [], {
-          id: g[0].id,
-          departureTime,
-          arrivalTime,
-          origin,
-          destination,
-          durationMinutes: (arrivalTime.getTime() - departureTime.getTime()) / MINUTE,
-        }, { restDayOfWeek: d.restDayOfWeek });
-        return !conflict;
-      });
+      .map((driver) => ({
+        driver,
+        conflict: findAssignmentConflict(history[driver.id] ?? [], tripCandidate, {
+          restDayOfWeek: driver.restDayOfWeek,
+        }),
+      }));
+
+    // Pass 1: kandidat tanpa konflik. Pass 2: driver yang hanya terkendala lokasi
+    // (boleh reposisi sendiri ke titik asal) — tanpa ini, satu lokasi basi memblokir
+    // seluruh range karena tidak ada penugasan yang pernah mengubah lokasi driver.
+    const eligible = evaluated.filter((item) => !item.conflict);
+    const fallback = evaluated.filter((item) => item.conflict?.rule === "LOCATION");
+    const candidates = eligible.length > 0 ? eligible : fallback;
 
     if (candidates.length === 0) {
       skipped.push(`${origin} → ${destination} ${departureTime.toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta" })}`);
+      for (const item of evaluated) {
+        const label = item.conflict ? CONFLICT_RULE_LABELS[item.conflict.rule] : "tidak ada driver aktif";
+        skipReasons.set(label, (skipReasons.get(label) ?? 0) + 1);
+      }
       continue;
     }
 
-    const chosen = candidates[0];
+    const chosen = candidates[0].driver;
+    if (candidates === fallback) repositioned += 1;
     await prisma.operatingTrip.updateMany({
       where: { id: { in: g.map((s) => s.operatingTripId).filter(Boolean) as string[] } },
       data: { driverId: chosen.id },
@@ -303,12 +326,16 @@ export async function autoAssignDrivers(from: string, to: string) {
   revalidatePath("/admin/driver-schedules");
   revalidatePath("/admin/schedules");
 
+  const topReasons = [...skipReasons.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3);
+
   return {
     assigned,
+    repositioned,
     skipped,
     skippedCount: skipped.length,
+    skipReasons: topReasons.map(([reason, count]) => ({ reason, count })),
     message: skipped.length > 0
-      ? `${assigned} trip ditugaskan, ${skipped.length} trip dilewati (kurang driver / semua driver libur / lokasi tidak cocok).`
+      ? `${assigned} trip ditugaskan, ${skipped.length} trip dilewati. Alasan tersering: ${topReasons.map(([reason, count]) => `${reason} (${count})`).join(", ")}.`
       : `${assigned} trip berhasil ditugaskan otomatis.`,
   };
 }
