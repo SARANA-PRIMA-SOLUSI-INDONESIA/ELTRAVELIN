@@ -54,7 +54,7 @@ export default async function TourDetailPage({ params }: PageProps) {
             Kembali ke Katalog
           </Link>
 
-          <div className="relative w-full aspect-[16/9] md:aspect-[21/9] rounded-[2.5rem] md:rounded-[3rem] overflow-hidden bg-surface-low shadow-ambient">
+          <div className="relative w-full aspect-video rounded-[2.5rem] md:rounded-[3rem] overflow-hidden bg-surface-low shadow-ambient">
             {service.imageUrl ? (
               <Image src={service.imageUrl} alt={service.name} fill priority sizes="100vw" className="object-cover" />
             ) : (
@@ -180,10 +180,10 @@ export default async function TourDetailPage({ params }: PageProps) {
             {gallery.length > 0 && (
               <div className="flex flex-col gap-4">
                 <h2 className="text-xs font-bold text-gold-warm uppercase tracking-widest">Galeri</h2>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   {gallery.map((url) => (
-                    <div key={url} className="relative aspect-square rounded-2xl overflow-hidden bg-surface-low">
-                      <Image src={url} alt={service.name} fill sizes="(max-width: 768px) 50vw, 33vw" className="object-cover" />
+                    <div key={url} className="relative aspect-video rounded-2xl overflow-hidden bg-surface-low">
+                      <Image src={url} alt={service.name} fill sizes="(max-width: 640px) 100vw, 33vw" className="object-cover" />
                     </div>
                   ))}
                 </div>

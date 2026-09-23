@@ -31,7 +31,7 @@ export default function TourCard({ service }: TourCardProps) {
       href={`/tour/${service.slug}`}
       className="group bg-white rounded-[2rem] overflow-hidden shadow-sm border border-transparent hover:border-gold-soft hover:shadow-ambient transition-all flex flex-col"
     >
-      <div className="w-full aspect-[4/3] relative bg-surface-low overflow-hidden">
+      <div className="w-full aspect-video relative bg-surface-low overflow-hidden">
         {service.imageUrl ? (
           <Image
             src={service.imageUrl}

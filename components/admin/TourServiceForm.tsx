@@ -53,7 +53,9 @@ export default function TourServiceForm({ vehicles, initial }: TourServiceFormPr
   const [form, setForm] = useState<TourServiceInput>({ ...EMPTY, ...initial });
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadingGallery, setUploadingGallery] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
 
   const set = <K extends keyof TourServiceInput>(key: K, value: TourServiceInput[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -72,6 +74,40 @@ export default function TourServiceForm({ vehicles, initial }: TourServiceFormPr
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
+  const galleryList = (form.gallery || "")
+    .split("\n")
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  const removeGalleryAt = (index: number) => {
+    set("gallery", galleryList.filter((_, i) => i !== index).join("\n"));
+  };
+
+  const handleGalleryUpload = async (files: FileList) => {
+    setUploadingGallery(true);
+    const next = [...galleryList];
+    let failed = 0;
+    try {
+      for (const file of Array.from(files)) {
+        if (next.length >= 3) break;
+        const fd = new FormData();
+        fd.append("file", file);
+        const result = await uploadTourServiceImage(fd);
+        if (result.success) next.push(result.url);
+        else failed += 1;
+      }
+      set("gallery", next.join("\n"));
+      if (failed > 0) {
+        await showError({ title: "Sebagian Gagal", text: `${failed} gambar gagal diunggah.` });
+      }
+    } catch (error) {
+      await showError({ title: "Gagal Upload", text: (error as Error).message });
+    } finally {
+      setUploadingGallery(false);
+      if (galleryRef.current) galleryRef.current.value = "";
     }
   };
 
@@ -322,6 +358,34 @@ export default function TourServiceForm({ vehicles, initial }: TourServiceFormPr
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-outline-ghost pt-8">
         <div className="flex flex-col gap-4">
           <label className={labelClass}>Gambar Utama</label>
+          <div className="flex flex-col gap-3 bg-surface-low p-4 rounded-xl">
+            <div className="flex items-center gap-2">
+              <i className="ri-image-line text-lg text-gold-warm"></i>
+              <span className="text-sm font-bold text-navy-deep">Panduan Ukuran Gambar Utama</span>
+            </div>
+            <ul className="text-sm text-foreground/70 space-y-1.5 ml-6 list-disc">
+              <li>
+                <strong className="text-navy-deep">Ukuran:</strong> 1920 x 1080 px (rasio 16:9), maks 3 MB
+              </li>
+              <li>
+                <strong className="text-navy-deep">Rasio 16:9 tampil utuh</strong> tanpa potong di card katalog, hero
+                halaman detail, dan daftar admin
+              </li>
+              <li>
+                <strong className="text-navy-deep">Rasio lain</strong> (4:3, 1:1, 9:16) akan terpotong otomatis
+              </li>
+            </ul>
+            <div className="p-3 bg-white rounded-lg border border-dashed border-gold-warm/50">
+              <div className="flex justify-center mb-2">
+                <span className="w-full text-center px-3 py-1 bg-green-100 text-green-700 rounded text-xs font-bold">
+                  16:9 = Tampil Penuh
+                </span>
+              </div>
+              <div className="text-xs text-foreground/50 text-center">
+                Jangan menempelkan teks/objek penting ke tepi gambar
+              </div>
+            </div>
+          </div>
           {form.imageUrl ? (
             <div className="relative w-full aspect-video rounded-2xl overflow-hidden bg-surface-low">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -371,14 +435,64 @@ export default function TourServiceForm({ vehicles, initial }: TourServiceFormPr
         </div>
 
         <div className="flex flex-col gap-6">
-          <div className="flex flex-col gap-2">
-            <label className={labelClass}>Galeri (URL, satu per baris)</label>
-            <textarea
-              value={form.gallery || ""}
-              onChange={(e) => set("gallery", e.target.value)}
-              rows={3}
-              className={inputClass}
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between gap-3">
+              <label className={labelClass}>Galeri (Maks 3 Gambar)</label>
+              <button
+                type="button"
+                onClick={() => galleryRef.current?.click()}
+                disabled={uploadingGallery || galleryList.length >= 3}
+                className="px-4 py-2 rounded-xl bg-navy-deep text-white text-xs font-bold hover:bg-navy-deep/90 transition-all disabled:opacity-50"
+              >
+                {uploadingGallery ? "Mengunggah..." : "Upload Gambar"}
+              </button>
+            </div>
+            <input
+              ref={galleryRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                if (e.target.files?.length) handleGalleryUpload(e.target.files);
+              }}
             />
+            <div className="grid grid-cols-3 gap-3">
+              {Array.from({ length: Math.max(3, galleryList.length) }).map((_, index) => {
+                const url = galleryList[index];
+                return (
+                  <div key={index} className="flex flex-col gap-2">
+                    {url ? (
+                      <>
+                        <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-surface-low">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={url} alt={`Galeri ${index + 1}`} className="w-full h-full object-cover" />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeGalleryAt(index)}
+                          className="py-1.5 rounded-lg bg-red-50 text-red-500 text-[10px] font-bold hover:bg-red-100 transition-all"
+                        >
+                          Hapus
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => galleryRef.current?.click()}
+                        className="w-full aspect-video rounded-xl bg-surface-low border-2 border-dashed border-outline-ghost flex items-center justify-center text-foreground/30 hover:border-gold-warm hover:text-gold-warm transition-all"
+                        aria-label={`Upload gambar galeri ${index + 1}`}
+                      >
+                        <i className="ri-add-line text-xl"></i>
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            <p className="text-[10px] text-foreground/40">
+              Rasio 16:9 (mis. 1280 x 720 px), maks 3 MB per gambar. Bisa pilih 3 file sekaligus.
+            </p>
           </div>
 
           <div className="flex items-center justify-between bg-surface-low rounded-xl px-6 py-4">
