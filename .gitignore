@@ -44,3 +44,6 @@ next-env.d.ts
 prisma/seed.ts
 /scratch/
 
+
+# codegraph local index (never commit)
+.codegraph/
