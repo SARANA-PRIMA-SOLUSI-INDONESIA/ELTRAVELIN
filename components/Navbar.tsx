@@ -10,6 +10,7 @@ const links = [
   { href: "/tour", label: "Tour & Sewa" },
   { href: "/routes", label: "Rute" },
   { href: "/fleet", label: "Armada" },
+  { href: "/about", label: "Tentang Kami" },
 ];
 
 export default function Navbar() {

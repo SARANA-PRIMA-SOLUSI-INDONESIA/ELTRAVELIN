@@ -1,4 +1,5 @@
 import { getAppUrl } from "./env";
+import { getBookingDepartureTime } from "./booking-departure";
 
 // Titik Naik / Titik Turun diambil dari BookingSegment bila ada (fallback ke route).
 function getOriginPoint(booking: any) {
@@ -101,7 +102,7 @@ export async function sendAdminWhatsAppNotification(booking: any) {
 
   const rute = getOriginPoint(booking) + " \u2192 " + getDestPoint(booking);
   const departure = booking.schedule?.departureTime
-    ? new Date(booking.schedule.departureTime).toLocaleString("id-ID", { dateStyle: "full", timeStyle: "short", timeZone: "Asia/Jakarta" })
+    ? getBookingDepartureTime(booking).toLocaleString("id-ID", { dateStyle: "full", timeStyle: "short", timeZone: "Asia/Jakarta" })
     : "-";
   const seatList = (booking.seats || []).map(function (s: any) { return s.seatNumber; }).join(", ") || "-";
   const passengerList = (booking.passengers || []).map(function (p: any) { return p.name; }).join(", ") || "-";
@@ -127,7 +128,7 @@ export async function sendAdminWhatsAppNotification(booking: any) {
 
 export async function sendBookingSuccessMessage(booking: any) {
   const rute = getOriginPoint(booking) + " \u2192 " + getDestPoint(booking);
-  const departure = new Date(booking.schedule.departureTime).toLocaleString("id-ID", {
+  const departure = getBookingDepartureTime(booking).toLocaleString("id-ID", {
     dateStyle: "full",
     timeStyle: "short",
     timeZone: "Asia/Jakarta",
@@ -292,7 +293,7 @@ export async function sendAdminTourBookingNotification(booking: any) {
 export async function sendBookingPendingReminder(booking: any) {
   const rute = getOriginPoint(booking) + " \u2192 " + getDestPoint(booking);
   const departure = booking.schedule?.departureTime
-    ? new Date(booking.schedule.departureTime).toLocaleString("id-ID", { dateStyle: "full", timeStyle: "short", timeZone: "Asia/Jakarta" })
+    ? getBookingDepartureTime(booking).toLocaleString("id-ID", { dateStyle: "full", timeStyle: "short", timeZone: "Asia/Jakarta" })
     : "-";
   const methodLabel = booking.paymentMethod === "POOL" ? "Bayar di Pool" : booking.paymentMethod === "MOOTA" ? "Transfer Bank" : "Transfer/Pool";
   const deadline = booking.paymentMethod === "POOL" ? "60 menit" : "35 menit";

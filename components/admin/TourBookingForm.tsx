@@ -4,7 +4,16 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { adminCreateTourBooking } from "@/app/actions/admin-tour";
 import { showError, showSuccess } from "@/lib/swal";
-import { calcTourDiscount, calcTourSubtotal, formatIDR, tourQtyLabel } from "@/lib/tour";
+import {
+  TOUR_PRICE_UNIT_LABELS,
+  TOUR_TYPE_LABELS,
+  calcTourDiscount,
+  calcTourSubtotal,
+  formatIDR,
+  tourQtyLabel,
+  type TourPriceUnitValue,
+  type TourServiceTypeValue,
+} from "@/lib/tour";
 
 interface ServiceOption {
   id: string;
@@ -21,9 +30,15 @@ interface TourBookingFormProps {
   canDiscount: boolean;
 }
 
+type Mode = "CATALOG" | "CUSTOM";
+
 export default function TourBookingForm({ services, canDiscount }: TourBookingFormProps) {
   const router = useRouter();
+  const [mode, setMode] = useState<Mode>(services.length > 0 ? "CATALOG" : "CUSTOM");
   const [serviceId, setServiceId] = useState(services[0]?.id || "");
+  const [customName, setCustomName] = useState("");
+  const [customType, setCustomType] = useState<TourServiceTypeValue>("DAILY_RENTAL");
+  const [customPriceUnit, setCustomPriceUnit] = useState<TourPriceUnitValue>("PER_DAY");
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
@@ -37,16 +52,17 @@ export default function TourBookingForm({ services, canDiscount }: TourBookingFo
   const [discountValue, setDiscountValue] = useState(0);
   const [discountReason, setDiscountReason] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<"MOOTA" | "POOL" | "MANUAL">("MANUAL");
-  const [markPaid, setMarkPaid] = useState(true);
+  const [markPaid, setMarkPaid] = useState(false);
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const selectedService = services.find((s) => s.id === serviceId);
+  const selectedService = mode === "CATALOG" ? services.find((s) => s.id === serviceId) : undefined;
+  const priceUnit = (selectedService?.priceUnit || customPriceUnit) as string;
 
   const { subtotal, discountAmount, totalPrice, days } = useMemo(() => {
     const result = calcTourSubtotal({
       pricePerUnit,
-      priceUnit: selectedService?.priceUnit || "PER_PAX",
+      priceUnit,
       paxCount,
       unitCount,
       startDate: new Date(startDate),
@@ -59,7 +75,7 @@ export default function TourBookingForm({ services, canDiscount }: TourBookingFo
       discountAmount: discount,
       totalPrice: result.subtotal - discount,
     };
-  }, [pricePerUnit, selectedService, paxCount, unitCount, startDate, endDate, discountType, discountValue, canDiscount]);
+  }, [pricePerUnit, priceUnit, paxCount, unitCount, startDate, endDate, discountType, discountValue, canDiscount]);
 
   const inputClass =
     "bg-surface-low rounded-xl px-4 py-4 text-sm focus:ring-2 focus:ring-gold-warm outline-none border-none";
@@ -67,8 +83,12 @@ export default function TourBookingForm({ services, canDiscount }: TourBookingFo
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!serviceId) {
+    if (mode === "CATALOG" && !serviceId) {
       await showError({ title: "Gagal", text: "Pilih layanan terlebih dahulu." });
+      return;
+    }
+    if (mode === "CUSTOM" && !customName.trim()) {
+      await showError({ title: "Gagal", text: "Nama layanan custom wajib diisi." });
       return;
     }
     if (!customerName.trim() || !customerPhone.trim()) {
@@ -83,7 +103,10 @@ export default function TourBookingForm({ services, canDiscount }: TourBookingFo
     setSaving(true);
     try {
       const result = await adminCreateTourBooking({
-        serviceId,
+        serviceId: mode === "CATALOG" ? serviceId : null,
+        serviceName: mode === "CUSTOM" ? customName.trim() : null,
+        serviceType: mode === "CUSTOM" ? customType : null,
+        priceUnit: mode === "CUSTOM" ? customPriceUnit : null,
         customerName,
         customerPhone,
         customerEmail: customerEmail || null,
@@ -112,25 +135,97 @@ export default function TourBookingForm({ services, canDiscount }: TourBookingFo
 
   return (
     <form onSubmit={handleSubmit} className="bg-white p-10 rounded-[2.5rem] shadow-sm border border-outline-ghost flex flex-col gap-8">
-      <div className="flex flex-col gap-2">
-        <label className={labelClass}>Layanan</label>
-        <select
-          value={serviceId}
-          onChange={(e) => {
-            const next = services.find((s) => s.id === e.target.value);
-            setServiceId(e.target.value);
-            if (next) setPricePerUnit(next.basePrice);
+      <div className="flex gap-2 p-1 bg-surface-low rounded-xl">
+        <button
+          type="button"
+          onClick={() => {
+            setMode("CATALOG");
+            if (services[0]) {
+              setServiceId(services[0].id);
+              setPricePerUnit(services[0].basePrice);
+            }
           }}
-          className={inputClass}
-          required
+          disabled={services.length === 0}
+          className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition-all disabled:opacity-40 ${
+            mode === "CATALOG" ? "bg-navy-deep text-white" : "text-foreground/50 hover:text-navy-deep"
+          }`}
         >
-          {services.map((service) => (
-            <option key={service.id} value={service.id}>
-              {service.name}
-            </option>
-          ))}
-        </select>
+          Dari Catalog
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode("CUSTOM")}
+          className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition-all ${
+            mode === "CUSTOM" ? "bg-navy-deep text-white" : "text-foreground/50 hover:text-navy-deep"
+          }`}
+        >
+          Custom (di luar catalog)
+        </button>
       </div>
+
+      {mode === "CATALOG" ? (
+        <div className="flex flex-col gap-2">
+          <label className={labelClass}>Layanan Catalog</label>
+          <select
+            value={serviceId}
+            onChange={(e) => {
+              const next = services.find((s) => s.id === e.target.value);
+              setServiceId(e.target.value);
+              if (next) setPricePerUnit(next.basePrice);
+            }}
+            className={inputClass}
+            required
+          >
+            {services.map((service) => (
+              <option key={service.id} value={service.id}>
+                {service.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="flex flex-col gap-2 md:col-span-1">
+            <label className={labelClass}>Nama Layanan</label>
+            <input
+              type="text"
+              value={customName}
+              onChange={(e) => setCustomName(e.target.value)}
+              placeholder="Contoh: Sewa Hiace 3 hari Medan-Lake Toba"
+              className={inputClass}
+              required
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <label className={labelClass}>Tipe</label>
+            <select
+              value={customType}
+              onChange={(e) => setCustomType(e.target.value as TourServiceTypeValue)}
+              className={inputClass}
+            >
+              {Object.entries(TOUR_TYPE_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col gap-2">
+            <label className={labelClass}>Satuan Harga</label>
+            <select
+              value={customPriceUnit}
+              onChange={(e) => setCustomPriceUnit(e.target.value as TourPriceUnitValue)}
+              className={inputClass}
+            >
+              {Object.entries(TOUR_PRICE_UNIT_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="flex flex-col gap-2">
@@ -207,7 +302,16 @@ export default function TourBookingForm({ services, canDiscount }: TourBookingFo
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="flex flex-col gap-2">
           <label className={labelClass}>Metode Bayar</label>
-          <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value as "MOOTA" | "POOL" | "MANUAL")} className={inputClass}>
+          <select
+            value={paymentMethod}
+            onChange={(e) => {
+              const next = e.target.value as "MOOTA" | "POOL" | "MANUAL";
+              setPaymentMethod(next);
+              // MOOTA nunggu webhook; POOL nunggu konfirmasi admin.
+              if (next === "MOOTA" || next === "POOL") setMarkPaid(false);
+            }}
+            className={inputClass}
+          >
             <option value="MANUAL">Transfer Manual (Verifikasi Admin)</option>
             <option value="MOOTA">Transfer Bank (Otomatis)</option>
             <option value="POOL">Bayar di Pool / Loket</option>
@@ -216,7 +320,13 @@ export default function TourBookingForm({ services, canDiscount }: TourBookingFo
         <div className="flex items-center justify-between bg-surface-low rounded-xl px-6 py-4">
           <div className="flex flex-col gap-1">
             <span className="text-xs font-bold text-navy-deep uppercase tracking-widest">Tandai Lunas</span>
-            <span className="text-[10px] text-foreground/50">Booking langsung berstatus CONFIRMED</span>
+            <span className="text-[10px] text-foreground/50">
+              {paymentMethod === "MOOTA"
+                ? "Off = tunggu Moota / verifikasi admin"
+                : paymentMethod === "POOL"
+                  ? "Off = tunggu konfirmasi admin setelah bayar di pool"
+                  : "On hanya jika sudah lunas sekarang"}
+            </span>
           </div>
           <button
             type="button"
@@ -237,8 +347,7 @@ export default function TourBookingForm({ services, canDiscount }: TourBookingFo
       <div className="bg-surface-low p-6 rounded-2xl flex flex-col gap-2 text-sm">
         <div className="flex justify-between">
           <span className="text-foreground/60">
-            Subtotal ({tourQtyLabel({ priceUnit: selectedService?.priceUnit || "PER_PAX", paxCount, unitCount, days })} ×{" "}
-            {formatIDR(pricePerUnit)})
+            Subtotal ({tourQtyLabel({ priceUnit, paxCount, unitCount, days })} × {formatIDR(pricePerUnit)})
           </span>
           <span className="font-bold text-navy-deep">{formatIDR(subtotal)}</span>
         </div>

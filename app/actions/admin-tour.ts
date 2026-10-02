@@ -506,6 +506,7 @@ export async function convertQuoteToBooking(
         serviceId: service.id,
         serviceName: service.name,
         serviceType: service.type,
+        priceUnit: service.priceUnit,
         startDate: inquiry.startDate,
         endDate: inquiry.endDate,
         paxCount: inquiry.paxCount,
@@ -550,7 +551,11 @@ export async function convertQuoteToBooking(
 }
 
 export interface AdminTourBookingInput {
-  serviceId: string;
+  serviceId?: string | null;
+  /** Required when serviceId is empty (custom / di luar catalog). */
+  serviceName?: string | null;
+  serviceType?: "TOUR_PACKAGE" | "DAILY_RENTAL" | null;
+  priceUnit?: "PER_PAX" | "PER_VEHICLE" | "PER_DAY" | null;
   customerName: string;
   customerEmail?: string | null;
   customerPhone: string;
@@ -571,8 +576,23 @@ export interface AdminTourBookingInput {
 export async function adminCreateTourBooking(data: AdminTourBookingInput) {
   const session = await requireTourAdmin();
 
-  const service = await prisma.tourService.findUnique({ where: { id: data.serviceId } });
-  if (!service) throw new Error("Layanan tidak ditemukan.");
+  const service = data.serviceId
+    ? await prisma.tourService.findUnique({ where: { id: data.serviceId } })
+    : null;
+  if (data.serviceId && !service) throw new Error("Layanan tidak ditemukan.");
+
+  const serviceName = (service?.name || data.serviceName || "").trim();
+  if (!serviceName) throw new Error("Nama layanan wajib diisi.");
+
+  const serviceType = (service?.type || data.serviceType) as "TOUR_PACKAGE" | "DAILY_RENTAL" | undefined;
+  if (!serviceType || !TOUR_SERVICE_TYPES.includes(serviceType)) {
+    throw new Error("Tipe layanan tidak valid.");
+  }
+
+  const priceUnit = (service?.priceUnit || data.priceUnit || "PER_PAX") as "PER_PAX" | "PER_VEHICLE" | "PER_DAY";
+  if (!TOUR_PRICE_UNITS.includes(priceUnit)) {
+    throw new Error("Satuan harga tidak valid.");
+  }
 
   const name = data.customerName?.trim();
   const phone = data.customerPhone?.trim();
@@ -590,7 +610,7 @@ export async function adminCreateTourBooking(data: AdminTourBookingInput) {
 
   const { subtotal } = calcTourSubtotal({
     pricePerUnit,
-    priceUnit: service.priceUnit,
+    priceUnit,
     paxCount,
     unitCount,
     startDate,
@@ -616,9 +636,10 @@ export async function adminCreateTourBooking(data: AdminTourBookingInput) {
   const booking = await prisma.tourBooking.create({
     data: {
       bookingCode,
-      serviceId: service.id,
-      serviceName: service.name,
-      serviceType: service.type,
+      serviceId: service?.id || null,
+      serviceName,
+      serviceType,
+      priceUnit,
       startDate,
       endDate,
       paxCount,

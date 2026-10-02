@@ -13,7 +13,7 @@ interface TourConvertFormProps {
 export default function TourConvertForm({ quoteId, defaultPaymentMethod }: TourConvertFormProps) {
   const router = useRouter();
   const [paymentMethod, setPaymentMethod] = useState<string>(defaultPaymentMethod || "MANUAL");
-  const [markPaid, setMarkPaid] = useState(true);
+  const [markPaid, setMarkPaid] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleConvert = async () => {
@@ -49,7 +49,11 @@ export default function TourConvertForm({ quoteId, defaultPaymentMethod }: TourC
           <label className="text-[10px] font-bold text-foreground/50 uppercase tracking-widest">Metode Bayar</label>
           <select
             value={paymentMethod}
-            onChange={(e) => setPaymentMethod(e.target.value)}
+            onChange={(e) => {
+              const next = e.target.value;
+              setPaymentMethod(next);
+              if (next === "MOOTA" || next === "POOL") setMarkPaid(false);
+            }}
             className="bg-white rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-gold-warm outline-none border-none"
           >
             <option value="MANUAL">Transfer Manual (Verifikasi Admin)</option>
@@ -58,7 +62,16 @@ export default function TourConvertForm({ quoteId, defaultPaymentMethod }: TourC
           </select>
         </div>
         <div className="flex items-center justify-between bg-white rounded-xl px-5 py-3">
-          <span className="text-[10px] font-bold text-foreground/50 uppercase tracking-widest">Tandai Lunas</span>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[10px] font-bold text-foreground/50 uppercase tracking-widest">Tandai Lunas</span>
+            <span className="text-[9px] text-foreground/40">
+              {paymentMethod === "MOOTA"
+                ? "Off = tunggu Moota"
+                : paymentMethod === "POOL"
+                  ? "Off = tunggu admin"
+                  : "On bila sudah lunas"}
+            </span>
+          </div>
           <button
             type="button"
             onClick={() => setMarkPaid((v) => !v)}

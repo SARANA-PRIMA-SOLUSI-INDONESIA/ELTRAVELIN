@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import PrintButton from "@/components/PrintButton";
 import { TOUR_PAYMENT_METHOD_LABELS, TOUR_TYPE_LABELS } from "@/lib/tour";
+import { getBookingDepartureTime } from "@/lib/booking-departure";
 
 interface InvoiceProps {
   params: Promise<{ code: string }>;
@@ -25,6 +26,7 @@ export default async function InvoicePage({ params }: InvoiceProps) {
   const partnershipLogoUrls = await getPartnershipLogos();
   const selectedOrigin = booking.segment?.originStop.name || booking.schedule.route.origin;
   const selectedDestination = booking.segment?.destinationStop.name || booking.schedule.route.destination;
+  const departureAt = getBookingDepartureTime(booking);
   const pricePerTicket = booking.segment?.basePrice || booking.schedule.price;
   const ticketSubtotal = pricePerTicket * booking.passengers.length;
 
@@ -106,7 +108,7 @@ export default async function InvoicePage({ params }: InvoiceProps) {
                 <div>
                   <p className="text-xs text-gray-400">Tanggal Keberangkatan</p>
                   <p className="font-medium text-gray-700">
-                    {booking.schedule.departureTime.toLocaleDateString('id-ID', { 
+                    {departureAt.toLocaleDateString('id-ID', { 
                       day: 'numeric', 
                       month: 'long', 
                       year: 'numeric',
@@ -117,7 +119,7 @@ export default async function InvoicePage({ params }: InvoiceProps) {
                 <div>
                   <p className="text-xs text-gray-400">Jam Keberangkatan</p>
                   <p className="font-medium text-gray-700">
-                    {booking.schedule.departureTime.toLocaleTimeString('id-ID', { 
+                    {departureAt.toLocaleTimeString('id-ID', { 
                       hour: '2-digit', 
                       minute: '2-digit',
                       timeZone: 'Asia/Jakarta'

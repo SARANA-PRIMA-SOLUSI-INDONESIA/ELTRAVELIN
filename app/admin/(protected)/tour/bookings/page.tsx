@@ -105,7 +105,8 @@ export default async function TourBookingsPage({ searchParams }: PageProps) {
               <div className="flex flex-col gap-1 min-w-0 lg:w-1/5">
                 <span className="text-sm font-medium text-navy-deep truncate">{booking.serviceName}</span>
                 <span className="text-xs text-foreground/50">
-                  {TOUR_TYPE_LABELS[booking.serviceType]} • {booking.paxCount} pax • {booking.unitCount} unit
+                  {TOUR_TYPE_LABELS[booking.serviceType]}
+                  {!booking.serviceId ? " • Custom" : ""} • {booking.paxCount} pax • {booking.unitCount} unit
                 </span>
               </div>
 

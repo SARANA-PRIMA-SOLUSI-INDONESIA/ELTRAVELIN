@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import BookingWizard from "@/components/BookingWizard";
 import RefreshPaymentButton from "@/components/RefreshPaymentButton";
 import Link from "next/link";
+import { getBookingDepartureTime } from "@/lib/booking-departure";
 
 interface ConfirmationProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -20,6 +21,7 @@ export default async function Confirmation({ searchParams }: ConfirmationProps) 
   const isConfirmed = booking.status === 'CONFIRMED';
   const isMoota = booking.paymentMethod === 'MOOTA';
   const isPool = booking.paymentMethod === 'POOL';
+  const departureAt = getBookingDepartureTime(booking);
 
   return (
     <div className="flex flex-col min-h-screen bg-[#F8F9FA]">
@@ -71,8 +73,8 @@ export default async function Confirmation({ searchParams }: ConfirmationProps) 
                   {booking.schedule.route.origin} → {booking.schedule.route.destination}
                 </span>
                 <span className="text-xs text-gray-400 font-medium">
-                  {booking.schedule.departureTime.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', timeZone: 'Asia/Jakarta' })} • 
-                  {booking.schedule.departureTime.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' })}
+                  {departureAt.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', timeZone: 'Asia/Jakarta' })} • 
+                  {departureAt.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' })}
                 </span>
               </div>
                <div className="flex flex-col gap-1 text-right">

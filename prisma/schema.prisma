@@ -379,9 +379,10 @@ model TourBooking {
   bookingCode     String          @unique
   inquiryId       String?
   quoteId         String?
-  serviceId       String
+  serviceId       String?
   serviceName     String
   serviceType     TourServiceType
+  priceUnit       TourPriceUnit   @default(PER_PAX)
   startDate       DateTime
   endDate         DateTime?
   paxCount        Int
@@ -405,7 +406,7 @@ model TourBooking {
   createdByAdmin  String?
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
-  service         TourService     @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  service         TourService?    @relation(fields: [serviceId], references: [id], onDelete: SetNull)
   inquiry         TourInquiry?    @relation(fields: [inquiryId], references: [id], onDelete: SetNull)
   quote           TourQuote?      @relation(fields: [quoteId], references: [id], onDelete: SetNull)
 

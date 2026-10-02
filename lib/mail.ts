@@ -1,4 +1,5 @@
 import { getAppUrl } from "./env";
+import { getBookingDepartureTime } from "./booking-departure";
 
 const RESEND_API_KEY = process.env.SMTP_PASS;
 const SMTP_FROM = process.env.SMTP_FROM || 'noreply@eltravel.in';
@@ -58,7 +59,7 @@ export async function sendETicket(booking: any) {
       <div style="background: #F8F9FA; padding: 15px; border-radius: 8px; margin: 20px 0;">
         <p><strong>Kode Booking:</strong> ${booking.bookingCode}</p>
         <p><strong>Rute:</strong> ${getOriginPoint(booking)} → ${getDestPoint(booking)}</p>
-        <p><strong>Waktu Keberangkatan:</strong> ${new Date(booking.schedule.departureTime).toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'short', timeZone: 'Asia/Jakarta' })}</p>
+        <p><strong>Waktu Keberangkatan:</strong> ${getBookingDepartureTime(booking).toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'short', timeZone: 'Asia/Jakarta' })}</p>
         <p><strong>Kursi:</strong> ${booking.seats.map((s: any) => s.seatNumber).join(', ')}</p>
         ${booking.pickupRequested ? `<p><strong>Jemput (${booking.pickupCity || '-'}):</strong> ${booking.pickupAddress || '-'} (${booking.pickupZone || '-'}${booking.pickupDistanceKm != null ? `, &plusmn; ${Number(booking.pickupDistanceKm).toLocaleString('id-ID', { maximumFractionDigits: 1 })} km` : ''}) &middot; Rp ${(booking.pickupFee || 0).toLocaleString('id-ID')}</p>` : ''}
         <p><strong>Total Bayar:</strong> Rp ${booking.totalPrice.toLocaleString('id-ID')}</p>
@@ -83,7 +84,7 @@ export async function sendAdminNotification(booking: any) {
   };
   const bookingDate = fmt(new Date(booking.createdAt || booking.settlementTime || new Date()));
   const departureDate = booking.schedule?.departureTime
-    ? fmt(new Date(booking.schedule.departureTime))
+    ? fmt(getBookingDepartureTime(booking))
     : '-';
 
   const html = `
