@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import BookingWizard from "@/components/BookingWizard";
 import RefreshPaymentButton from "@/components/RefreshPaymentButton";
 import Link from "next/link";
+import { getBookingDepartureTime } from "@/lib/booking-departure";
 
 interface ConfirmationProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -20,6 +21,7 @@ export default async function Confirmation({ searchParams }: ConfirmationProps) 
   const isConfirmed = booking.status === 'CONFIRMED';
   const isMoota = booking.paymentMethod === 'MOOTA';
   const isPool = booking.paymentMethod === 'POOL';
+  const departureAt = getBookingDepartureTime(booking);
 
   return (
     <div className="flex flex-col min-h-screen bg-[#F8F9FA]">
@@ -71,8 +73,8 @@ export default async function Confirmation({ searchParams }: ConfirmationProps) 
                   {booking.schedule.route.origin} → {booking.schedule.route.destination}
                 </span>
                 <span className="text-xs text-gray-400 font-medium">
-                  {booking.schedule.departureTime.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', timeZone: 'Asia/Jakarta' })} • 
-                  {booking.schedule.departureTime.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' })}
+                  {departureAt.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', timeZone: 'Asia/Jakarta' })} • 
+                  {departureAt.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' })}
                 </span>
               </div>
                <div className="flex flex-col gap-1 text-right">
@@ -94,7 +96,22 @@ export default async function Confirmation({ searchParams }: ConfirmationProps) 
                </div>
             </div>
 
-            {/* Conditionally show Payment Instructions if Pending and Moota */}
+            {booking.pickupRequested && (
+              <div className="flex flex-col gap-2 text-left p-4 bg-gold-warm/5 rounded-xl border border-gold-warm/20">
+                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                  Layanan Jemput ({booking.pickupCity || "-"})
+                </span>
+                <span className="text-xs font-bold text-navy-deep">
+                  {booking.pickupZone || "-"}
+                  {booking.pickupDistanceKm != null ? ` • ± ${Number(booking.pickupDistanceKm).toLocaleString('id-ID', { maximumFractionDigits: 1 })} km` : ""}
+                  {" "}• Rp {booking.pickupFee.toLocaleString('id-ID')}
+                </span>
+                <span className="text-xs text-gray-500">{booking.pickupAddress || "-"}</span>
+                {booking.pickupNote && <span className="text-xs text-gray-500">Catatan: {booking.pickupNote}</span>}
+              </div>
+            )}
+
+            {/* Conditionally show payment instructions if pending and Moota */}
             {!isConfirmed && isMoota && (
               <div className="flex flex-col gap-6 p-8 bg-gold-warm/5 rounded-3xl border border-gold-warm/20">
                 <div className="flex flex-col gap-2 text-center">

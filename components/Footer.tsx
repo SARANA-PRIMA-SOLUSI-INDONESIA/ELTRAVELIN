@@ -28,15 +28,15 @@ export default function Footer() {
         <div className="grid grid-cols-2 md:grid-cols-3 gap-12">
           <div className="flex flex-col gap-4">
             <h4 className="font-display font-bold text-navy-deep text-sm uppercase tracking-wider mb-2">Layanan</h4>
-            <Link href="#" className="text-sm text-foreground/60 hover:text-navy-deep transition-colors">Booking Tiket</Link>
-            <Link href="#" className="text-sm text-foreground/60 hover:text-navy-deep transition-colors">Sewa Bus</Link>
-            <Link href="#" className="text-sm text-foreground/60 hover:text-navy-deep transition-colors">Pengiriman Paket</Link>
-            <Link href="#" className="text-sm text-foreground/60 hover:text-navy-deep transition-colors">EL Travel Executive</Link>
+            <Link href="/" className="text-sm text-foreground/60 hover:text-navy-deep transition-colors">Booking Tiket</Link>
+            <Link href="/tour" className="text-sm text-foreground/60 hover:text-navy-deep transition-colors">Tour & Sewa</Link>
+            <Link href="/routes" className="text-sm text-foreground/60 hover:text-navy-deep transition-colors">Rute Travel</Link>
+            <Link href="/fleet" className="text-sm text-foreground/60 hover:text-navy-deep transition-colors">Armada</Link>
           </div>
 
           <div className="flex flex-col gap-4">
             <h4 className="font-display font-bold text-navy-deep text-sm uppercase tracking-wider mb-2">Perusahaan</h4>
-            <Link href="#" className="text-sm text-foreground/60 hover:text-navy-deep transition-colors">Tentang Kami</Link>
+            <Link href="/about" className="text-sm text-foreground/60 hover:text-navy-deep transition-colors">Tentang Kami</Link>
             <Link href="#" className="text-sm text-foreground/60 hover:text-navy-deep transition-colors">Karir</Link>
             <Link href="#" className="text-sm text-foreground/60 hover:text-navy-deep transition-colors">Blog</Link>
             <Link href="#" className="text-sm text-foreground/60 hover:text-navy-deep transition-colors">Kerjasama</Link>
@@ -44,9 +44,9 @@ export default function Footer() {
 
           <div className="flex flex-col gap-4 col-span-2 md:col-span-1">
             <h4 className="font-display font-bold text-navy-deep text-sm uppercase tracking-wider mb-2">Hubungi Kami</h4>
-            <p className="text-sm text-foreground/60">Jakarta, Indonesia</p>
-            <p className="text-sm text-foreground/60">(021) 1234-5678</p>
-            <p className="text-sm text-foreground/60">hello@eltravel.id</p>
+            <a href="https://maps.app.goo.gl/xjQKsFZULzoPD2qM9" target="_blank" rel="noopener noreferrer" className="text-sm text-foreground/60 hover:text-navy-deep transition-colors">Jl. A. Yani No.835A, Padasuka<br />Cibeunying Kidul, Bandung 40125</a>
+            <a href="https://wa.me/62811221286" target="_blank" rel="noopener noreferrer" className="text-sm text-foreground/60 hover:text-navy-deep transition-colors">0811-221-286</a>
+            <a href="mailto:admin@eltravel.in" className="text-sm text-foreground/60 hover:text-navy-deep transition-colors">admin@eltravel.in</a>
             <div className="flex gap-4 mt-2">
               <div className="w-8 h-8 rounded-full bg-surface-low border border-outline-ghost hover:border-navy-deep transition-colors flex items-center justify-center cursor-pointer">
                 <i className="ri-instagram-line text-navy-deep"></i>

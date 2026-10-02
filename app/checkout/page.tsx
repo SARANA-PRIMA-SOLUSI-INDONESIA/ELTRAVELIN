@@ -3,6 +3,8 @@ import CheckoutForm from "@/components/CheckoutForm";
 import { notFound, redirect } from "next/navigation";
 import BookingWizard from "@/components/BookingWizard";
 import Link from "next/link";
+import { getPickupConfig } from "@/lib/pickup-server";
+import { findPickupCity, hasPoolCoords } from "@/lib/pickup";
 
 interface CheckoutProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -23,12 +25,16 @@ export default async function Checkout({ searchParams }: CheckoutProps) {
   if (!scheduleId || !seatsParam) return notFound();
 
   const seatNumbers = seatsParam.split(',');
-  const [schedule, availablePromos] = await Promise.all([
+  const [schedule, availablePromos, pickupConfig] = await Promise.all([
     getScheduleById(scheduleId),
-    getCheckoutPromos()
+    getCheckoutPromos(),
+    getPickupConfig(),
   ]);
 
   if (!schedule) return notFound();
+
+  const matchedPickupCity = findPickupCity(pickupConfig, schedule.route.origin, originStopName);
+  const pickupCity = hasPoolCoords(matchedPickupCity) ? matchedPickupCity : null;
 
   // Redirect if schedule has already departed
   if (schedule.departureTime < new Date()) {
@@ -77,6 +83,7 @@ export default async function Checkout({ searchParams }: CheckoutProps) {
           originStopName={originStopName}
           destinationStopName={destinationStopName}
           segmentPrice={segmentPrice}
+          pickupCity={pickupCity}
         />
       </div>
     </div>

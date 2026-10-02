@@ -1,9 +1,23 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { validatePromoCode } from "@/app/actions/booking";
 import { showError } from "@/lib/swal";
+import {
+  calcPickupFee,
+  hasPoolCoords,
+  haversineKm,
+  maxPickupRadiusKm,
+  resolvePickupZoneByDistance,
+  type PickupCity,
+} from "@/lib/pickup";
+
+const PickupMap = dynamic(() => import("@/components/PickupMap"), {
+  ssr: false,
+  loading: () => <div className="h-72 w-full rounded-2xl bg-surface-low animate-pulse" />,
+});
 
 interface CheckoutFormProps {
   scheduleId: string;
@@ -17,9 +31,10 @@ interface CheckoutFormProps {
   originStopName?: string;
   destinationStopName?: string;
   segmentPrice?: number;
+  pickupCity?: PickupCity | null;
 }
 
-export default function CheckoutForm({ scheduleId, seatNumbers, basePrice, vehicleType, departureTime, availablePromos = [], originStopId, destinationStopId, originStopName, destinationStopName, segmentPrice }: CheckoutFormProps) {
+export default function CheckoutForm({ scheduleId, seatNumbers, basePrice, vehicleType, departureTime, availablePromos = [], originStopId, destinationStopId, originStopName, destinationStopName, segmentPrice, pickupCity = null }: CheckoutFormProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [promoLoading, setPromoLoading] = useState(false);
@@ -39,6 +54,11 @@ export default function CheckoutForm({ scheduleId, seatNumbers, basePrice, vehic
   const [passengerNames, setPassengerNames] = useState<string[]>(
     new Array(seatNumbers.length).fill("")
   );
+
+  const [pickupEnabled, setPickupEnabled] = useState(false);
+  const [pickupPoint, setPickupPoint] = useState<{ lat: number; lng: number } | null>(null);
+  const [pickupAddress, setPickupAddress] = useState("");
+  const [pickupNote, setPickupNote] = useState("");
 
   const handlePassengerNameChange = (index: number, value: string) => {
     const newNames = [...passengerNames];
@@ -86,8 +106,42 @@ export default function CheckoutForm({ scheduleId, seatNumbers, basePrice, vehic
     }
   };
 
+  const totalBasePrice = basePrice * seatNumbers.length;
+  const totalDiscount = appliedPromo?.discount || 0;
+  const pickupReadyCity = pickupCity && hasPoolCoords(pickupCity) ? pickupCity : null;
+  const pickupDistanceKm =
+    pickupEnabled && pickupReadyCity && pickupPoint
+      ? haversineKm(pickupPoint.lat, pickupPoint.lng, pickupReadyCity.poolLat, pickupReadyCity.poolLng)
+      : null;
+  const selectedPickupZone =
+    pickupEnabled && pickupReadyCity && pickupDistanceKm !== null
+      ? resolvePickupZoneByDistance(pickupReadyCity, pickupDistanceKm)
+      : null;
+  const pickupFee = selectedPickupZone ? calcPickupFee(selectedPickupZone, seatNumbers.length) : 0;
+  const pickupOutside =
+    pickupEnabled && pickupReadyCity && pickupPoint !== null && selectedPickupZone === null;
+  const finalPrice = totalBasePrice - totalDiscount + pickupFee;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (pickupEnabled && pickupReadyCity) {
+      if (!pickupPoint) {
+        await showError({ title: "Gagal", text: "Tentukan titik jemput di peta terlebih dahulu." });
+        return;
+      }
+      if (!selectedPickupZone) {
+        await showError({
+          title: "Di Luar Area Penjemputan",
+          text: `Lokasi Anda di luar radius layanan (maks ${maxPickupRadiusKm(pickupReadyCity)} km). Silakan hubungi admin/CS untuk opsi khusus.`,
+        });
+        return;
+      }
+      if (!pickupAddress.trim()) {
+        await showError({ title: "Gagal", text: "Alamat penjemputan wajib diisi." });
+        return;
+      }
+    }
+
     setLoading(true);
     try {
       const bookingDraft = {
@@ -103,6 +157,10 @@ export default function CheckoutForm({ scheduleId, seatNumbers, basePrice, vehic
         originStopName,
         destinationStopName,
         segmentPrice,
+        pickupLat: pickupEnabled && pickupReadyCity ? pickupPoint?.lat : undefined,
+        pickupLng: pickupEnabled && pickupReadyCity ? pickupPoint?.lng : undefined,
+        pickupAddress: pickupEnabled ? pickupAddress.trim() : undefined,
+        pickupNote: pickupEnabled ? pickupNote.trim() || undefined : undefined,
         totalPrice: finalPrice,
       };
 
@@ -115,10 +173,6 @@ export default function CheckoutForm({ scheduleId, seatNumbers, basePrice, vehic
       setLoading(false);
     }
   };
-
-  const totalBasePrice = basePrice * seatNumbers.length;
-  const totalDiscount = appliedPromo?.discount || 0;
-  const finalPrice = totalBasePrice - totalDiscount;
 
   return (
     <div className="flex flex-col lg:flex-row gap-12">
@@ -165,6 +219,99 @@ export default function CheckoutForm({ scheduleId, seatNumbers, basePrice, vehic
             </div>
           </div>
         </div>
+
+        {/* Pickup Service */}
+        {pickupCity && (
+          <div className="glass rounded-[2rem] md:rounded-[3rem] p-8 md:p-12 shadow-ambient border border-white/20">
+            <div className="flex items-start justify-between gap-6">
+              <div className="flex flex-col gap-1">
+                <h3 className="text-lg font-display font-bold text-navy-deep flex items-center gap-3">
+                  <i className="ri-map-pin-user-line text-gold-warm"></i> Layanan Jemput ({pickupCity.name})
+                </h3>
+                <p className="text-xs text-foreground/50">
+                  {pickupCity.notes || `Tentukan titik jemput di peta. Area layanan maks ${maxPickupRadiusKm(pickupCity)} km dari pool ${pickupCity.name}.`}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPickupEnabled((v) => !v)}
+                className={`relative w-14 h-8 shrink-0 rounded-full transition-colors ${pickupEnabled ? "bg-navy-deep" : "bg-gray-300"}`}
+                aria-pressed={pickupEnabled}
+              >
+                <span className={`absolute top-1 left-1 w-6 h-6 rounded-full bg-white shadow transition-transform ${pickupEnabled ? "translate-x-6" : ""}`} />
+              </button>
+            </div>
+
+            {pickupEnabled && pickupReadyCity && (
+              <div className="flex flex-col gap-6 mt-8">
+                <div className="flex flex-col gap-2">
+                  <label className="text-[10px] font-bold text-navy-deep uppercase tracking-widest">
+                    Titik Penjemputan (klik/drag di peta)
+                  </label>
+                  <PickupMap
+                    centerLat={pickupReadyCity.poolLat}
+                    centerLng={pickupReadyCity.poolLng}
+                    value={pickupPoint}
+                    onChange={setPickupPoint}
+                    zones={pickupReadyCity.zones}
+                    showLocate
+                  />
+                  <p className="text-[10px] text-foreground/40">
+                    Lingkaran di peta adalah area layanan. Titik di luar lingkaran terluar tidak dapat diproses.
+                  </p>
+                </div>
+
+                {pickupDistanceKm !== null && (
+                  <div
+                    className={`rounded-2xl p-4 text-xs font-bold ${
+                      pickupOutside
+                        ? "bg-red-500/10 text-red-600 border border-red-200"
+                        : "bg-gold-warm/10 text-navy-deep border border-gold-warm/30"
+                    }`}
+                  >
+                    {pickupOutside ? (
+                      <>
+                        <i className="ri-error-warning-line mr-1"></i>
+                        Jarak ± {pickupDistanceKm} km — di luar area penjemputan (maks {maxPickupRadiusKm(pickupReadyCity)} km).
+                        Silakan hubungi admin/CS untuk opsi khusus, atau matikan opsi jemput.
+                      </>
+                    ) : (
+                      <>
+                        <i className="ri-map-pin-2-line mr-1"></i>
+                        Jarak ± {pickupDistanceKm} km • {selectedPickupZone?.label} • Rp{" "}
+                        {selectedPickupZone?.feePerPax.toLocaleString("id-ID")} × {seatNumbers.length} pax = Rp{" "}
+                        {pickupFee.toLocaleString("id-ID")}
+                      </>
+                    )}
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="flex flex-col gap-2 md:col-span-2">
+                    <label className="text-[10px] font-bold text-navy-deep uppercase tracking-widest">Alamat Penjemputan</label>
+                    <textarea
+                      rows={2}
+                      placeholder="Alamat lengkap rumah/titik jemput (untuk patokan driver)"
+                      className="bg-surface-low rounded-2xl px-6 py-4 text-sm text-foreground/80 border border-navy-deep/5 focus:ring-2 focus:ring-gold-warm transition-all outline-none resize-none"
+                      value={pickupAddress}
+                      onChange={(e) => setPickupAddress(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2 md:col-span-2">
+                    <label className="text-[10px] font-bold text-navy-deep uppercase tracking-widest">Patokan / Catatan</label>
+                    <input
+                      type="text"
+                      placeholder="Contoh: dekat masjid, siap dijemput jam 6"
+                      className="bg-surface-low rounded-2xl px-6 py-4 text-sm text-foreground/80 border border-navy-deep/5 focus:ring-2 focus:ring-gold-warm transition-all outline-none"
+                      value={pickupNote}
+                      onChange={(e) => setPickupNote(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Passenger Info */}
         <div className="glass rounded-[2rem] md:rounded-[3rem] p-8 md:p-12 shadow-ambient border border-white/20">
@@ -325,6 +472,15 @@ export default function CheckoutForm({ scheduleId, seatNumbers, basePrice, vehic
               <div className="flex justify-between items-center text-sm">
                 <span className="text-green-600 font-medium font-body uppercase tracking-widest text-[10px]">Potongan Promo</span>
                 <span className="text-green-600 font-bold">- Rp {totalDiscount.toLocaleString('id-ID')}</span>
+              </div>
+            )}
+
+            {pickupFee > 0 && (
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-foreground/40 font-medium font-body uppercase tracking-widest text-[10px]">
+                  Biaya Jemput ({seatNumbers.length} pax)
+                </span>
+                <span className="text-navy-deep font-bold">Rp {pickupFee.toLocaleString('id-ID')}</span>
               </div>
             )}
 

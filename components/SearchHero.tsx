@@ -5,7 +5,28 @@ import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { showInfo } from "@/lib/swal";
 
-export default function SearchHero({ routes = [] }: { routes: any[] }) {
+interface SearchHeroProps {
+  routes?: any[];
+  content?: {
+    badge: string;
+    titleTop: string;
+    titleAccent: string;
+    titleBottom: string;
+    subtitle: string;
+  };
+}
+
+const DEFAULT_HERO = {
+  badge: "Premium Executive Transit",
+  titleTop: "The Modern",
+  titleAccent: "Concierge",
+  titleBottom: "Experience",
+  subtitle:
+    "Nikmati pengalaman berkendara kelas eksekutif dengan armada modern dan layanan terbaik di setiap rute kami.",
+};
+
+export default function SearchHero({ routes = [], content }: SearchHeroProps) {
+  const hero = content || DEFAULT_HERO;
   const router = useRouter();
   
   // Collect all stops from all routes (flatten stops array, including inactive ones)
@@ -72,14 +93,14 @@ export default function SearchHero({ routes = [] }: { routes: any[] }) {
       <div className="container mx-auto px-6 md:px-12 lg:px-24 flex flex-col lg:flex-row items-center z-10 relative">
         <div className="w-full lg:w-1/2 flex flex-col gap-6 animate-fade-in">
           <span className="font-display font-bold text-gold-warm uppercase tracking-widest text-xs">
-            Premium Executive Transit
+            {hero.badge}
           </span>
           <h1 className="text-4xl md:text-7xl font-display font-bold text-navy-deep leading-[1.1]">
-            The Modern <br /> 
-            <span className="italic font-light">Concierge</span> Experience
+            {hero.titleTop} <br /> 
+            <span className="italic font-light">{hero.titleAccent}</span> {hero.titleBottom}
           </h1>
           <p className="text-base md:text-lg text-foreground/60 max-w-md font-body">
-            Nikmati pengalaman berkendara kelas eksekutif dengan armada modern dan layanan terbaik di setiap rute kami.
+            {hero.subtitle}
           </p>
           
           <div className="mt-8 glass rounded-3xl p-8 shadow-ambient w-full max-w-xl">

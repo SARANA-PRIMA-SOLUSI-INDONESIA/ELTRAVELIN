@@ -3,12 +3,13 @@
 import { deleteRoute, deleteTemplate } from "@/app/actions/admin-master";
 import { deletePromo } from "@/app/actions/admin-promo";
 import { deleteVehicle } from "@/app/actions/admin-vehicle";
+import { deleteTourService } from "@/app/actions/admin-tour";
 import { useState } from "react";
 import { confirmAction, showError } from "@/lib/swal";
 
 interface DeleteButtonProps {
   id: string;
-  type: 'route' | 'template' | 'promo' | 'vehicle';
+  type: 'route' | 'template' | 'promo' | 'vehicle' | 'tourService';
 }
 
 export default function DeleteButton({ id, type }: DeleteButtonProps) {
@@ -20,6 +21,7 @@ export default function DeleteButton({ id, type }: DeleteButtonProps) {
     else if (type === 'template') msg = "Hapus template jadwal ini?";
     else if (type === 'promo') msg = "Hapus kode promo ini?";
     else if (type === 'vehicle') msg = "Hapus armada ini?";
+    else if (type === 'tourService') msg = "Hapus layanan Tour & Sewa ini?";
       
     if (!(await confirmAction({ title: "Konfirmasi Hapus", danger: true, text: msg }))) return;
 
@@ -33,6 +35,8 @@ export default function DeleteButton({ id, type }: DeleteButtonProps) {
         await deletePromo(id);
       } else if (type === 'vehicle') {
         await deleteVehicle(id);
+      } else if (type === 'tourService') {
+        await deleteTourService(id);
       }
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Terjadi kesalahan";

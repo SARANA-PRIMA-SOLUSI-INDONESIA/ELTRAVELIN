@@ -57,6 +57,11 @@ export function wibDayOfWeek(date: string): number {
   return new Date(`${date}T12:00:00+07:00`).getDay();
 }
 
+// Dedupe materialisasi per tanggal dalam satu proses: beberapa request paralel
+// (prefetch, double-render dev, search ganda) tidak boleh membuat transaksi
+// bersamaan untuk tanggal yang sama — ini penyebab pool habis & transaction timeout.
+const ensureInFlight = new Map<string, Promise<number>>();
+
 /**
  * Materialisasi on-demand untuk satu tanggal (WIB).
  * Idempotent: hanya membuat schedule/operatingTrip/seat yang belum ada.
@@ -73,6 +78,17 @@ export async function ensureSchedulesForDate(
     return 0;
   }
 
+  const pending = ensureInFlight.get(date);
+  if (pending) return pending;
+
+  const task = materializeSchedulesForDate(prisma, date).finally(() => {
+    ensureInFlight.delete(date);
+  });
+  ensureInFlight.set(date, task);
+  return task;
+}
+
+async function materializeSchedulesForDate(prisma: PrismaClient, date: string): Promise<number> {
   const startOfDay = wibStartOfDay(date);
   const endOfDay = wibEndOfDay(date);
   const now = new Date();
@@ -133,35 +149,35 @@ export async function ensureSchedulesForDate(
       }
     }
 
+    const seatNumbers = Array.from({ length: capacity }, (_, i) => (i + 1).toString());
+
     try {
-      await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-        const newTrip = await tx.operatingTrip.create({
-          data: {
-            vehicleId: template.vehicleId || null,
-            date: new Date(`${date}T12:00:00+07:00`),
-            status: "SCHEDULED",
+      // Satu nested create (atomic di engine) — tanpa interactive transaction yang
+      // menahan koneksi & rawan "Unable to start a transaction in the given time".
+      await prisma.schedule.create({
+        data: {
+          departureTime: departureWIB,
+          arrivalTime: arrival,
+          price: template.price,
+          vehicleType,
+          capacity,
+          stopTimesJson: template.stopTimesJson,
+          route: { connect: { id: template.routeId } },
+          template: { connect: { id: template.id } },
+          operatingTrip: {
+            create: {
+              ...(template.vehicleId ? { vehicle: { connect: { id: template.vehicleId } } } : {}),
+              date: new Date(`${date}T12:00:00+07:00`),
+              status: "SCHEDULED" as const,
+              seats: {
+                create: seatNumbers.map((num: string) => ({
+                  seatNumber: num,
+                  status: "AVAILABLE" as const,
+                })),
+              },
+            },
           },
-        });        const seatNumbers = Array.from({ length: capacity }, (_, i) => (i + 1).toString());
-        await tx.seat.createMany({
-          data: seatNumbers.map((num: string) => ({
-            operatingTripId: newTrip.id,
-            seatNumber: num,
-            status: "AVAILABLE",
-          })),
-        });
-        await tx.schedule.create({
-          data: {
-            routeId: template.routeId,
-            templateId: template.id,
-            departureTime: departureWIB,
-            arrivalTime: arrival,
-            price: template.price,
-            vehicleType,
-            capacity,
-            operatingTripId: newTrip.id,
-            stopTimesJson: template.stopTimesJson,
-          },
-        });
+        },
       });
       existingKeys.add(key);
       created++;

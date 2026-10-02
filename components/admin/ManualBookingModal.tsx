@@ -1,9 +1,25 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { getSchedules, adminCreateBooking, getAvailableSeatsForSchedule, validatePromoCode } from "@/app/actions/booking";
+import { getPickupSettings } from "@/app/actions/admin-settings";
 import { showSuccess } from "@/lib/swal";
+import {
+  calcPickupFee,
+  findPickupCity,
+  hasPoolCoords,
+  haversineKm,
+  maxPickupRadiusKm,
+  resolvePickupZoneByDistance,
+  type PickupConfig,
+} from "@/lib/pickup";
+
+const PickupMap = dynamic(() => import("@/components/PickupMap"), {
+  ssr: false,
+  loading: () => <div className="h-64 w-full rounded-2xl bg-surface-low animate-pulse" />,
+});
 
 export default function ManualBookingModal({ onClose }: { onClose: () => void }) {
   const router = useRouter();
@@ -34,9 +50,19 @@ export default function ManualBookingModal({ onClose }: { onClose: () => void })
   const [appliedPromo, setAppliedPromo] = useState<{ id: string; discount: number; code: string } | null>(null);
   const [promoError, setPromoError] = useState("");
 
+  const [pickupConfig, setPickupConfig] = useState<PickupConfig | null>(null);
+  const [pickupEnabled, setPickupEnabled] = useState(false);
+  const [pickupPoint, setPickupPoint] = useState<{ lat: number; lng: number } | null>(null);
+  const [pickupAddress, setPickupAddress] = useState("");
+  const [pickupNote, setPickupNote] = useState("");
+
   useEffect(() => {
     fetchSchedules();
   }, [date]);
+
+  useEffect(() => {
+    getPickupSettings().then(setPickupConfig).catch(() => setPickupConfig(null));
+  }, []);
 
   const fetchSchedules = async () => {
     setLoadingSchedules(true);
@@ -68,6 +94,10 @@ export default function ManualBookingModal({ onClose }: { onClose: () => void })
     setSelectedSeats([]);
     setOriginStopId("");
     setDestinationStopId("");
+    setPickupEnabled(false);
+    setPickupPoint(null);
+    setPickupAddress("");
+    setPickupNote("");
     fetchSeats(schedule.id);
   };
 
@@ -110,6 +140,24 @@ export default function ManualBookingModal({ onClose }: { onClose: () => void })
 
   const effectivePrice = segmentPrice ?? selectedSchedule?.price ?? 0;
   const validPassengers = passengers.filter((p) => p.trim());
+
+  const pickupCity = useMemo(() => {
+    const matched = findPickupCity(pickupConfig, selectedSchedule?.route?.origin);
+    return hasPoolCoords(matched) ? matched : null;
+  }, [pickupConfig, selectedSchedule]);
+  const pickupDistanceKm =
+    pickupEnabled && pickupCity && pickupPoint
+      ? haversineKm(pickupPoint.lat, pickupPoint.lng, pickupCity.poolLat, pickupCity.poolLng)
+      : null;
+  const selectedPickupZone =
+    pickupEnabled && pickupCity && pickupDistanceKm !== null
+      ? resolvePickupZoneByDistance(pickupCity, pickupDistanceKm)
+      : null;
+  const pickupOutside =
+    pickupEnabled && pickupCity && pickupPoint !== null && selectedPickupZone === null;
+  const pickupFee = selectedPickupZone ? calcPickupFee(selectedPickupZone, validPassengers.length) : 0;
+  const finalTotal =
+    Math.max(0, effectivePrice * validPassengers.length - (appliedPromo?.discount || 0)) + pickupFee;
 
   const toggleSeat = (seatNumber: string) => {
     if (selectedSeats.includes(seatNumber)) {
@@ -155,6 +203,13 @@ export default function ManualBookingModal({ onClose }: { onClose: () => void })
     if (!contactName.trim() || !contactPhone.trim()) return setError("Nama dan telepon pemesan wajib diisi");
     if (validPassengers.length === 0) return setError("Minimal 1 penumpang");
     if (selectedSeats.length !== validPassengers.length) return setError("Jumlah kursi harus sama dengan jumlah penumpang");
+    if (pickupEnabled && pickupCity) {
+      if (!pickupPoint) return setError("Tentukan titik jemput di peta terlebih dahulu");
+      if (!selectedPickupZone) {
+        return setError(`Lokasi di luar area penjemputan (maks ${maxPickupRadiusKm(pickupCity)} km)`);
+      }
+      if (!pickupAddress.trim()) return setError("Alamat penjemputan wajib diisi");
+    }
 
     setLoading(true);
     setError("");
@@ -170,6 +225,10 @@ export default function ManualBookingModal({ onClose }: { onClose: () => void })
         originStopId: originStopId || undefined,
         destinationStopId: destinationStopId || undefined,
         promoCodeId: appliedPromo?.id,
+        pickupLat: pickupEnabled && pickupCity ? pickupPoint?.lat : undefined,
+        pickupLng: pickupEnabled && pickupCity ? pickupPoint?.lng : undefined,
+        pickupAddress: pickupEnabled && pickupCity ? pickupAddress.trim() : undefined,
+        pickupNote: pickupEnabled && pickupCity ? pickupNote.trim() || undefined : undefined,
       });
       await showSuccess({ title: "Berhasil", text: "Booking manual berhasil dibuat! Status CONFIRMED. Notifikasi sudah dikirim ke pelanggan." });
       onClose();
@@ -409,6 +468,70 @@ export default function ManualBookingModal({ onClose }: { onClose: () => void })
                 </div>
               </div>
 
+              {pickupCity && (
+                <div className="border border-gray-200 rounded-2xl p-4 space-y-3">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex flex-col">
+                      <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                        Layanan Jemput ({pickupCity.name})
+                      </span>
+                      <span className="text-[10px] text-gray-400">
+                        Area maks {maxPickupRadiusKm(pickupCity)} km dari pool • tarif × penumpang
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setPickupEnabled((v) => !v)}
+                      className={`relative w-12 h-7 shrink-0 rounded-full transition-colors ${pickupEnabled ? "bg-navy-deep" : "bg-gray-300"}`}
+                      aria-pressed={pickupEnabled}
+                    >
+                      <span className={`absolute top-1 left-1 w-5 h-5 rounded-full bg-white shadow transition-transform ${pickupEnabled ? "translate-x-5" : ""}`} />
+                    </button>
+                  </div>
+
+                  {pickupEnabled && (
+                    <div className="space-y-3">
+                      <PickupMap
+                        centerLat={pickupCity.poolLat}
+                        centerLng={pickupCity.poolLng}
+                        value={pickupPoint}
+                        onChange={setPickupPoint}
+                        zones={pickupCity.zones}
+                        showLocate
+                        className="h-64 w-full rounded-2xl overflow-hidden z-0"
+                      />
+                      {pickupDistanceKm !== null && (
+                        <div
+                          className={`rounded-xl p-3 text-xs font-bold ${
+                            pickupOutside
+                              ? "bg-red-50 text-red-600 border border-red-200"
+                              : "bg-gold-warm/10 text-navy-deep border border-gold-warm/30"
+                          }`}
+                        >
+                          {pickupOutside
+                            ? `Jarak ± ${pickupDistanceKm} km — di luar area penjemputan (maks ${maxPickupRadiusKm(pickupCity)} km).`
+                            : `Jarak ± ${pickupDistanceKm} km • ${selectedPickupZone?.label} • Rp ${selectedPickupZone?.feePerPax.toLocaleString("id-ID")} × ${validPassengers.length} pax = Rp ${pickupFee.toLocaleString("id-ID")}`}
+                        </div>
+                      )}
+                      <input
+                        type="text"
+                        value={pickupAddress}
+                        onChange={(e) => setPickupAddress(e.target.value)}
+                        placeholder="Alamat lengkap penjemputan"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-navy-deep outline-none text-sm"
+                      />
+                      <input
+                        type="text"
+                        value={pickupNote}
+                        onChange={(e) => setPickupNote(e.target.value)}
+                        placeholder="Patokan / catatan (opsional)"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-navy-deep outline-none text-sm"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div>
                 <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Kode Promo (opsional)</label>
                 <div className="flex gap-2">
@@ -451,9 +574,15 @@ export default function ManualBookingModal({ onClose }: { onClose: () => void })
                       <span className="font-bold">- Rp {appliedPromo.discount.toLocaleString("id-ID")}</span>
                     </div>
                   )}
+                  {pickupFee > 0 && (
+                    <div className="flex justify-between mt-1 text-xs">
+                      <span className="text-gray-400">Biaya Jemput ({validPassengers.length} pax)</span>
+                      <span className="font-bold text-navy-deep">Rp {pickupFee.toLocaleString("id-ID")}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between mt-2 pt-2 border-t border-gray-200 text-sm">
                     <span className="font-bold text-gray-600">Total</span>
-                    <span className="font-bold text-navy-deep">Rp {Math.max(0, effectivePrice * validPassengers.length - (appliedPromo?.discount || 0)).toLocaleString("id-ID")}</span>
+                    <span className="font-bold text-navy-deep">Rp {finalTotal.toLocaleString("id-ID")}</span>
                   </div>
                   {originStopId && destinationStopId && (
                     <p className="text-[10px] text-green-600 mt-1">
