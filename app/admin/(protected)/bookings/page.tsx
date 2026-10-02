@@ -8,6 +8,8 @@ import BookingActions from "@/components/admin/BookingActions";
 
 export const dynamic = 'force-dynamic';
 
+const WIB_TIME_ZONE = 'Asia/Jakarta';
+
 interface AdminBookingsProps {
   searchParams: Promise<{ 
     page?: string; 
