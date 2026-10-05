@@ -39,15 +39,7 @@ export default async function NewTourBookingPage() {
         </div>
       </div>
 
-      {services.length === 0 ? (
-        <div className="py-20 text-center bg-white rounded-[2.5rem] border-2 border-dashed border-outline-ghost">
-          <p className="text-sm text-foreground/40 font-medium">
-            Belum ada layanan aktif. Tambahkan layanan terlebih dahulu di menu Tour & Sewa.
-          </p>
-        </div>
-      ) : (
-        <TourBookingForm services={services} canDiscount={canManageTourDiscount(session?.role)} />
-      )}
+      <TourBookingForm services={services} canDiscount={canManageTourDiscount(session?.role)} />
     </div>
   );
 }
