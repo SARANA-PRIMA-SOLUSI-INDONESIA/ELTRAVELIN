@@ -1,11 +1,11 @@
 import Image from "next/image";
 import Link from "next/link";
 
-const team = [
-  { name: "Cristy Situmorang", role: "Komisaris", image: "/team-1.jpg" },
-  { name: "Chandra Limbong", role: "Founder & Director", image: "/team-2.jpg" },
-  { name: "Martinus Sitompul", role: "Komisaris", image: "/team-3.jpg" },
-];
+// const team = [
+//   { name: "Cristy Situmorang", role: "Komisaris", image: "/team-1.jpg" },
+//   { name: "Chandra Limbong", role: "Founder & Director", image: "/team-2.jpg" },
+//   { name: "Martinus Sitompul", role: "Komisaris", image: "/team-3.jpg" },
+// ];
 
 export const metadata = {
   title: "Tentang Kami | EL Travel",
@@ -127,6 +127,7 @@ export default function About() {
         </div>
       </section>
 
+      {/* Tim Pendiri & Komisaris — disembunyikan sementara
       <section className="px-6 md:px-12 lg:px-24 bg-surface-low py-32 rounded-[4rem] mx-6 md:mx-12">
         <div className="max-w-7xl mx-auto flex flex-col items-center gap-20">
           <div className="text-center flex flex-col gap-4 max-w-2xl">
@@ -150,6 +151,7 @@ export default function About() {
           </div>
         </div>
       </section>
+      */}
     </div>
   );
 }
