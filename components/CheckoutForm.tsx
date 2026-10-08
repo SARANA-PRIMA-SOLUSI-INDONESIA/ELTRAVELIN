@@ -246,18 +246,20 @@ export default function CheckoutForm({ scheduleId, seatNumbers, basePrice, vehic
               <div className="flex flex-col gap-6 mt-8">
                 <div className="flex flex-col gap-2">
                   <label className="text-[10px] font-bold text-navy-deep uppercase tracking-widest">
-                    Titik Penjemputan (klik/drag di peta)
+                    Titik Penjemputan (cari alamat / klik peta)
                   </label>
                   <PickupMap
                     centerLat={pickupReadyCity.poolLat}
                     centerLng={pickupReadyCity.poolLng}
                     value={pickupPoint}
                     onChange={setPickupPoint}
+                    onAddressChange={setPickupAddress}
                     zones={pickupReadyCity.zones}
                     showLocate
+                    showAddressSearch
                   />
                   <p className="text-[10px] text-foreground/40">
-                    Lingkaran di peta adalah area layanan. Titik di luar lingkaran terluar tidak dapat diproses.
+                    Ketik alamat untuk deteksi otomatis, atau klik/drag di peta. Lingkaran = area layanan.
                   </p>
                 </div>
 

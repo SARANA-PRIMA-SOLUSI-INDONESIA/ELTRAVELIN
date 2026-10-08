@@ -496,8 +496,10 @@ export default function ManualBookingModal({ onClose }: { onClose: () => void })
                         centerLng={pickupCity.poolLng}
                         value={pickupPoint}
                         onChange={setPickupPoint}
+                        onAddressChange={setPickupAddress}
                         zones={pickupCity.zones}
                         showLocate
+                        showAddressSearch
                         className="h-64 w-full rounded-2xl overflow-hidden z-0"
                       />
                       {pickupDistanceKm !== null && (
