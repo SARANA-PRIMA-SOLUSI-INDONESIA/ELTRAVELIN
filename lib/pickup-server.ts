@@ -14,7 +14,9 @@ export async function getPickupConfig(): Promise<PickupConfig> {
     if (!row) return DEFAULT_PICKUP_CONFIG;
     return mergePickupConfig(JSON.parse(row.value));
   } catch (error) {
+    // Truncated JSON from when AppSetting.value was VARCHAR(191).
     console.error("[PICKUP] Gagal memuat konfigurasi jemput:", error);
+    await prisma.appSetting.deleteMany({ where: { key: PICKUP_CONFIG_KEY } }).catch(() => {});
     return DEFAULT_PICKUP_CONFIG;
   }
 }

@@ -52,7 +52,7 @@ model Schedule {
   isActive        Boolean           @default(true)
   isDeleted       Boolean           @default(false)
   operatingTripId String?
-  stopTimesJson   String?
+  stopTimesJson   String?           @db.Text
   bookings        Booking[]
   route           Route             @relation(fields: [routeId], references: [id])
   template        ScheduleTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
@@ -71,7 +71,7 @@ model ScheduleTemplate {
   vehicleId     String?
   dayOfWeek     Int?
   isActive      Boolean    @default(true)
-  stopTimesJson String?
+  stopTimesJson String?    @db.Text
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
   schedules     Schedule[]
@@ -192,7 +192,7 @@ model Banner {
 model AppSetting {
   id        String   @id @default(cuid())
   key       String   @unique
-  value     String
+  value     String   @db.Text
   updatedAt DateTime @updatedAt
 }
 
