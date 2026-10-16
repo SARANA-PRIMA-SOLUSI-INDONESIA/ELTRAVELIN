@@ -62,6 +62,7 @@ export async function sendETicket(booking: any) {
         <p><strong>Waktu Keberangkatan:</strong> ${getBookingDepartureTime(booking).toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'short', timeZone: 'Asia/Jakarta' })}</p>
         <p><strong>Kursi:</strong> ${booking.seats.map((s: any) => s.seatNumber).join(', ')}</p>
         ${booking.pickupRequested ? `<p><strong>Jemput (${booking.pickupCity || '-'}):</strong> ${booking.pickupAddress || '-'} (${booking.pickupZone || '-'}${booking.pickupDistanceKm != null ? `, &plusmn; ${Number(booking.pickupDistanceKm).toLocaleString('id-ID', { maximumFractionDigits: 1 })} km` : ''}) &middot; Rp ${(booking.pickupFee || 0).toLocaleString('id-ID')}</p>` : ''}
+        ${booking.dropoffRequested ? `<p><strong>Antar (${booking.dropoffCity || '-'}):</strong> ${booking.dropoffAddress || '-'} (${booking.dropoffZone || '-'}${booking.dropoffDistanceKm != null ? `, &plusmn; ${Number(booking.dropoffDistanceKm).toLocaleString('id-ID', { maximumFractionDigits: 1 })} km` : ''}) &middot; Rp ${(booking.dropoffFee || 0).toLocaleString('id-ID')}</p>` : ''}
         <p><strong>Total Bayar:</strong> Rp ${booking.totalPrice.toLocaleString('id-ID')}</p>
       </div>
 
@@ -145,6 +146,11 @@ export async function sendAdminNotification(booking: any) {
             <tr>
               <td style="padding: 8px 0; border-top: 1px solid #e5e7eb; vertical-align: top; width: 130px; color: #6b7280; font-size: 13px; font-weight: 600;">Layanan Jemput</td>
               <td style="padding: 8px 0 8px 16px; border-top: 1px solid #e5e7eb; vertical-align: top; font-size: 13px; color: #111827; word-break: break-word;">${booking.pickupCity || '-'} &middot; ${booking.pickupZone || '-'}${booking.pickupDistanceKm != null ? ` (&plusmn; ${Number(booking.pickupDistanceKm).toLocaleString('id-ID', { maximumFractionDigits: 1 })} km)` : ''}<br>${booking.pickupAddress || '-'}${booking.pickupNote ? `<br>Catatan: ${booking.pickupNote}` : ''}<br>Biaya: Rp ${(booking.pickupFee || 0).toLocaleString('id-ID')}</td>
+            </tr>` : ''}
+            ${booking.dropoffRequested ? `
+            <tr>
+              <td style="padding: 8px 0; border-top: 1px solid #e5e7eb; vertical-align: top; width: 130px; color: #6b7280; font-size: 13px; font-weight: 600;">Layanan Antar</td>
+              <td style="padding: 8px 0 8px 16px; border-top: 1px solid #e5e7eb; vertical-align: top; font-size: 13px; color: #111827; word-break: break-word;">${booking.dropoffCity || '-'} &middot; ${booking.dropoffZone || '-'}${booking.dropoffDistanceKm != null ? ` (&plusmn; ${Number(booking.dropoffDistanceKm).toLocaleString('id-ID', { maximumFractionDigits: 1 })} km)` : ''}<br>${booking.dropoffAddress || '-'}${booking.dropoffNote ? `<br>Catatan: ${booking.dropoffNote}` : ''}<br>Biaya: Rp ${(booking.dropoffFee || 0).toLocaleString('id-ID')}</td>
             </tr>` : ''}
             <tr>
               <td style="padding: 8px 0; border-top: 1px solid #e5e7eb; vertical-align: top; width: 130px; color: #6b7280; font-size: 13px; font-weight: 600;">Waktu Booking</td>

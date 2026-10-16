@@ -31,6 +31,27 @@ function getPickupLine(booking: any) {
   );
 }
 
+// Info layanan antar (booking travel biasa) untuk notifikasi WhatsApp.
+function getDropoffLine(booking: any) {
+  if (!booking?.dropoffRequested) return "";
+  const distance =
+    booking.dropoffDistanceKm != null
+      ? ", \u00B1 " +
+        Number(booking.dropoffDistanceKm).toLocaleString("id-ID", { maximumFractionDigits: 1 }) +
+        " km"
+      : "";
+  return (
+    "\u{1F3E0} Antar: " +
+    (booking.dropoffAddress || "-") +
+    " (" +
+    (booking.dropoffZone || "-") +
+    distance +
+    ") - Rp " +
+    (booking.dropoffFee || 0).toLocaleString("id-ID") +
+    "\n"
+  );
+}
+
 export async function sendWhatsAppMessage(to: string, message: string) {
   const apiKey = process.env.STARSENDER_API_KEY?.trim();
 
@@ -118,6 +139,7 @@ export async function sendAdminWhatsAppNotification(booking: any) {
     "\u{1F4BA} Kursi: " + seatList + "\n" +
     "\u{1F464} Penumpang: " + passengerList + "\n" +
     getPickupLine(booking) +
+    getDropoffLine(booking) +
     "\n\u{1F4B0} Total: Rp " + (booking.totalPrice || 0).toLocaleString("id-ID") + "\n" +
     "\u{1F4B3} Metode: " + (booking.paymentMethod || "-") + "\n" +
     "\u{1F4CC} Status: " + booking.status + "\n\n" +
@@ -142,7 +164,8 @@ export async function sendBookingSuccessMessage(booking: any) {
     "\u{1F4CD} *Rute:* " + rute + "\n" +
     "\u23F0 *Keberangkatan:* " + departure + "\n" +
     "\u{1F4BA} *Nomor Kursi:* " + seats + "\n" +
-    getPickupLine(booking) + "\n" +
+    getPickupLine(booking) +
+    getDropoffLine(booking) + "\n" +
     "Lihat E-Ticket lengkap Anda di sini:\n" +
     getAppUrl() + "/confirmation?code=" + booking.bookingCode + "\n\n" +
     "Mohon hadir 30 menit sebelum keberangkatan. Terima kasih telah memilih ELTravel!";
@@ -307,6 +330,7 @@ export async function sendBookingPendingReminder(booking: any) {
     "\u23F0 *Keberangkatan:* " + departure + "\n" +
     "\u{1F4BA} *Kursi:* " + seats + "\n" +
     getPickupLine(booking) +
+    getDropoffLine(booking) +
     "\u{1F4B0} *Total:* Rp " + (booking.totalPrice || 0).toLocaleString("id-ID") + "\n" +
     "\u{1F4B3} *Metode:* " + methodLabel + "\n\n" +
     "\u26A0\uFE0F *Segera selesaikan pembayaran dalam " + deadline + "*, jika tidak pesanan akan otomatis dibatalkan.\n\n" +

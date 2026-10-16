@@ -111,6 +111,21 @@ export default async function Confirmation({ searchParams }: ConfirmationProps) 
               </div>
             )}
 
+            {booking.dropoffRequested && (
+              <div className="flex flex-col gap-2 text-left p-4 bg-gold-warm/5 rounded-xl border border-gold-warm/20">
+                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                  Layanan Antar ({booking.dropoffCity || "-"})
+                </span>
+                <span className="text-xs font-bold text-navy-deep">
+                  {booking.dropoffZone || "-"}
+                  {booking.dropoffDistanceKm != null ? ` • ± ${Number(booking.dropoffDistanceKm).toLocaleString('id-ID', { maximumFractionDigits: 1 })} km` : ""}
+                  {" "}• Rp {booking.dropoffFee.toLocaleString('id-ID')}
+                </span>
+                <span className="text-xs text-gray-500">{booking.dropoffAddress || "-"}</span>
+                {booking.dropoffNote && <span className="text-xs text-gray-500">Catatan: {booking.dropoffNote}</span>}
+              </div>
+            )}
+
             {/* Conditionally show payment instructions if pending and Moota */}
             {!isConfirmed && isMoota && (
               <div className="flex flex-col gap-6 p-8 bg-gold-warm/5 rounded-3xl border border-gold-warm/20">

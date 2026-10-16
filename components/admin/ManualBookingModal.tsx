@@ -4,11 +4,12 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { getSchedules, adminCreateBooking, getAvailableSeatsForSchedule, validatePromoCode } from "@/app/actions/booking";
-import { getPickupSettings } from "@/app/actions/admin-settings";
+import { getPickupSettings, getDropoffSettings } from "@/app/actions/admin-settings";
 import { showSuccess } from "@/lib/swal";
 import {
   calcPickupFee,
   findPickupCity,
+  findDropoffCity,
   hasPoolCoords,
   haversineKm,
   maxPickupRadiusKm,
@@ -56,12 +57,19 @@ export default function ManualBookingModal({ onClose }: { onClose: () => void })
   const [pickupAddress, setPickupAddress] = useState("");
   const [pickupNote, setPickupNote] = useState("");
 
+  const [dropoffConfig, setDropoffConfig] = useState<PickupConfig | null>(null);
+  const [dropoffEnabled, setDropoffEnabled] = useState(false);
+  const [dropoffPoint, setDropoffPoint] = useState<{ lat: number; lng: number } | null>(null);
+  const [dropoffAddress, setDropoffAddress] = useState("");
+  const [dropoffNote, setDropoffNote] = useState("");
+
   useEffect(() => {
     fetchSchedules();
   }, [date]);
 
   useEffect(() => {
     getPickupSettings().then(setPickupConfig).catch(() => setPickupConfig(null));
+    getDropoffSettings().then(setDropoffConfig).catch(() => setDropoffConfig(null));
   }, []);
 
   const fetchSchedules = async () => {
@@ -98,6 +106,10 @@ export default function ManualBookingModal({ onClose }: { onClose: () => void })
     setPickupPoint(null);
     setPickupAddress("");
     setPickupNote("");
+    setDropoffEnabled(false);
+    setDropoffPoint(null);
+    setDropoffAddress("");
+    setDropoffNote("");
     fetchSeats(schedule.id);
   };
 
@@ -142,9 +154,10 @@ export default function ManualBookingModal({ onClose }: { onClose: () => void })
   const validPassengers = passengers.filter((p) => p.trim());
 
   const pickupCity = useMemo(() => {
-    const matched = findPickupCity(pickupConfig, selectedSchedule?.route?.origin);
+    const originStopName = originStopId ? stops.find((s: any) => s.id === originStopId)?.name : undefined;
+    const matched = findPickupCity(pickupConfig, selectedSchedule?.route?.origin, originStopName);
     return hasPoolCoords(matched) ? matched : null;
-  }, [pickupConfig, selectedSchedule]);
+  }, [pickupConfig, selectedSchedule, originStopId, stops]);
   const pickupDistanceKm =
     pickupEnabled && pickupCity && pickupPoint
       ? haversineKm(pickupPoint.lat, pickupPoint.lng, pickupCity.poolLat, pickupCity.poolLng)
@@ -156,8 +169,26 @@ export default function ManualBookingModal({ onClose }: { onClose: () => void })
   const pickupOutside =
     pickupEnabled && pickupCity && pickupPoint !== null && selectedPickupZone === null;
   const pickupFee = selectedPickupZone ? calcPickupFee(selectedPickupZone, validPassengers.length) : 0;
+
+  const dropoffCity = useMemo(() => {
+    const destStopName = destinationStopId ? stops.find((s: any) => s.id === destinationStopId)?.name : undefined;
+    const matched = findDropoffCity(dropoffConfig, selectedSchedule?.route?.destination, destStopName);
+    return hasPoolCoords(matched) ? matched : null;
+  }, [dropoffConfig, selectedSchedule, destinationStopId, stops]);
+  const dropoffDistanceKm =
+    dropoffEnabled && dropoffCity && dropoffPoint
+      ? haversineKm(dropoffPoint.lat, dropoffPoint.lng, dropoffCity.poolLat, dropoffCity.poolLng)
+      : null;
+  const selectedDropoffZone =
+    dropoffEnabled && dropoffCity && dropoffDistanceKm !== null
+      ? resolvePickupZoneByDistance(dropoffCity, dropoffDistanceKm)
+      : null;
+  const dropoffOutside =
+    dropoffEnabled && dropoffCity && dropoffPoint !== null && selectedDropoffZone === null;
+  const dropoffFee = selectedDropoffZone ? calcPickupFee(selectedDropoffZone, validPassengers.length) : 0;
+
   const finalTotal =
-    Math.max(0, effectivePrice * validPassengers.length - (appliedPromo?.discount || 0)) + pickupFee;
+    Math.max(0, effectivePrice * validPassengers.length - (appliedPromo?.discount || 0)) + pickupFee + dropoffFee;
 
   const toggleSeat = (seatNumber: string) => {
     if (selectedSeats.includes(seatNumber)) {
@@ -210,6 +241,13 @@ export default function ManualBookingModal({ onClose }: { onClose: () => void })
       }
       if (!pickupAddress.trim()) return setError("Alamat penjemputan wajib diisi");
     }
+    if (dropoffEnabled && dropoffCity) {
+      if (!dropoffPoint) return setError("Tentukan titik antar di peta terlebih dahulu");
+      if (!selectedDropoffZone) {
+        return setError(`Lokasi antar di luar area pengantaran (maks ${maxPickupRadiusKm(dropoffCity)} km)`);
+      }
+      if (!dropoffAddress.trim()) return setError("Alamat pengantaran wajib diisi");
+    }
 
     setLoading(true);
     setError("");
@@ -229,6 +267,10 @@ export default function ManualBookingModal({ onClose }: { onClose: () => void })
         pickupLng: pickupEnabled && pickupCity ? pickupPoint?.lng : undefined,
         pickupAddress: pickupEnabled && pickupCity ? pickupAddress.trim() : undefined,
         pickupNote: pickupEnabled && pickupCity ? pickupNote.trim() || undefined : undefined,
+        dropoffLat: dropoffEnabled && dropoffCity ? dropoffPoint?.lat : undefined,
+        dropoffLng: dropoffEnabled && dropoffCity ? dropoffPoint?.lng : undefined,
+        dropoffAddress: dropoffEnabled && dropoffCity ? dropoffAddress.trim() : undefined,
+        dropoffNote: dropoffEnabled && dropoffCity ? dropoffNote.trim() || undefined : undefined,
       });
       await showSuccess({ title: "Berhasil", text: "Booking manual berhasil dibuat! Status CONFIRMED. Notifikasi sudah dikirim ke pelanggan." });
       onClose();
@@ -534,6 +576,80 @@ export default function ManualBookingModal({ onClose }: { onClose: () => void })
                 </div>
               )}
 
+              {dropoffCity && (
+                <div className="border border-gray-200 rounded-2xl p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-bold text-sm text-navy-deep">
+                        Layanan Antar ({dropoffCity.name})
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        Antar ke alamat tujuan (biaya per penumpang sesuai zona)
+                      </p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={dropoffEnabled}
+                        onChange={(e) => {
+                          setDropoffEnabled(e.target.checked);
+                          if (!e.target.checked) {
+                            setDropoffPoint(null);
+                            setDropoffAddress("");
+                            setDropoffNote("");
+                          }
+                        }}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-navy-deep"></div>
+                    </label>
+                  </div>
+
+                  {dropoffEnabled && (
+                    <div className="space-y-3">
+                      <PickupMap
+                        centerLat={dropoffCity.poolLat}
+                        centerLng={dropoffCity.poolLng}
+                        value={dropoffPoint}
+                        onChange={setDropoffPoint}
+                        onAddressChange={setDropoffAddress}
+                        zones={dropoffCity.zones}
+                        showLocate
+                        showAddressSearch
+                        className="h-64 w-full rounded-2xl overflow-hidden z-0"
+                      />
+                      {dropoffDistanceKm !== null && (
+                        <div
+                          className={`rounded-xl p-3 text-xs font-bold ${
+                            dropoffOutside
+                              ? "bg-red-50 text-red-600 border border-red-200"
+                              : "bg-gold-warm/10 text-navy-deep border border-gold-warm/30"
+                          }`}
+                        >
+                          {dropoffOutside
+                            ? `Jarak ± ${dropoffDistanceKm} km — di luar area pengantaran (maks ${maxPickupRadiusKm(dropoffCity)} km).`
+                            : `Jarak ± ${dropoffDistanceKm} km • ${selectedDropoffZone?.label} • Rp ${selectedDropoffZone?.feePerPax.toLocaleString("id-ID")} × ${validPassengers.length} pax = Rp ${dropoffFee.toLocaleString("id-ID")}`}
+                        </div>
+                      )}
+                      <input
+                        type="text"
+                        value={dropoffAddress}
+                        onChange={(e) => setDropoffAddress(e.target.value)}
+                        placeholder="Alamat lengkap pengantaran"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-navy-deep outline-none text-sm"
+                      />
+                      <input
+                        type="text"
+                        value={dropoffNote}
+                        onChange={(e) => setDropoffNote(e.target.value)}
+                        placeholder="Patokan / catatan pengantaran (opsional)"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-navy-deep outline-none text-sm"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div>
                 <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Kode Promo (opsional)</label>
                 <div className="flex gap-2">
@@ -580,6 +696,12 @@ export default function ManualBookingModal({ onClose }: { onClose: () => void })
                     <div className="flex justify-between mt-1 text-xs">
                       <span className="text-gray-400">Biaya Jemput ({validPassengers.length} pax)</span>
                       <span className="font-bold text-navy-deep">Rp {pickupFee.toLocaleString("id-ID")}</span>
+                    </div>
+                  )}
+                  {dropoffFee > 0 && (
+                    <div className="flex justify-between mt-1 text-xs">
+                      <span className="text-gray-400">Biaya Antar ({validPassengers.length} pax)</span>
+                      <span className="font-bold text-navy-deep">Rp {dropoffFee.toLocaleString("id-ID")}</span>
                     </div>
                   )}
                   <div className="flex justify-between mt-2 pt-2 border-t border-gray-200 text-sm">

@@ -153,6 +153,17 @@ export default async function InvoicePage({ params }: InvoiceProps) {
                     {booking.pickupNote && <p className="text-xs text-gray-500">Catatan: {booking.pickupNote}</p>}
                   </div>
                 )}
+                {booking.dropoffRequested && (
+                  <div>
+                    <p className="text-xs text-gray-400">Layanan Antar ({booking.dropoffCity || '-'})</p>
+                    <p className="font-medium text-gray-700">
+                      {booking.dropoffZone || '-'}
+                      {booking.dropoffDistanceKm != null ? ` • ± ${Number(booking.dropoffDistanceKm).toLocaleString('id-ID', { maximumFractionDigits: 1 })} km` : ''}
+                    </p>
+                    <p className="text-xs text-gray-500">{booking.dropoffAddress || '-'}</p>
+                    {booking.dropoffNote && <p className="text-xs text-gray-500">Catatan: {booking.dropoffNote}</p>}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -198,6 +209,12 @@ export default async function InvoicePage({ params }: InvoiceProps) {
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">Biaya Jemput ({booking.passengers.length} pax)</span>
                   <span className="font-medium">Rp {booking.pickupFee.toLocaleString('id-ID')}</span>
+                </div>
+              )}
+              {booking.dropoffFee > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">Biaya Antar ({booking.passengers.length} pax)</span>
+                  <span className="font-medium">Rp {booking.dropoffFee.toLocaleString('id-ID')}</span>
                 </div>
               )}
               <div className="flex justify-between text-sm">
