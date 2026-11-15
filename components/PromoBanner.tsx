@@ -3,8 +3,15 @@
 import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 
-export default function PromoBanner({ banners }: { banners: any[] }) {
+interface BannerItem {
+  id?: string;
+  title?: string | null;
+  imageUrl?: string | null;
+}
+
+export default function PromoBanner({ banners }: { banners: BannerItem[] }) {
   const [activeIndex, setActiveIndex] = useState(0);
+  const [isHovered, setIsHovered] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const handleScroll = () => {
@@ -12,10 +19,9 @@ export default function PromoBanner({ banners }: { banners: any[] }) {
     
     const scrollLeft = scrollRef.current.scrollLeft;
     const width = scrollRef.current.offsetWidth;
-    const newIndex = Math.round(scrollLeft / width);
-    
-    if (newIndex !== activeIndex) {
-      setActiveIndex(newIndex);
+    if (width > 0) {
+      const newIndex = Math.round(scrollLeft / width);
+      setActiveIndex((prev) => (prev !== newIndex ? newIndex : prev));
     }
   };
 
@@ -25,14 +31,38 @@ export default function PromoBanner({ banners }: { banners: any[] }) {
       scrollContainer.addEventListener("scroll", handleScroll);
       return () => scrollContainer.removeEventListener("scroll", handleScroll);
     }
-  }, [activeIndex]);
+  }, []);
+
+  // Auto-slide every 3 seconds (pauses on hover or touch)
+  useEffect(() => {
+    if (!banners || banners.length <= 1 || isHovered) return;
+
+    const interval = setInterval(() => {
+      if (!scrollRef.current) return;
+      const width = scrollRef.current.offsetWidth;
+      const nextIndex = (activeIndex + 1) % banners.length;
+
+      scrollRef.current.scrollTo({
+        left: nextIndex * width,
+        behavior: "smooth",
+      });
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [activeIndex, banners, isHovered]);
 
   if (!banners || banners.length === 0) return null;
 
   return (
     <section className="px-4 sm:px-6 md:px-12 lg:px-24 -mt-10 md:-mt-20 relative z-20">
       <div className="max-w-7xl mx-auto flex flex-col gap-6">
-        <div className="relative isolate w-full min-w-0 overflow-hidden rounded-2xl md:rounded-[2rem] shadow-2xl group">
+        <div 
+          className="relative isolate w-full min-w-0 overflow-hidden rounded-2xl md:rounded-[2rem] shadow-2xl group"
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+          onTouchStart={() => setIsHovered(true)}
+          onTouchEnd={() => setIsHovered(false)}
+        >
           <div 
             ref={scrollRef}
             className="flex w-full min-w-0 overflow-x-auto snap-x snap-mandatory no-scrollbar"

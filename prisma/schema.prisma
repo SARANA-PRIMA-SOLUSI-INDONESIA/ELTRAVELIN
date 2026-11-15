@@ -111,6 +111,15 @@ model Booking {
   pickupLat       Float?
   pickupLng       Float?
   pickupDistanceKm Float?
+  dropoffRequested Boolean       @default(false)
+  dropoffCity      String?
+  dropoffZone      String?
+  dropoffAddress   String?
+  dropoffNote      String?
+  dropoffFee       Int           @default(0)
+  dropoffLat       Float?
+  dropoffLng       Float?
+  dropoffDistanceKm Float?
   promoCode       PromoCode?    @relation(fields: [promoCodeId], references: [id], onDelete: SetNull)
   schedule        Schedule      @relation(fields: [scheduleId], references: [id])
   passengers      Passenger[]
