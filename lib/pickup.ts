@@ -2,6 +2,7 @@
 // Berisi tipe + logika murni agar aman dipakai di client maupun server.
 
 export const PICKUP_CONFIG_KEY = "pickupConfig";
+export const DROPOFF_CONFIG_KEY = "dropoffConfig";
 
 export interface PickupZone {
   label: string;
@@ -59,6 +60,36 @@ export const DEFAULT_PICKUP_CONFIG: PickupConfig = {
       poolLat: -6.229,
       poolLng: 106.83,
       notes: "Tentukan titik jemput di peta. Alamat hanya dipakai sebagai patokan driver.",
+      zones: [
+        { label: "Zona 1 (0-5 km)", maxKm: 5, feePerPax: 20000 },
+        { label: "Zona 2 (5-10 km)", maxKm: 10, feePerPax: 35000 },
+        { label: "Zona 3 (10-20 km)", maxKm: 20, feePerPax: 50000 },
+      ],
+    },
+  ],
+};
+
+export const DEFAULT_DROPOFF_CONFIG: PickupConfig = {
+  enabled: true,
+  cities: [
+    {
+      name: "Bandung",
+      matchKeyword: "Bandung",
+      poolLat: -6.9197,
+      poolLng: 107.6558,
+      notes: "Tentukan titik antar di peta. Alamat hanya dipakai sebagai patokan driver.",
+      zones: [
+        { label: "Zona 1 (0-5 km)", maxKm: 5, feePerPax: 15000 },
+        { label: "Zona 2 (5-10 km)", maxKm: 10, feePerPax: 25000 },
+        { label: "Zona 3 (10-20 km)", maxKm: 20, feePerPax: 40000 },
+      ],
+    },
+    {
+      name: "Jakarta",
+      matchKeyword: "Jakarta, Soekarno Hatta",
+      poolLat: -6.229,
+      poolLng: 106.83,
+      notes: "Tentukan titik antar di peta. Alamat hanya dipakai sebagai patokan driver.",
       zones: [
         { label: "Zona 1 (0-5 km)", maxKm: 5, feePerPax: 20000 },
         { label: "Zona 2 (5-10 km)", maxKm: 10, feePerPax: 35000 },
@@ -272,3 +303,53 @@ export function formatPickupDistance(distanceKm?: number | null): string {
 export function formatPickupFee(fee: number): string {
   return `Rp ${Math.round(fee).toLocaleString("id-ID")}`;
 }
+
+// ─────────────────────────────────────────────────────────────
+// Layanan Antar (Drop-off) — Menggunakan pool & zona kota tujuan
+// ─────────────────────────────────────────────────────────────
+
+export const findDropoffCity = findPickupCity;
+
+/** Validasi lokasi antar di server. */
+export function validateDropoffLocation(
+  config: PickupConfig | null | undefined,
+  routeDestination: string | null | undefined,
+  lat: unknown,
+  lng: unknown,
+  alightingPoint?: string | null
+): PickupLocationValid | PickupLocationInvalid {
+  const city = findDropoffCity(config, routeDestination, alightingPoint);
+  if (!city) return { ok: false, error: "Layanan antar belum tersedia untuk rute tujuan ini." };
+  if (!hasPoolCoords(city)) {
+    return { ok: false, error: `Titik pool ${city.name} belum diatur oleh admin.` };
+  }
+
+  const parsedLat = toNumber(lat);
+  const parsedLng = toNumber(lng);
+  if (
+    parsedLat === null ||
+    parsedLng === null ||
+    parsedLat < -90 ||
+    parsedLat > 90 ||
+    parsedLng < -180 ||
+    parsedLng > 180
+  ) {
+    return { ok: false, error: "Koordinat lokasi pengantaran tidak valid." };
+  }
+
+  const distanceKm = haversineKm(parsedLat, parsedLng, city.poolLat, city.poolLng);
+  const zone = resolvePickupZoneByDistance(city, distanceKm);
+  if (!zone) {
+    return {
+      ok: false,
+      error: `Lokasi berada di luar area pengantaran ${city.name} (± ${distanceKm} km, maks ${maxPickupRadiusKm(city)} km).`,
+    };
+  }
+
+  return { ok: true, lat: parsedLat, lng: parsedLng, distanceKm, city, zone };
+}
+
+export const recalcDropoffFee = recalcPickupFee;
+export const formatDropoffDistance = formatPickupDistance;
+export const formatDropoffFee = formatPickupFee;
+

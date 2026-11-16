@@ -4,8 +4,16 @@ import { prisma } from "@/lib/prisma";
 import { sendBookingSuccessMessage, sendAdminWhatsAppNotification, sendBookingPendingReminder } from "@/lib/whatsapp";
 import { sendAdminNotification, sendETicket } from "@/lib/mail";
 import { ensureSchedulesForDate, BOOKING_WINDOW_DAYS, dateKeysFromToday, wibStartOfDay, wibEndOfDay } from "@/lib/on-demand-schedules";
-import { getPickupConfig } from "@/lib/pickup-server";
-import { calcPickupFee, findPickupCity, recalcPickupFee, validatePickupLocation } from "@/lib/pickup";
+import { getPickupConfig, getDropoffConfig } from "@/lib/pickup-server";
+import {
+  calcPickupFee,
+  findPickupCity,
+  recalcPickupFee,
+  validatePickupLocation,
+  findDropoffCity,
+  recalcDropoffFee,
+  validateDropoffLocation,
+} from "@/lib/pickup";
 
 async function sendNotificationsIndependently(
   label: string,
@@ -424,6 +432,10 @@ export async function createBooking(data: {
   pickupLng?: number;
   pickupAddress?: string;
   pickupNote?: string;
+  dropoffLat?: number;
+  dropoffLng?: number;
+  dropoffAddress?: string;
+  dropoffNote?: string;
 }) {
   const schedule = await prisma.schedule.findUnique({
     where: { id: data.scheduleId },
@@ -512,8 +524,29 @@ export async function createBooking(data: {
     pickupDistanceKm = location.distanceKm;
   }
 
+  let dropoffFee = 0;
+  let dropoffCityName: string | null = null;
+  let dropoffZoneLabel: string | null = null;
+  let dropoffDistanceKm: number | null = null;
+  if (data.dropoffLat != null && data.dropoffLng != null) {
+    const dropoffConfig = await getDropoffConfig();
+    const location = validateDropoffLocation(
+      dropoffConfig,
+      schedule.route.destination,
+      data.dropoffLat,
+      data.dropoffLng,
+      data.destinationStopName
+    );
+    if (!location.ok) throw new Error(location.error);
+    if (!data.dropoffAddress?.trim()) throw new Error("Alamat pengantaran wajib diisi.");
+    dropoffFee = calcPickupFee(location.zone, data.seatNumbers.length);
+    dropoffCityName = location.city.name;
+    dropoffZoneLabel = location.zone.label;
+    dropoffDistanceKm = location.distanceKm;
+  }
+
   const uniqueCode = Math.floor(100 + Math.random() * 899);
-  const totalPrice = (basePrice - discountAmount) + pickupFee + uniqueCode;
+  const totalPrice = (basePrice - discountAmount) + pickupFee + dropoffFee + uniqueCode;
   const bookingCode = `EL-${Math.floor(100000 + Math.random() * 900000)}-${data.seatNumbers[0]}`;
 
   const booking = await prisma.$transaction(async (tx: any) => {
@@ -535,6 +568,15 @@ export async function createBooking(data: {
         pickupLat: data.pickupLat ?? null,
         pickupLng: data.pickupLng ?? null,
         pickupDistanceKm,
+        dropoffRequested: dropoffFee > 0,
+        dropoffCity: dropoffCityName,
+        dropoffZone: dropoffZoneLabel,
+        dropoffAddress: data.dropoffAddress?.trim() || null,
+        dropoffNote: data.dropoffNote?.trim() || null,
+        dropoffFee,
+        dropoffLat: data.dropoffLat ?? null,
+        dropoffLng: data.dropoffLng ?? null,
+        dropoffDistanceKm,
         promoCodeId: data.promoCodeId,
         paymentMethod: data.paymentMethod || 'UNSET',
         status: 'PENDING',
@@ -707,6 +749,10 @@ export async function adminCreateBooking(data: {
   pickupLng?: number;
   pickupAddress?: string;
   pickupNote?: string;
+  dropoffLat?: number;
+  dropoffLng?: number;
+  dropoffAddress?: string;
+  dropoffNote?: string;
 }) {
   const schedule = await prisma.schedule.findUnique({
     where: { id: data.scheduleId },
@@ -774,7 +820,31 @@ export async function adminCreateBooking(data: {
     pickupDistanceKm = location.distanceKm;
   }
 
-  const totalPrice = basePrice - discountAmount + pickupFee;
+  let dropoffFee = 0;
+  let dropoffCityName: string | null = null;
+  let dropoffZoneLabel: string | null = null;
+  let dropoffDistanceKm: number | null = null;
+  if (data.dropoffLat != null && data.dropoffLng != null) {
+    const dropoffConfig = await getDropoffConfig();
+    const alightingStopName = data.destinationStopId
+      ? schedule.route.stops.find((stop: { id: string; name: string }) => stop.id === data.destinationStopId)?.name || null
+      : null;
+    const location = validateDropoffLocation(
+      dropoffConfig,
+      schedule.route.destination,
+      data.dropoffLat,
+      data.dropoffLng,
+      alightingStopName
+    );
+    if (!location.ok) throw new Error(location.error);
+    if (!data.dropoffAddress?.trim()) throw new Error("Alamat pengantaran wajib diisi.");
+    dropoffFee = calcPickupFee(location.zone, data.seatNumbers.length);
+    dropoffCityName = location.city.name;
+    dropoffZoneLabel = location.zone.label;
+    dropoffDistanceKm = location.distanceKm;
+  }
+
+  const totalPrice = basePrice - discountAmount + pickupFee + dropoffFee;
   const bookingCode = `ADM-${Math.floor(100000 + Math.random() * 900000)}-${data.seatNumbers[0]}`;
 
   return prisma.$transaction(async (tx: any) => {
@@ -796,6 +866,15 @@ export async function adminCreateBooking(data: {
         pickupLat: data.pickupLat ?? null,
         pickupLng: data.pickupLng ?? null,
         pickupDistanceKm,
+        dropoffRequested: dropoffFee > 0,
+        dropoffCity: dropoffCityName,
+        dropoffZone: dropoffZoneLabel,
+        dropoffAddress: data.dropoffAddress?.trim() || null,
+        dropoffNote: data.dropoffNote?.trim() || null,
+        dropoffFee,
+        dropoffLat: data.dropoffLat ?? null,
+        dropoffLng: data.dropoffLng ?? null,
+        dropoffDistanceKm,
         promoCodeId: data.promoCodeId,
         paymentMethod: data.paymentMethod,
         status: 'CONFIRMED',
@@ -923,6 +1002,7 @@ export async function rescheduleBooking(bookingId: string, newScheduleId: string
   if (newSchedule.departureTime < new Date()) throw new Error("Jadwal baru sudah berlalu");
 
   const pickupConfig = await getPickupConfig();
+  const dropoffConfig = await getDropoffConfig();
   const passengerCount = booking.seats.length || 1;
   const pickupFee = booking.pickupRequested
     ? recalcPickupFee(pickupConfig, booking.pickupCity, booking.pickupZone, passengerCount, booking.pickupDistanceKm)
@@ -930,6 +1010,13 @@ export async function rescheduleBooking(bookingId: string, newScheduleId: string
   const pickupData = pickupFee > 0
     ? { pickupRequested: true, pickupFee }
     : { pickupRequested: false, pickupFee: 0, pickupCity: null, pickupZone: null, pickupAddress: null, pickupNote: null, pickupLat: null, pickupLng: null, pickupDistanceKm: null };
+
+  const dropoffFee = booking.dropoffRequested
+    ? recalcDropoffFee(dropoffConfig, booking.dropoffCity, booking.dropoffZone, passengerCount, booking.dropoffDistanceKm)
+    : 0;
+  const dropoffData = dropoffFee > 0
+    ? { dropoffRequested: true, dropoffFee }
+    : { dropoffRequested: false, dropoffFee: 0, dropoffCity: null, dropoffZone: null, dropoffAddress: null, dropoffNote: null, dropoffLat: null, dropoffLng: null, dropoffDistanceKm: null };
 
   return prisma.$transaction(async (tx: any) => {
     // Release old seats
@@ -952,9 +1039,10 @@ export async function rescheduleBooking(bookingId: string, newScheduleId: string
       where: { id: bookingId },
       data: {
         scheduleId: newScheduleId,
-        totalPrice: newTotalPrice + pickupFee,
+        totalPrice: newTotalPrice + pickupFee + dropoffFee,
         discountAmount: 0,
         ...pickupData,
+        ...dropoffData,
       },
       include: {
         schedule: { include: { route: true } },
@@ -1048,6 +1136,7 @@ export async function changeBookingRoute(bookingId: string, newRouteId: string, 
   if (newSchedule.routeId !== newRouteId) throw new Error("Jadwal tidak sesuai dengan rute");
 
   const pickupConfig = await getPickupConfig();
+  const dropoffConfig = await getDropoffConfig();
   const passengerCount = booking.seats.length || 1;
   const newPickupCity = findPickupCity(pickupConfig, newSchedule.route.origin);
   const keepPickup = Boolean(
@@ -1059,6 +1148,17 @@ export async function changeBookingRoute(bookingId: string, newRouteId: string, 
   const pickupData = pickupFee > 0
     ? { pickupRequested: true, pickupFee }
     : { pickupRequested: false, pickupFee: 0, pickupCity: null, pickupZone: null, pickupAddress: null, pickupNote: null, pickupLat: null, pickupLng: null, pickupDistanceKm: null };
+
+  const newDropoffCity = findDropoffCity(dropoffConfig, newSchedule.route.destination);
+  const keepDropoff = Boolean(
+    booking.dropoffRequested && newDropoffCity && newDropoffCity.name === booking.dropoffCity
+  );
+  const dropoffFee = keepDropoff
+    ? recalcDropoffFee(dropoffConfig, booking.dropoffCity, booking.dropoffZone, passengerCount, booking.dropoffDistanceKm)
+    : 0;
+  const dropoffData = dropoffFee > 0
+    ? { dropoffRequested: true, dropoffFee }
+    : { dropoffRequested: false, dropoffFee: 0, dropoffCity: null, dropoffZone: null, dropoffAddress: null, dropoffNote: null, dropoffLat: null, dropoffLng: null, dropoffDistanceKm: null };
 
   return prisma.$transaction(async (tx: any) => {
     // Release old seats
@@ -1088,9 +1188,10 @@ export async function changeBookingRoute(bookingId: string, newRouteId: string, 
       where: { id: bookingId },
       data: {
         scheduleId: newScheduleId,
-        totalPrice: newTotalPrice + pickupFee,
+        totalPrice: newTotalPrice + pickupFee + dropoffFee,
         discountAmount: 0,
         ...pickupData,
+        ...dropoffData,
       },
       include: {
         schedule: { include: { route: true } },
@@ -1258,6 +1359,7 @@ export async function editBooking(data: EditBookingData) {
     if (newSchedule.routeId !== data.newRouteId) throw new Error("Jadwal tidak sesuai dengan rute");
 
     const pickupConfig = await getPickupConfig();
+    const dropoffConfig = await getDropoffConfig();
     const passengerCount = data.passengers?.length || booking.passengers.length || 1;
     const newPickupCity = findPickupCity(pickupConfig, newSchedule.route.origin);
     const keepPickup = Boolean(
@@ -1269,6 +1371,17 @@ export async function editBooking(data: EditBookingData) {
     const pickupData = pickupFee > 0
       ? { pickupRequested: true, pickupFee }
       : { pickupRequested: false, pickupFee: 0, pickupCity: null, pickupZone: null, pickupAddress: null, pickupNote: null, pickupLat: null, pickupLng: null, pickupDistanceKm: null };
+
+    const newDropoffCity = findDropoffCity(dropoffConfig, newSchedule.route.destination);
+    const keepDropoff = Boolean(
+      booking.dropoffRequested && newDropoffCity && newDropoffCity.name === booking.dropoffCity
+    );
+    const dropoffFee = keepDropoff
+      ? recalcDropoffFee(dropoffConfig, booking.dropoffCity, booking.dropoffZone, passengerCount, booking.dropoffDistanceKm)
+      : 0;
+    const dropoffData = dropoffFee > 0
+      ? { dropoffRequested: true, dropoffFee }
+      : { dropoffRequested: false, dropoffFee: 0, dropoffCity: null, dropoffZone: null, dropoffAddress: null, dropoffNote: null, dropoffLat: null, dropoffLng: null, dropoffDistanceKm: null };
 
     return prisma.$transaction(async (tx: any) => {
       // Release old seats
@@ -1297,9 +1410,10 @@ export async function editBooking(data: EditBookingData) {
         where: { id: bookingId },
         data: {
           scheduleId: data.newScheduleId,
-          totalPrice: newTotalPrice + pickupFee,
+          totalPrice: newTotalPrice + pickupFee + dropoffFee,
           discountAmount: 0,
           ...pickupData,
+          ...dropoffData,
         },
         include: {
           schedule: { include: { route: true } },
@@ -1367,6 +1481,7 @@ export async function editBooking(data: EditBookingData) {
     if (newSchedule.departureTime < new Date()) throw new Error("Jadwal baru sudah berlalu");
 
     const pickupConfig = await getPickupConfig();
+    const dropoffConfig = await getDropoffConfig();
     const passengerCount = data.passengers?.length || booking.passengers.length || 1;
     const pickupFee = booking.pickupRequested
       ? recalcPickupFee(pickupConfig, booking.pickupCity, booking.pickupZone, passengerCount, booking.pickupDistanceKm)
@@ -1374,6 +1489,13 @@ export async function editBooking(data: EditBookingData) {
     const pickupData = pickupFee > 0
       ? { pickupRequested: true, pickupFee }
       : { pickupRequested: false, pickupFee: 0, pickupCity: null, pickupZone: null, pickupAddress: null, pickupNote: null, pickupLat: null, pickupLng: null, pickupDistanceKm: null };
+
+    const dropoffFee = booking.dropoffRequested
+      ? recalcDropoffFee(dropoffConfig, booking.dropoffCity, booking.dropoffZone, passengerCount, booking.dropoffDistanceKm)
+      : 0;
+    const dropoffData = dropoffFee > 0
+      ? { dropoffRequested: true, dropoffFee }
+      : { dropoffRequested: false, dropoffFee: 0, dropoffCity: null, dropoffZone: null, dropoffAddress: null, dropoffNote: null, dropoffLat: null, dropoffLng: null, dropoffDistanceKm: null };
 
     return prisma.$transaction(async (tx: any) => {
       // Release old seats
@@ -1395,9 +1517,10 @@ export async function editBooking(data: EditBookingData) {
         where: { id: bookingId },
         data: {
           scheduleId: data.newScheduleId,
-          totalPrice: newTotalPrice + pickupFee,
+          totalPrice: newTotalPrice + pickupFee + dropoffFee,
           discountAmount: 0,
           ...pickupData,
+          ...dropoffData,
         },
         include: {
           schedule: { include: { route: true } },
@@ -1491,7 +1614,24 @@ export async function editBooking(data: EditBookingData) {
           newPickupFee = 0;
         }
       }
-      updateData.totalPrice = newTotalPrice + newPickupFee;
+
+      let newDropoffFee = booking.dropoffRequested ? booking.dropoffFee : 0;
+      if (booking.dropoffRequested) {
+        const dropoffConfig = await getDropoffConfig();
+        newDropoffFee = recalcDropoffFee(dropoffConfig, booking.dropoffCity, booking.dropoffZone, data.passengers.length, booking.dropoffDistanceKm);
+        if (newDropoffFee > 0) {
+          updateData.dropoffFee = newDropoffFee;
+        } else {
+          updateData.dropoffRequested = false;
+          updateData.dropoffFee = 0;
+          updateData.dropoffCity = null;
+          updateData.dropoffZone = null;
+          updateData.dropoffAddress = null;
+          updateData.dropoffNote = null;
+          newDropoffFee = 0;
+        }
+      }
+      updateData.totalPrice = newTotalPrice + newPickupFee + newDropoffFee;
 
       // Update seats if seat numbers provided and operating trip exists
       if (data.seatNumbers && data.seatNumbers.length > 0 && booking.schedule.operatingTripId) {

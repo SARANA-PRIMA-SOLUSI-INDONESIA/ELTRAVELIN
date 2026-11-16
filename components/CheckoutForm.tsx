@@ -32,9 +32,24 @@ interface CheckoutFormProps {
   destinationStopName?: string;
   segmentPrice?: number;
   pickupCity?: PickupCity | null;
+  dropoffCity?: PickupCity | null;
 }
 
-export default function CheckoutForm({ scheduleId, seatNumbers, basePrice, vehicleType, departureTime, availablePromos = [], originStopId, destinationStopId, originStopName, destinationStopName, segmentPrice, pickupCity = null }: CheckoutFormProps) {
+export default function CheckoutForm({
+  scheduleId,
+  seatNumbers,
+  basePrice,
+  vehicleType,
+  departureTime,
+  availablePromos = [],
+  originStopId,
+  destinationStopId,
+  originStopName,
+  destinationStopName,
+  segmentPrice,
+  pickupCity = null,
+  dropoffCity = null,
+}: CheckoutFormProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [promoLoading, setPromoLoading] = useState(false);
@@ -55,10 +70,18 @@ export default function CheckoutForm({ scheduleId, seatNumbers, basePrice, vehic
     new Array(seatNumbers.length).fill("")
   );
 
-  const [pickupEnabled, setPickupEnabled] = useState(false);
+  // Layanan Antar / Jemput: NONE | PICKUP | DROPOFF | BOTH
+  const [transferService, setTransferService] = useState<'NONE' | 'PICKUP' | 'DROPOFF' | 'BOTH'>('NONE');
+
+  // Titik Penjemputan (Asal)
   const [pickupPoint, setPickupPoint] = useState<{ lat: number; lng: number } | null>(null);
   const [pickupAddress, setPickupAddress] = useState("");
   const [pickupNote, setPickupNote] = useState("");
+
+  // Titik Pengantaran (Tujuan)
+  const [dropoffPoint, setDropoffPoint] = useState<{ lat: number; lng: number } | null>(null);
+  const [dropoffAddress, setDropoffAddress] = useState("");
+  const [dropoffNote, setDropoffNote] = useState("");
 
   const handlePassengerNameChange = (index: number, value: string) => {
     const newNames = [...passengerNames];
@@ -108,6 +131,10 @@ export default function CheckoutForm({ scheduleId, seatNumbers, basePrice, vehic
 
   const totalBasePrice = basePrice * seatNumbers.length;
   const totalDiscount = appliedPromo?.discount || 0;
+
+  const pickupEnabled = (transferService === 'PICKUP' || transferService === 'BOTH') && Boolean(pickupCity);
+  const dropoffEnabled = (transferService === 'DROPOFF' || transferService === 'BOTH') && Boolean(dropoffCity);
+
   const pickupReadyCity = pickupCity && hasPoolCoords(pickupCity) ? pickupCity : null;
   const pickupDistanceKm =
     pickupEnabled && pickupReadyCity && pickupPoint
@@ -120,24 +147,56 @@ export default function CheckoutForm({ scheduleId, seatNumbers, basePrice, vehic
   const pickupFee = selectedPickupZone ? calcPickupFee(selectedPickupZone, seatNumbers.length) : 0;
   const pickupOutside =
     pickupEnabled && pickupReadyCity && pickupPoint !== null && selectedPickupZone === null;
-  const finalPrice = totalBasePrice - totalDiscount + pickupFee;
+
+  const dropoffReadyCity = dropoffCity && hasPoolCoords(dropoffCity) ? dropoffCity : null;
+  const dropoffDistanceKm =
+    dropoffEnabled && dropoffReadyCity && dropoffPoint
+      ? haversineKm(dropoffPoint.lat, dropoffPoint.lng, dropoffReadyCity.poolLat, dropoffReadyCity.poolLng)
+      : null;
+  const selectedDropoffZone =
+    dropoffEnabled && dropoffReadyCity && dropoffDistanceKm !== null
+      ? resolvePickupZoneByDistance(dropoffReadyCity, dropoffDistanceKm)
+      : null;
+  const dropoffFee = selectedDropoffZone ? calcPickupFee(selectedDropoffZone, seatNumbers.length) : 0;
+  const dropoffOutside =
+    dropoffEnabled && dropoffReadyCity && dropoffPoint !== null && selectedDropoffZone === null;
+
+  const finalPrice = totalBasePrice - totalDiscount + pickupFee + dropoffFee;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (pickupEnabled && pickupReadyCity) {
       if (!pickupPoint) {
-        await showError({ title: "Gagal", text: "Tentukan titik jemput di peta terlebih dahulu." });
+        await showError({ title: "Gagal", text: "Tentukan titik penjemputan di peta terlebih dahulu." });
         return;
       }
       if (!selectedPickupZone) {
         await showError({
           title: "Di Luar Area Penjemputan",
-          text: `Lokasi Anda di luar radius layanan (maks ${maxPickupRadiusKm(pickupReadyCity)} km). Silakan hubungi admin/CS untuk opsi khusus.`,
+          text: `Lokasi jemput Anda di luar radius layanan (maks ${maxPickupRadiusKm(pickupReadyCity)} km). Silakan hubungi admin/CS untuk opsi khusus.`,
         });
         return;
       }
       if (!pickupAddress.trim()) {
         await showError({ title: "Gagal", text: "Alamat penjemputan wajib diisi." });
+        return;
+      }
+    }
+
+    if (dropoffEnabled && dropoffReadyCity) {
+      if (!dropoffPoint) {
+        await showError({ title: "Gagal", text: "Tentukan titik pengantaran di peta terlebih dahulu." });
+        return;
+      }
+      if (!selectedDropoffZone) {
+        await showError({
+          title: "Di Luar Area Pengantaran",
+          text: `Lokasi antar Anda di luar radius layanan (maks ${maxPickupRadiusKm(dropoffReadyCity)} km). Silakan hubungi admin/CS untuk opsi khusus.`,
+        });
+        return;
+      }
+      if (!dropoffAddress.trim()) {
+        await showError({ title: "Gagal", text: "Alamat pengantaran wajib diisi." });
         return;
       }
     }
@@ -157,10 +216,16 @@ export default function CheckoutForm({ scheduleId, seatNumbers, basePrice, vehic
         originStopName,
         destinationStopName,
         segmentPrice,
+        // Pickup
         pickupLat: pickupEnabled && pickupReadyCity ? pickupPoint?.lat : undefined,
         pickupLng: pickupEnabled && pickupReadyCity ? pickupPoint?.lng : undefined,
         pickupAddress: pickupEnabled ? pickupAddress.trim() : undefined,
         pickupNote: pickupEnabled ? pickupNote.trim() || undefined : undefined,
+        // Dropoff
+        dropoffLat: dropoffEnabled && dropoffReadyCity ? dropoffPoint?.lat : undefined,
+        dropoffLng: dropoffEnabled && dropoffReadyCity ? dropoffPoint?.lng : undefined,
+        dropoffAddress: dropoffEnabled ? dropoffAddress.trim() : undefined,
+        dropoffNote: dropoffEnabled ? dropoffNote.trim() || undefined : undefined,
         totalPrice: finalPrice,
       };
 
@@ -220,33 +285,172 @@ export default function CheckoutForm({ scheduleId, seatNumbers, basePrice, vehic
           </div>
         </div>
 
-        {/* Pickup Service */}
-        {pickupCity && (
+        {/* Transfer Service Selection (Antar / Jemput / Antar Jemput) */}
+        {(pickupCity || dropoffCity) && (
           <div className="glass rounded-[2rem] md:rounded-[3rem] p-8 md:p-12 shadow-ambient border border-white/20">
-            <div className="flex items-start justify-between gap-6">
-              <div className="flex flex-col gap-1">
-                <h3 className="text-lg font-display font-bold text-navy-deep flex items-center gap-3">
-                  <i className="ri-map-pin-user-line text-gold-warm"></i> Layanan Jemput ({pickupCity.name})
-                </h3>
-                <p className="text-xs text-foreground/50">
-                  {pickupCity.notes || `Tentukan titik jemput di peta. Area layanan maks ${maxPickupRadiusKm(pickupCity)} km dari pool ${pickupCity.name}.`}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setPickupEnabled((v) => !v)}
-                className={`relative w-14 h-8 shrink-0 rounded-full transition-colors ${pickupEnabled ? "bg-navy-deep" : "bg-gray-300"}`}
-                aria-pressed={pickupEnabled}
-              >
-                <span className={`absolute top-1 left-1 w-6 h-6 rounded-full bg-white shadow transition-transform ${pickupEnabled ? "translate-x-6" : ""}`} />
-              </button>
+            <div className="flex flex-col gap-2 mb-8">
+              <h3 className="text-lg font-display font-bold text-navy-deep flex items-center gap-3">
+                <i className="ri-roadster-line text-gold-warm"></i> Layanan Antar & Jemput (Opsional)
+              </h3>
+              <p className="text-xs text-foreground/50">
+                Pilih opsi antar atau jemput sesuai kebutuhan perjalanan Anda.
+              </p>
             </div>
 
+            {/* Option Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+              {/* Option 1: Standar (Pool to Pool) */}
+              <button
+                type="button"
+                onClick={() => setTransferService('NONE')}
+                className={`p-5 rounded-2xl border text-left transition-all flex flex-col justify-between gap-3 ${
+                  transferService === 'NONE'
+                    ? "border-navy-deep bg-navy-deep text-white shadow-md scale-[1.02]"
+                    : "border-navy-deep/10 bg-surface-low/60 hover:bg-surface-low text-navy-deep"
+                }`}
+              >
+                <div className="flex items-center justify-between w-full">
+                  <span className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg ${
+                    transferService === 'NONE' ? "bg-white/20 text-white" : "bg-navy-deep/5 text-navy-deep"
+                  }`}>
+                    <i className="ri-building-line"></i>
+                  </span>
+                  {transferService === 'NONE' && (
+                    <i className="ri-checkbox-circle-fill text-gold-warm text-base"></i>
+                  )}
+                </div>
+                <div>
+                  <div className="font-bold text-sm">Pool ke Pool</div>
+                  <div className={`text-[11px] leading-tight mt-1 ${transferService === 'NONE' ? "text-white/70" : "text-foreground/50"}`}>
+                    Naik & turun di pool resmi EL Travel
+                  </div>
+                </div>
+                <div className={`text-[10px] font-bold uppercase tracking-wider ${transferService === 'NONE' ? "text-gold-soft" : "text-foreground/40"}`}>
+                  Bebas Biaya
+                </div>
+              </button>
+
+              {/* Option 2: Jemput Saja (Only if pickupCity) */}
+              {pickupCity && (
+                <button
+                  type="button"
+                  onClick={() => setTransferService('PICKUP')}
+                  className={`p-5 rounded-2xl border text-left transition-all flex flex-col justify-between gap-3 ${
+                    transferService === 'PICKUP'
+                      ? "border-gold-warm bg-gold-warm/15 text-navy-deep shadow-md scale-[1.02]"
+                      : "border-navy-deep/10 bg-surface-low/60 hover:bg-surface-low text-navy-deep"
+                  }`}
+                >
+                  <div className="flex items-center justify-between w-full">
+                    <span className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg ${
+                      transferService === 'PICKUP' ? "bg-gold-warm text-navy-deep" : "bg-navy-deep/5 text-navy-deep"
+                    }`}>
+                      <i className="ri-map-pin-user-line"></i>
+                    </span>
+                    {transferService === 'PICKUP' && (
+                      <i className="ri-checkbox-circle-fill text-navy-deep text-base"></i>
+                    )}
+                  </div>
+                  <div>
+                    <div className="font-bold text-sm">Jemput Saja</div>
+                    <div className="text-[11px] text-foreground/50 leading-tight mt-1">
+                      Dijemput di alamat ({pickupCity.name})
+                    </div>
+                  </div>
+                  <div className="text-[10px] font-bold text-gold-warm uppercase tracking-wider">
+                    Tarif Berdasarkan Zona
+                  </div>
+                </button>
+              )}
+
+              {/* Option 3: Antar Saja (Only if dropoffCity) */}
+              {dropoffCity && (
+                <button
+                  type="button"
+                  onClick={() => setTransferService('DROPOFF')}
+                  className={`p-5 rounded-2xl border text-left transition-all flex flex-col justify-between gap-3 ${
+                    transferService === 'DROPOFF'
+                      ? "border-gold-warm bg-gold-warm/15 text-navy-deep shadow-md scale-[1.02]"
+                      : "border-navy-deep/10 bg-surface-low/60 hover:bg-surface-low text-navy-deep"
+                  }`}
+                >
+                  <div className="flex items-center justify-between w-full">
+                    <span className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg ${
+                      transferService === 'DROPOFF' ? "bg-gold-warm text-navy-deep" : "bg-navy-deep/5 text-navy-deep"
+                    }`}>
+                      <i className="ri-map-pin-range-line"></i>
+                    </span>
+                    {transferService === 'DROPOFF' && (
+                      <i className="ri-checkbox-circle-fill text-navy-deep text-base"></i>
+                    )}
+                  </div>
+                  <div>
+                    <div className="font-bold text-sm">Antar Saja</div>
+                    <div className="text-[11px] text-foreground/50 leading-tight mt-1">
+                      Diantar ke tujuan ({dropoffCity.name})
+                    </div>
+                  </div>
+                  <div className="text-[10px] font-bold text-gold-warm uppercase tracking-wider">
+                    Tarif Berdasarkan Zona
+                  </div>
+                </button>
+              )}
+
+              {/* Option 4: Antar & Jemput (Only if both exist) */}
+              {pickupCity && dropoffCity && (
+                <button
+                  type="button"
+                  onClick={() => setTransferService('BOTH')}
+                  className={`p-5 rounded-2xl border text-left transition-all flex flex-col justify-between gap-3 relative overflow-hidden ${
+                    transferService === 'BOTH'
+                      ? "border-gold-warm bg-gradient-to-br from-gold-soft/20 to-gold-warm/10 text-navy-deep shadow-md scale-[1.02]"
+                      : "border-navy-deep/10 bg-surface-low/60 hover:bg-surface-low text-navy-deep"
+                  }`}
+                >
+                  <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded text-[8px] font-extrabold uppercase tracking-widest bg-gold-warm text-navy-deep">
+                    Lengkap
+                  </span>
+                  <div className="flex items-center justify-between w-full">
+                    <span className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg ${
+                      transferService === 'BOTH' ? "bg-navy-deep text-gold-warm" : "bg-navy-deep/5 text-navy-deep"
+                    }`}>
+                      <i className="ri-repeat-line"></i>
+                    </span>
+                    {transferService === 'BOTH' && (
+                      <i className="ri-checkbox-circle-fill text-navy-deep text-base mr-12"></i>
+                    )}
+                  </div>
+                  <div>
+                    <div className="font-bold text-sm">Antar Jemput</div>
+                    <div className="text-[11px] text-foreground/50 leading-tight mt-1">
+                      Jemput ({pickupCity.name}) & Antar ({dropoffCity.name})
+                    </div>
+                  </div>
+                  <div className="text-[10px] font-bold text-gold-warm uppercase tracking-wider">
+                    Door-to-Door
+                  </div>
+                </button>
+              )}
+            </div>
+
+            {/* Sub-form 1: Titik Penjemputan (if pickupEnabled) */}
             {pickupEnabled && pickupReadyCity && (
-              <div className="flex flex-col gap-6 mt-8">
+              <div className="border border-navy-deep/10 rounded-2xl p-6 md:p-8 bg-surface-low/40 flex flex-col gap-6 mb-6">
+                <div className="flex flex-col gap-1 border-b border-navy-deep/10 pb-4">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-gold-warm"></span>
+                    <h4 className="text-base font-display font-bold text-navy-deep">
+                      Titik Penjemputan ({pickupReadyCity.name})
+                    </h4>
+                  </div>
+                  <p className="text-xs text-foreground/50">
+                    {pickupReadyCity.notes || `Tentukan titik jemput di peta. Area layanan maks ${maxPickupRadiusKm(pickupReadyCity)} km dari pool ${pickupReadyCity.name}.`}
+                  </p>
+                </div>
+
                 <div className="flex flex-col gap-2">
                   <label className="text-[10px] font-bold text-navy-deep uppercase tracking-widest">
-                    Titik Penjemputan (cari alamat / klik peta)
+                    Lokasi Penjemputan (cari alamat / klik peta)
                   </label>
                   <PickupMap
                     centerLat={pickupReadyCity.poolLat}
@@ -259,7 +463,7 @@ export default function CheckoutForm({ scheduleId, seatNumbers, basePrice, vehic
                     showAddressSearch
                   />
                   <p className="text-[10px] text-foreground/40">
-                    Ketik alamat untuk deteksi otomatis, atau klik/drag di peta. Lingkaran = area layanan.
+                    Ketik alamat untuk deteksi otomatis, atau klik/drag pin di peta. Lingkaran menunjukkan area zonasi tarif.
                   </p>
                 </div>
 
@@ -268,14 +472,14 @@ export default function CheckoutForm({ scheduleId, seatNumbers, basePrice, vehic
                     className={`rounded-2xl p-4 text-xs font-bold ${
                       pickupOutside
                         ? "bg-red-500/10 text-red-600 border border-red-200"
-                        : "bg-gold-warm/10 text-navy-deep border border-gold-warm/30"
+                        : "bg-gold-warm/15 text-navy-deep border border-gold-warm/40"
                     }`}
                   >
                     {pickupOutside ? (
                       <>
                         <i className="ri-error-warning-line mr-1"></i>
                         Jarak ± {pickupDistanceKm} km — di luar area penjemputan (maks {maxPickupRadiusKm(pickupReadyCity)} km).
-                        Silakan hubungi admin/CS untuk opsi khusus, atau matikan opsi jemput.
+                        Silakan hubungi admin/CS untuk opsi khusus, atau batalkan opsi jemput.
                       </>
                     ) : (
                       <>
@@ -290,23 +494,107 @@ export default function CheckoutForm({ scheduleId, seatNumbers, basePrice, vehic
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="flex flex-col gap-2 md:col-span-2">
-                    <label className="text-[10px] font-bold text-navy-deep uppercase tracking-widest">Alamat Penjemputan</label>
+                    <label className="text-[10px] font-bold text-navy-deep uppercase tracking-widest">Alamat Lengkap Penjemputan</label>
                     <textarea
                       rows={2}
-                      placeholder="Alamat lengkap rumah/titik jemput (untuk patokan driver)"
-                      className="bg-surface-low rounded-2xl px-6 py-4 text-sm text-foreground/80 border border-navy-deep/5 focus:ring-2 focus:ring-gold-warm transition-all outline-none resize-none"
+                      placeholder="Alamat lengkap rumah / hotel / titik jemput (patokan driver)"
+                      className="bg-white rounded-2xl px-6 py-4 text-sm text-foreground/80 border border-navy-deep/10 focus:ring-2 focus:ring-gold-warm transition-all outline-none resize-none"
                       value={pickupAddress}
                       onChange={(e) => setPickupAddress(e.target.value)}
                     />
                   </div>
                   <div className="flex flex-col gap-2 md:col-span-2">
-                    <label className="text-[10px] font-bold text-navy-deep uppercase tracking-widest">Patokan / Catatan</label>
+                    <label className="text-[10px] font-bold text-navy-deep uppercase tracking-widest">Catatan / Patokan Jemput</label>
                     <input
                       type="text"
-                      placeholder="Contoh: dekat masjid, siap dijemput jam 6"
-                      className="bg-surface-low rounded-2xl px-6 py-4 text-sm text-foreground/80 border border-navy-deep/5 focus:ring-2 focus:ring-gold-warm transition-all outline-none"
+                      placeholder="Contoh: Depan pagar hitam, siap dijemput jam 07:00"
+                      className="bg-white rounded-2xl px-6 py-4 text-sm text-foreground/80 border border-navy-deep/10 focus:ring-2 focus:ring-gold-warm transition-all outline-none"
                       value={pickupNote}
                       onChange={(e) => setPickupNote(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Sub-form 2: Titik Pengantaran (if dropoffEnabled) */}
+            {dropoffEnabled && dropoffReadyCity && (
+              <div className="border border-navy-deep/10 rounded-2xl p-6 md:p-8 bg-surface-low/40 flex flex-col gap-6">
+                <div className="flex flex-col gap-1 border-b border-navy-deep/10 pb-4">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
+                    <h4 className="text-base font-display font-bold text-navy-deep">
+                      Titik Pengantaran ({dropoffReadyCity.name})
+                    </h4>
+                  </div>
+                  <p className="text-xs text-foreground/50">
+                    {dropoffReadyCity.notes || `Tentukan titik antar di peta. Area layanan maks ${maxPickupRadiusKm(dropoffReadyCity)} km dari pool ${dropoffReadyCity.name}.`}
+                  </p>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <label className="text-[10px] font-bold text-navy-deep uppercase tracking-widest">
+                    Lokasi Pengantaran (cari alamat / klik peta)
+                  </label>
+                  <PickupMap
+                    centerLat={dropoffReadyCity.poolLat}
+                    centerLng={dropoffReadyCity.poolLng}
+                    value={dropoffPoint}
+                    onChange={setDropoffPoint}
+                    onAddressChange={setDropoffAddress}
+                    zones={dropoffReadyCity.zones}
+                    showLocate
+                    showAddressSearch
+                  />
+                  <p className="text-[10px] text-foreground/40">
+                    Ketik alamat untuk deteksi otomatis, atau klik/drag pin di peta. Lingkaran menunjukkan area zonasi tarif.
+                  </p>
+                </div>
+
+                {dropoffDistanceKm !== null && (
+                  <div
+                    className={`rounded-2xl p-4 text-xs font-bold ${
+                      dropoffOutside
+                        ? "bg-red-500/10 text-red-600 border border-red-200"
+                        : "bg-blue-500/10 text-navy-deep border border-blue-500/30"
+                    }`}
+                  >
+                    {dropoffOutside ? (
+                      <>
+                        <i className="ri-error-warning-line mr-1"></i>
+                        Jarak ± {dropoffDistanceKm} km — di luar area pengantaran (maks {maxPickupRadiusKm(dropoffReadyCity)} km).
+                        Silakan hubungi admin/CS untuk opsi khusus, atau batalkan opsi antar.
+                      </>
+                    ) : (
+                      <>
+                        <i className="ri-map-pin-2-line mr-1"></i>
+                        Jarak ± {dropoffDistanceKm} km • {selectedDropoffZone?.label} • Rp{" "}
+                        {selectedDropoffZone?.feePerPax.toLocaleString("id-ID")} × {seatNumbers.length} pax = Rp{" "}
+                        {dropoffFee.toLocaleString("id-ID")}
+                      </>
+                    )}
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="flex flex-col gap-2 md:col-span-2">
+                    <label className="text-[10px] font-bold text-navy-deep uppercase tracking-widest">Alamat Lengkap Pengantaran</label>
+                    <textarea
+                      rows={2}
+                      placeholder="Alamat lengkap rumah / hotel / titik tujuan pengantaran"
+                      className="bg-white rounded-2xl px-6 py-4 text-sm text-foreground/80 border border-navy-deep/10 focus:ring-2 focus:ring-gold-warm transition-all outline-none resize-none"
+                      value={dropoffAddress}
+                      onChange={(e) => setDropoffAddress(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2 md:col-span-2">
+                    <label className="text-[10px] font-bold text-navy-deep uppercase tracking-widest">Catatan / Patokan Antar</label>
+                    <input
+                      type="text"
+                      placeholder="Contoh: Turun di lobby utama apartemen, hubungi sebelum sampai"
+                      className="bg-white rounded-2xl px-6 py-4 text-sm text-foreground/80 border border-navy-deep/10 focus:ring-2 focus:ring-gold-warm transition-all outline-none"
+                      value={dropoffNote}
+                      onChange={(e) => setDropoffNote(e.target.value)}
                     />
                   </div>
                 </div>
@@ -483,6 +771,15 @@ export default function CheckoutForm({ scheduleId, seatNumbers, basePrice, vehic
                   Biaya Jemput ({seatNumbers.length} pax)
                 </span>
                 <span className="text-navy-deep font-bold">Rp {pickupFee.toLocaleString('id-ID')}</span>
+              </div>
+            )}
+
+            {dropoffFee > 0 && (
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-foreground/40 font-medium font-body uppercase tracking-widest text-[10px]">
+                  Biaya Antar ({seatNumbers.length} pax)
+                </span>
+                <span className="text-navy-deep font-bold">Rp {dropoffFee.toLocaleString('id-ID')}</span>
               </div>
             )}
 

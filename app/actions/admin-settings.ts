@@ -4,9 +4,10 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { put } from "@vercel/blob";
 import { getSession } from "@/lib/auth";
-import { getPickupConfig } from "@/lib/pickup-server";
+import { getPickupConfig, getDropoffConfig } from "@/lib/pickup-server";
 import {
   PICKUP_CONFIG_KEY,
+  DROPOFF_CONFIG_KEY,
   mergePickupConfig,
   type PickupConfig,
 } from "@/lib/pickup";
@@ -95,6 +96,25 @@ export async function updatePickupSettings(data: PickupConfig) {
   }
 
   await setSetting(PICKUP_CONFIG_KEY, JSON.stringify(normalized));
+
+  revalidatePath("/admin/settings");
+  revalidatePath("/checkout");
+  return normalized;
+}
+
+export async function getDropoffSettings(): Promise<PickupConfig> {
+  return getDropoffConfig();
+}
+
+export async function updateDropoffSettings(data: PickupConfig) {
+  await requireSuperAdmin();
+
+  const normalized = mergePickupConfig(data);
+  if (normalized.cities.length === 0) {
+    throw new Error("Minimal satu kota dengan satu zona harus diisi.");
+  }
+
+  await setSetting(DROPOFF_CONFIG_KEY, JSON.stringify(normalized));
 
   revalidatePath("/admin/settings");
   revalidatePath("/checkout");

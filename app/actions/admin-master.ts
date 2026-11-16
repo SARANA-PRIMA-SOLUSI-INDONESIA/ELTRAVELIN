@@ -248,7 +248,7 @@ export async function createRouteStop(
     const newStop = await tx.routeStop.create({
       data: {
         routeId,
-        name,
+        name: name.trim(),
         sequence,
         stopTime: stopTime || null,
         price: price || 0,

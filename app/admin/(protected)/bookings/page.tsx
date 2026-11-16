@@ -180,10 +180,24 @@ export default async function AdminBookings({ searchParams }: AdminBookingsProps
                       </div>
                     </td>
                     <td className="px-4 py-6">
-                      <div className="flex flex-col">
-                        <span className="text-xs font-bold text-navy-deep leading-tight">{b.segment?.originStop?.name || b.schedule.route.origin}</span>
-                        <i className="ri-arrow-down-line text-[10px] text-gold-warm my-0.5"></i>
-                        <span className="text-xs font-bold text-navy-deep leading-tight">{b.segment?.destinationStop?.name || b.schedule.route.destination}</span>
+                      <div className="flex flex-col gap-1">
+                        <div>
+                          <span className="text-xs font-bold text-navy-deep leading-tight">{b.segment?.originStop?.name || b.schedule.route.origin}</span>
+                          {b.pickupRequested && (
+                            <span className="ml-1.5 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-200" title={`Jemput: ${b.pickupAddress || b.pickupCity || ''}`}>
+                              <i className="ri-map-pin-user-line text-[10px]"></i> Jemput
+                            </span>
+                          )}
+                        </div>
+                        <i className="ri-arrow-down-line text-[10px] text-gold-warm"></i>
+                        <div>
+                          <span className="text-xs font-bold text-navy-deep leading-tight">{b.segment?.destinationStop?.name || b.schedule.route.destination}</span>
+                          {b.dropoffRequested && (
+                            <span className="ml-1.5 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-50 text-blue-700 border border-blue-200" title={`Antar: ${b.dropoffAddress || b.dropoffCity || ''}`}>
+                              <i className="ri-home-4-line text-[10px]"></i> Antar
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </td>
                     <td className="px-4 py-6">

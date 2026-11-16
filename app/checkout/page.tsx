@@ -3,8 +3,8 @@ import CheckoutForm from "@/components/CheckoutForm";
 import { notFound, redirect } from "next/navigation";
 import BookingWizard from "@/components/BookingWizard";
 import Link from "next/link";
-import { getPickupConfig } from "@/lib/pickup-server";
-import { findPickupCity, hasPoolCoords } from "@/lib/pickup";
+import { getPickupConfig, getDropoffConfig } from "@/lib/pickup-server";
+import { findPickupCity, findDropoffCity, hasPoolCoords } from "@/lib/pickup";
 
 interface CheckoutProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -25,16 +25,20 @@ export default async function Checkout({ searchParams }: CheckoutProps) {
   if (!scheduleId || !seatsParam) return notFound();
 
   const seatNumbers = seatsParam.split(',');
-  const [schedule, availablePromos, pickupConfig] = await Promise.all([
+  const [schedule, availablePromos, pickupConfig, dropoffConfig] = await Promise.all([
     getScheduleById(scheduleId),
     getCheckoutPromos(),
     getPickupConfig(),
+    getDropoffConfig(),
   ]);
 
   if (!schedule) return notFound();
 
   const matchedPickupCity = findPickupCity(pickupConfig, schedule.route.origin, originStopName);
   const pickupCity = hasPoolCoords(matchedPickupCity) ? matchedPickupCity : null;
+
+  const matchedDropoffCity = findDropoffCity(dropoffConfig, schedule.route.destination, destinationStopName);
+  const dropoffCity = hasPoolCoords(matchedDropoffCity) ? matchedDropoffCity : null;
 
   // Redirect if schedule has already departed
   if (schedule.departureTime < new Date()) {
@@ -84,6 +88,7 @@ export default async function Checkout({ searchParams }: CheckoutProps) {
           destinationStopName={destinationStopName}
           segmentPrice={segmentPrice}
           pickupCity={pickupCity}
+          dropoffCity={dropoffCity}
         />
       </div>
     </div>

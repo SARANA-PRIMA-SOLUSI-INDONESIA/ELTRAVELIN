@@ -33,25 +33,29 @@ export default function SearchHero({ routes = [], content }: SearchHeroProps) {
   const allStops = routes.flatMap((r: any) => 
     r.stops?.map((s: any) => ({
       ...s,
+      name: (s.name || "").trim(),
       routeId: r.id,
-      routeOrigin: r.origin,
-      routeDestination: r.destination,
+      routeOrigin: (r.origin || "").trim(),
+      routeDestination: (r.destination || "").trim(),
     })) || []
   );
   
   // Get active stops eligible as boarding (titik naik) or alighting (titik turun)
-  const boardingStops = allStops.filter((s: any) => s.isActive !== false && s.canBoarding !== false);
-  const alightingStops = allStops.filter((s: any) => s.isActive !== false && s.canAlighting !== false);
+  const boardingStops = allStops.filter((s: any) => s.isActive !== false && s.canBoarding !== false && s.name);
+  const alightingStops = allStops.filter((s: any) => s.isActive !== false && s.canAlighting !== false && s.name);
 
   // Valid destinations for a given origin name (same route, higher sequence,
   // origin must allow boarding, destination must allow alighting)
   const getValidDestinationsFor = (originName: string) => {
-    const originStops = boardingStops.filter(s => s.name === originName);
+    const cleanOrigin = originName.trim();
+    const originStops = boardingStops.filter(s => s.name === cleanOrigin);
     const possibleDestinations = new Set<string>();
     for (const origin of originStops) {
       const routeStops = alightingStops.filter(s => s.routeId === origin.routeId);
       const destStops = routeStops.filter(s => s.sequence > origin.sequence);
-      destStops.forEach(s => possibleDestinations.add(s.name));
+      destStops.forEach(s => {
+        if (s.name) possibleDestinations.add(s.name);
+      });
     }
     return Array.from(possibleDestinations).sort();
   };
