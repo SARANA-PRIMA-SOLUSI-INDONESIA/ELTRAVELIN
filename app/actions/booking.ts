@@ -1592,7 +1592,9 @@ export async function getScheduleManifest(scheduleId: string) {
             include: {
               booking: {
                 include: {
-                  passengers: true,
+                  passengers: {
+                    orderBy: { id: 'asc' },
+                  },
                   segment: {
                     include: {
                       originStop: true,

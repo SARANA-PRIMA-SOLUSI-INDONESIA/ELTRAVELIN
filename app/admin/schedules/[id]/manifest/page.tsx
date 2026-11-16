@@ -18,7 +18,9 @@ export default async function ManifestPage({ params }: ManifestProps) {
   const trip = schedule.operatingTrip;
   const vehicle = trip.vehicle;
   const route = schedule.route;
-  const seats = trip.seats;
+  const seats = [...trip.seats].sort((a, b) =>
+    a.seatNumber.localeCompare(b.seatNumber, undefined, { numeric: true })
+  );
   const vehicleName = vehicle?.name || schedule.vehicleType || "Armada";
   const plateNumber = vehicle?.plateNumber || "-";
   const driverName = vehicle?.driverName || "-";
@@ -156,11 +158,22 @@ export default async function ManifestPage({ params }: ManifestProps) {
               <tbody>
                 {seats.map((seat, index) => {
                   const booking = seat.booking;
-                  const isBooked = seat.status === 'BOOKED' && booking;
-                  const passengerName = isBooked
-                    ? booking.passengers[0]?.name || booking.contactName
-                    : null;
-                  const passengerPhone = isBooked ? booking.contactPhone : null;
+                  const isBooked = seat.status === 'BOOKED' && Boolean(booking);
+
+                  let passengerName: string | null = null;
+                  if (isBooked && booking) {
+                    const bookingSeats = seats.filter(
+                      (s) => s.bookingId === seat.bookingId
+                    );
+                    const seatIndexInBooking = bookingSeats.findIndex(
+                      (s) => s.id === seat.id
+                    );
+                    passengerName =
+                      booking.passengers[seatIndexInBooking]?.name ||
+                      booking.passengers[0]?.name ||
+                      booking.contactName;
+                  }
+                  const passengerPhone = isBooked && booking ? booking.contactPhone : null;
 
                   return (
                     <tr key={seat.id} className="border-b border-gray-100">
@@ -170,12 +183,12 @@ export default async function ManifestPage({ params }: ManifestProps) {
                         {isBooked ? passengerName : <span className="text-gray-400 italic">(KOSONG)</span>}
                       </td>
                       <td className="py-2 text-gray-600 text-[11px]">
-                        {isBooked && booking.segment?.originStop
+                        {isBooked && booking?.segment?.originStop
                           ? booking.segment.originStop.name
                           : '-'}
                       </td>
                       <td className="py-2 text-gray-600 text-[11px]">
-                        {isBooked && booking.segment?.destinationStop
+                        {isBooked && booking?.segment?.destinationStop
                           ? booking.segment.destinationStop.name
                           : '-'}
                       </td>
