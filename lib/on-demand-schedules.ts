@@ -138,13 +138,13 @@ async function materializeSchedulesForDate(prisma: PrismaClient, date: string): 
     if (existingKeys.has(key)) continue;
 
     const capacity = template.capacity || 15;
-    let vehicleType = "Bus";
+    let vehicleType = "HIACE/FARIZON";
     if (template.vehicleId) {
       if (vehicleCache.has(template.vehicleId)) {
         vehicleType = vehicleCache.get(template.vehicleId)!;
       } else {
         const vehicle = await prisma.vehicle.findUnique({ where: { id: template.vehicleId } });
-        vehicleType = vehicle?.name || "Bus";
+        vehicleType = vehicle?.name || "HIACE/FARIZON";
         vehicleCache.set(template.vehicleId, vehicleType);
       }
     }
